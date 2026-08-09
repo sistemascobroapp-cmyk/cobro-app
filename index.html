@@ -65,10 +65,10 @@
 </head>
 <body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex flex-col md:flex-row pb-24 md:pb-0">
 
-  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <div id="toast-container" class="fixed top-5 right-5 z-[110] flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- PANTALLA LOGIN -->
-  <div id="pantalla-login" class="fixed inset-0 bg-[#090D16] z-50 flex items-center justify-center p-4">
+  <!-- PANTALLA LOGIN CON CAPA MÁXIMA Z-[100] -->
+  <div id="pantalla-login" class="fixed inset-0 bg-[#090D16] z-[100] flex items-center justify-center p-4">
     <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
       <div class="text-center space-y-2">
         <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-fuchsia-600 to-purple-500 flex items-center justify-center font-black text-3xl text-white shadow-lg shadow-fuchsia-500/30 mx-auto">
@@ -96,7 +96,7 @@
     </div>
   </div>
 
-  <!-- SIDEBAR LATERAL DESKTOP -->
+  <!-- SIDEBAR LATERAL DESKTOP (OCULTO POR DEFECTO) -->
   <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:flex shrink-0">
     <div class="space-y-6">
       <div class="flex items-center gap-3">
@@ -427,8 +427,8 @@
     </main>
   </div>
 
-  <!-- NAVEGACIÓN MÓVIL PERMANENTEMENTE FIJA EN LA PARTE INFERIOR -->
-  <nav class="nav-mobile md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2.5 z-50 text-[10px] backdrop-blur-md shadow-2xl">
+  <!-- NAVEGACIÓN MÓVIL (OCULTA POR DEFECTO HASTA INICIAR SESIÓN) -->
+  <nav id="nav-mobile-app" class="nav-mobile hidden md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2.5 z-50 text-[10px] backdrop-blur-md shadow-2xl">
     <button onclick="mostrarSeccion('sec-registrar')" id="m-btn-registrar" class="flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2"><span class="text-lg">💳</span><span>Registrar</span></button>
     <button onclick="mostrarSeccion('sec-por-cobrar')" id="m-btn-por-cobrar" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📅</span><span>Cobrar</span></button>
     <button onclick="mostrarSeccion('sec-resumen')" id="m-btn-resumen" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📊</span><span>Resumen</span></button>

@@ -13,8 +13,6 @@ window.onload = function() {
 
   auth.onAuthStateChanged(async user => {
     if (user) {
-      usuarioActual = user;
-
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       
       if (userDoc.exists) {
@@ -31,13 +29,30 @@ window.onload = function() {
         rolUsuarioActual = 'admin';
       }
 
+      usuarioActual = user;
+
+      // OCULTAR LOGIN Y MOSTRAR NAVEGACIÓN
       document.getElementById('pantalla-login').classList.add('hidden');
+      
+      const navMobile = document.getElementById('nav-mobile-app');
+      if (navMobile) navMobile.classList.remove('hidden');
+
+      const sidebar = document.getElementById('sidebar-app');
+      if (sidebar) sidebar.classList.remove('hidden');
 
       configurarInterfazPorRol();
       iniciarListenersFirestore();
       escucharConfigSuscripcion();
     } else {
+      // SI NO HAY USUARIO, OCULTAR TODO Y MOSTRAR ÚNICAMENTE LOGIN
+      usuarioActual = null;
       document.getElementById('pantalla-login').classList.remove('hidden');
+
+      const navMobile = document.getElementById('nav-mobile-app');
+      if (navMobile) navMobile.classList.add('hidden');
+
+      const sidebar = document.getElementById('sidebar-app');
+      if (sidebar) sidebar.classList.add('hidden');
     }
   });
 };
@@ -120,6 +135,9 @@ function cerrarSesionApp() {
 }
 
 function mostrarSeccion(idSeccion) {
+  // BLOQUEO DE SEGURIDAD: SI NO HAY SESIÓN INICIADA, SE CANCELA LA NAVEGACIÓN
+  if (!usuarioActual) return;
+
   document.querySelectorAll('.seccion-app').forEach(sec => sec.classList.add('hidden'));
   document.getElementById(idSeccion).classList.remove('hidden');
 
