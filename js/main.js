@@ -162,7 +162,7 @@ async function verificarRetornoAutomaticoMercadoPago() {
         estadoCuenta: 'activa'
       });
 
-      mostrarToast("🎉 ¡Pago de alquiler acreditado automáticamente!");
+      mostrarToast("🎉 ¡Pago de suscripción acreditado automáticamente!");
       window.history.replaceState({}, document.title, window.location.pathname);
     } catch (error) {
       console.error("Error al acreditar pago automático:", error);
@@ -192,7 +192,7 @@ function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
 
     if (diaActual === 10) {
       if (elemTitulo) elemTitulo.innerText = "🚨 ÚLTIMO DÍA DE PAGO";
-      if (elemMensaje) elemMensaje.innerHTML = "¡Hoy <strong>día 10</strong> es el último día para abonar tu alquiler mensual de la aplicación! Evitá la suspensión del servicio.";
+      if (elemMensaje) elemMensaje.innerHTML = "¡Hoy <strong>día 10</strong> es el último día para abonar tu suscripción mensual de la aplicación! Evitá la suspensión del servicio.";
     } else {
       if (elemTitulo) elemTitulo.innerText = "💳 Pago de Suscripción Próximo";
       if (elemMensaje) elemMensaje.innerHTML = `El día 10 vence la suscripción de tu app. En <strong>${diasFaltantes} días</strong> es la fecha límite.<br><br>Ya podés realizar el <strong>pago adelantado</strong> hoy mismo.`;

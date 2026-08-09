@@ -20,6 +20,17 @@ let datosRecargoModalAgrupado = { base: 0, montoRecargo: 0, diasAtraso: 0, maxPe
 let mesCalVisual = new Date().getMonth();
 let anioCalVisual = new Date().getFullYear();
 
+// LIMPIADOR INTELIGENTE DE TELÉFONOS PARA EVITAR "NÚMERO INVÁLIDO" EN WHATSAPP
+function formatearTelefonoWhatsApp(numStr) {
+  if (!numStr) return '';
+  let limpio = numStr.replace(/\D/g, ''); // Deja sólo los dígitos numéricos
+  if (limpio.startsWith('0')) limpio = limpio.substring(1); // Quita el 0 inicial
+  if (limpio.length === 10) {
+    limpio = '549' + limpio; // Agrega prefijo internacional para Argentina si ingresó 10 dígitos (ej: 1122334455)
+  }
+  return limpio;
+}
+
 function cargarCamposConfigIntereses() {
   document.getElementById('cfg-int-diario').value = configIntereses.diario;
   document.getElementById('cfg-int-semanal').value = configIntereses.semanal;
@@ -945,8 +956,10 @@ function pagarSuscripcionMercadoPago() {
 function enviarComprobanteAlquilerWhatsApp() {
   if (!configSuscripcion.whatsapp) return mostrarToast("El administrador no configuró teléfono de WhatsApp todavía", "error");
   
-  const mensaje = encodeURIComponent(`Hola, envío el comprobante de mi alquiler mensual de la app CobroApp.`);
-  window.open(`https://wa.me/${configSuscripcion.whatsapp}?text=${mensaje}`, '_blank');
+  const telefonoLimpio = formatearTelefonoWhatsApp(configSuscripcion.whatsapp);
+  const mensaje = encodeURIComponent(`Hola, envío el comprobante de mi suscripción mensual de la app CobroApp.`);
+  
+  window.open(`https://wa.me/${telefonoLimpio}?text=${mensaje}`, '_blank');
 }
 
 async function cambiarMiContrasena(event) {

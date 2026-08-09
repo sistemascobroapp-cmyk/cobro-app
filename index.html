@@ -369,7 +369,7 @@
             <form onsubmit="guardarConfigSuscripcion(event)" class="space-y-4">
               <div><label class="block text-xs font-bold uppercase mb-1">Precio Alquiler Mensual ($)</label><input type="number" id="cfg-sub-monto" required min="0" placeholder="Ej: 15000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
               <div><label class="block text-xs font-bold uppercase mb-1">Link MP / Alias / CBU</label><input type="text" id="cfg-sub-link" required placeholder="https://mpago.la/... o TU.ALIAS.MP" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Tu Teléfono WhatsApp para Comprobantes</label><input type="text" id="cfg-sub-whatsapp" required placeholder="Ej: 5491112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1">Tu Teléfono WhatsApp para Comprobantes</label><input type="text" id="cfg-sub-whatsapp" required placeholder="Ej: 1112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
               <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">💾 Guardar Ajustes de Alquiler App</button>
             </form>
           </div>
@@ -461,13 +461,13 @@
         <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30">
           💳
         </div>
-        <h3 id="notif-sub-titulo" class="text-xl font-extrabold text-white">Recordatorio de Alquiler</h3>
+        <h3 id="notif-sub-titulo" class="text-xl font-extrabold text-white">Recordatorio de Suscripción</h3>
         <p id="notif-sub-mensaje" class="text-sm text-slate-300 leading-relaxed"></p>
       </div>
 
       <div class="pt-2 flex flex-col gap-2">
         <button onclick="irAPagarSuscripcionDesdeNotif()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg">
-          📲 Pagar Alquiler Ahora
+          📲 Pagar Suscripción Ahora
         </button>
         <button onclick="cerrarNotificacionSuscripcionVisual()" class="w-full bg-slate-800 text-slate-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700">
           Cerrar hasta mañana
@@ -487,14 +487,14 @@
       <div class="space-y-2">
         <h3 id="bloqueo-titulo" class="text-2xl font-black text-white">Servicio Suspendido</h3>
         <p id="bloqueo-mensaje" class="text-xs text-slate-300 leading-relaxed">
-          Tu cuenta se encuentra suspendida por falta de pago del alquiler mensual. Para reactivar el acceso a tu sistema de préstamos, realizá el pago correspondiente.
+          Tu cuenta se encuentra suspendida por falta de pago de la suscripción mensual. Para reactivar el acceso a tu sistema de préstamos, realizá el pago correspondiente.
         </p>
       </div>
 
-      <!-- CAJA DE DATOS DE PAGO / CBU -->
+      <!-- CAJA DE DATOS DE PAGO / CBU DE SUSCRIPCIÓN -->
       <div class="bg-[#1E293B] border border-slate-700/80 p-4 rounded-2xl space-y-3 text-left">
         <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
-          <span class="text-[11px] font-bold text-slate-400 uppercase">Monto Alquiler:</span>
+          <span class="text-[11px] font-bold text-slate-400 uppercase">Monto Suscripción:</span>
           <strong id="bloqueo-monto" class="text-lg font-black text-emerald-400">$0 / mes</strong>
         </div>
 

@@ -1,4 +1,4 @@
-// LÓGICA EXCLUSIVA DEL ADMINISTRADOR MASTER (CREAR PRESTAMISTAS, GESTIÓN Y ALQUILER)
+// LÓGICA EXCLUSIVA DEL ADMINISTRADOR MASTER (CREAR PRESTAMISTAS, GESTIÓN Y SUSCRIPCIÓN)
 
 async function crearUsuarioPrestamista(event) {
   event.preventDefault();
@@ -68,7 +68,7 @@ function renderizarListaPrestamistasAdmin(listaUsuarios) {
           </div>
 
           <div class="text-right">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Alquiler Vence Día 10 (${nombreMesActual})</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Suscripción Vence Día 10 (${nombreMesActual})</span>
             <button onclick="alternarPagoMesPrestamista('${p.id}', '${mesAnioActualKey}', ${estaPagoMes})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition shadow ${estaPagoMes ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}">
               ${estaPagoMes ? '✓ PAGADO ESTE MES' : '⚠️ PENDIENTE DE PAGO'}
             </button>
@@ -93,7 +93,7 @@ async function alternarPagoMesPrestamista(uid, mesKey, estadoActual) {
     await db.collection('usuarios').doc(uid).update({
       [`pagosMes.${mesKey}`]: !estadoActual
     });
-    mostrarToast(!estadoActual ? "Pago de alquiler registrado" : "Estado de pago cambiado a pendiente");
+    mostrarToast(!estadoActual ? "Pago de suscripción registrado" : "Estado de pago cambiado a pendiente");
   } catch (error) {
     mostrarToast("Error al actualizar pago", "error");
   }
@@ -147,6 +147,12 @@ function escucharConfigSuscripcion() {
       const txtLinkInfo = document.getElementById('cli-sub-link-info');
       if (txtMonto) txtMonto.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
       if (txtLinkInfo) txtLinkInfo.innerText = configSuscripcion.link ? `Destino de Pago: ${configSuscripcion.link}` : 'Sin método configurado aún.';
+
+      // VINCULACIÓN EN TIEMPO REAL CON LA PANTALLA DE SUSPENSIÓN Y BLOQUEO
+      const elemMontoBloqueo = document.getElementById('bloqueo-monto');
+      const elemAliasBloqueo = document.getElementById('bloqueo-alias-cbu');
+      if (elemMontoBloqueo) elemMontoBloqueo.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
+      if (elemAliasBloqueo) elemAliasBloqueo.innerText = configSuscripcion.link || 'Sin CBU/Alias configurado';
     }
   });
 }
@@ -158,5 +164,5 @@ async function guardarConfigSuscripcion(event) {
   const whatsapp = document.getElementById('cfg-sub-whatsapp').value.trim();
 
   await db.collection('configuracion').doc('suscripcion').set({ monto, link, whatsapp });
-  mostrarToast("Ajustes de alquiler de app guardados");
+  mostrarToast("Ajustes de suscripción de la app guardados con éxito");
 }
