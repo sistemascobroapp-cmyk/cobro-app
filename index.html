@@ -180,14 +180,15 @@
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
           <div class="border-b border-slate-800/80 pb-4">
             <h3 class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
-            <p class="text-xs text-slate-400 mt-1">Escribí el nombre de tu cliente/deudor para buscarlo en tu lista o simular montos.</p>
+            <p class="text-xs text-slate-400 mt-1">Seleccioná el cliente de tu lista agendada para simular u otorgar préstamos.</p>
           </div>
 
           <form id="form-prestamo" onsubmit="generarSimulacion(event)" class="space-y-5">
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cliente Seleccionado *</label>
-              <input type="text" id="input-cliente" list="lista-clientes-datalist" placeholder="🔍 Escribí el nombre del cliente..." class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500" autocomplete="off">
-              <datalist id="lista-clientes-datalist"></datalist>
+              <select id="input-cliente" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-fuchsia-500 cursor-pointer">
+                <option value="">-- Seleccioná un cliente agendado --</option>
+              </select>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -368,7 +369,7 @@
             <form onsubmit="guardarConfigSuscripcion(event)" class="space-y-4">
               <div><label class="block text-xs font-bold uppercase mb-1">Precio Alquiler Mensual ($)</label><input type="number" id="cfg-sub-monto" required min="0" placeholder="Ej: 15000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
               <div><label class="block text-xs font-bold uppercase mb-1">Link MP / Alias / CBU</label><input type="text" id="cfg-sub-link" required placeholder="https://mpago.la/... o TU.ALIAS.MP" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Tu Teléfono WhatsApp para Comprobantes (sin + ni espacios)</label><input type="text" id="cfg-sub-whatsapp" required placeholder="Ej: 5491112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1">Tu Teléfono WhatsApp para Comprobantes</label><input type="text" id="cfg-sub-whatsapp" required placeholder="Ej: 5491112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
               <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">💾 Guardar Ajustes de Alquiler App</button>
             </form>
           </div>
@@ -392,7 +393,11 @@
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 max-w-2xl">
           <h3 class="text-lg font-bold text-fuchsia-400">🔐 Habilitar Nueva Cuenta para Prestamista</h3>
           <form onsubmit="crearUsuarioPrestamista(event)" class="space-y-4">
-            <div><label class="block text-xs font-bold uppercase mb-2">Nombre o Negocio *</label><input type="text" id="usr-nombre-prestamista" required placeholder="Ej: Inversiones Morón" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+            <div>
+              <label class="block text-xs font-bold uppercase mb-2">Nombre o Negocio *</label>
+              <input type="text" id="usr-nombre-prestamista" list="lista-clientes-admin-datalist" required placeholder="Escribí o seleccioná un cliente guardado..." class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white" autocomplete="off">
+              <datalist id="lista-clientes-admin-datalist"></datalist>
+            </div>
             <div><label class="block text-xs font-bold uppercase mb-2">Correo Electrónico *</label><input type="email" id="usr-email" required placeholder="prestamista@cobroapp.com" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
             <div><label class="block text-xs font-bold uppercase mb-2">Contraseña Inicial *</label><input type="text" id="usr-pass" required minlength="6" placeholder="clave123" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
             <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg">✨ Crear Acceso Completo</button>
@@ -468,6 +473,54 @@
           Cerrar hasta mañana
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA DE BLOQUEO POR SUSPENSIÓN / PAGO PENDIENTE (UNCLOSABLE OVERLAY) -->
+  <div id="pantalla-bloqueo-suspension" class="hidden fixed inset-0 bg-[#090D16]/98 backdrop-blur-xl z-[999] flex items-center justify-center p-4">
+    <div class="tarjeta-ui bg-[#0F172A] border-2 border-red-500/80 p-6 md:p-8 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-6">
+      
+      <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-3xl text-red-400 mx-auto animate-bounce">
+        ⛔
+      </div>
+
+      <div class="space-y-2">
+        <h3 id="bloqueo-titulo" class="text-2xl font-black text-white">Servicio Suspendido</h3>
+        <p id="bloqueo-mensaje" class="text-xs text-slate-300 leading-relaxed">
+          Tu cuenta se encuentra suspendida por falta de pago del alquiler mensual. Para reactivar el acceso a tu sistema de préstamos, realizá el pago correspondiente.
+        </p>
+      </div>
+
+      <!-- CAJA DE DATOS DE PAGO / CBU -->
+      <div class="bg-[#1E293B] border border-slate-700/80 p-4 rounded-2xl space-y-3 text-left">
+        <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
+          <span class="text-[11px] font-bold text-slate-400 uppercase">Monto Alquiler:</span>
+          <strong id="bloqueo-monto" class="text-lg font-black text-emerald-400">$0 / mes</strong>
+        </div>
+
+        <div>
+          <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Datos de Transferencia (CBU / Alias):</span>
+          <div class="bg-[#0F172A] p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
+            <span id="bloqueo-alias-cbu" class="text-xs font-mono text-fuchsia-300 truncate font-bold">Cargando datos...</span>
+            <button onclick="copiarAliasBloqueo()" class="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-700 shrink-0 ml-2">
+              📋 Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2">
+          <span>💳</span> Ir a Mercado Pago
+        </button>
+        <button onclick="enviarComprobanteAlquilerWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2 text-xs">
+          <span>📲</span> Enviar Comprobante por WhatsApp
+        </button>
+        <button onclick="cerrarSesionApp()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700 transition">
+          🚪 Cerrar Sesión
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -623,52 +676,5 @@
   <script src="admin/admin.js"></script>
   <script src="prestamista/prestamista.js"></script>
   <script src="js/main.js"></script>
-  <!-- PANTALLA DE BLOQUEO POR SUSPENSIÓN / PAGO PENDIENTE (UNCLOSABLE) -->
-  <div id="pantalla-bloqueo-suspension" class="hidden fixed inset-0 bg-[#090D16]/98 backdrop-blur-xl z-[999] flex items-center justify-center p-4">
-    <div class="tarjeta-ui bg-[#0F172A] border-2 border-red-500/80 p-6 md:p-8 rounded-3xl shadow-2xl max-w-md w-full text-center space-y-6">
-      
-      <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-3xl text-red-400 mx-auto animate-bounce">
-        ⛔
-      </div>
-
-      <div class="space-y-2">
-        <h3 id="bloqueo-titulo" class="text-2xl font-black text-white">Servicio Suspendido</h3>
-        <p id="bloqueo-mensaje" class="text-xs text-slate-300 leading-relaxed">
-          Tu cuenta se encuentra suspendida por falta de pago del alquiler mensual. Para reactivar el acceso a tu sistema de préstamos, realizá el pago correspondiente.
-        </p>
-      </div>
-
-      <!-- CAJA DE DATOS DE PAGO / CBU -->
-      <div class="bg-[#1E293B] border border-slate-700/80 p-4 rounded-2xl space-y-3 text-left">
-        <div class="flex justify-between items-center border-b border-slate-700/60 pb-2">
-          <span class="text-[11px] font-bold text-slate-400 uppercase">Monto Alquiler:</span>
-          <strong id="bloqueo-monto" class="text-lg font-black text-emerald-400">$0 / mes</strong>
-        </div>
-
-        <div>
-          <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Datos de Transferencia (CBU / Alias):</span>
-          <div class="bg-[#0F172A] p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
-            <span id="bloqueo-alias-cbu" class="text-xs font-mono text-fuchsia-300 truncate font-bold">Cargando datos...</span>
-            <button onclick="copiarAliasBloqueo()" class="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-700 shrink-0 ml-2">
-              📋 Copiar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="space-y-2 pt-2">
-        <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2">
-          <span>💳</span> Ir a Mercado Pago
-        </button>
-        <button onclick="enviarComprobanteAlquilerWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2 text-xs">
-          <span>📲</span> Enviar Comprobante por WhatsApp
-        </button>
-        <button onclick="cerrarSesionApp()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700 transition">
-          🚪 Cerrar Sesión
-        </button>
-      </div>
-
-    </div>
-  </div>
 </body>
 </html>

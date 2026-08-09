@@ -92,10 +92,24 @@ function calcularSaldoPendienteTotalCliente(clienteId) {
 }
 
 function renderizarClientesSelect() {
-  const datalist = document.getElementById('lista-clientes-datalist');
-  if (!datalist) return;
-  datalist.innerHTML = '';
-  clientes.forEach(c => { datalist.innerHTML += `<option value="${c.nombre} (${c.dir})"></option>`; });
+  const selectCliente = document.getElementById('input-cliente');
+  const datalistAdmin = document.getElementById('lista-clientes-admin-datalist');
+  
+  if (selectCliente) {
+    let htmlOptions = '<option value="">-- Seleccioná un cliente agendado --</option>';
+    clientes.forEach(c => {
+      htmlOptions += `<option value="${c.id}">${c.nombre} — (${c.dir})</option>`;
+    });
+    selectCliente.innerHTML = htmlOptions;
+  }
+
+  if (datalistAdmin) {
+    let htmlDatalist = '';
+    clientes.forEach(c => {
+      htmlDatalist += `<option value="${c.nombre} (${c.dir})"></option>`;
+    });
+    datalistAdmin.innerHTML = htmlDatalist;
+  }
 }
 
 function renderizarDirectorioClientes() {
@@ -187,11 +201,17 @@ async function eliminarCliente(id) {
 
 function generarSimulacion(event) {
   event.preventDefault();
-  const clienteInputVal = document.getElementById('input-cliente').value.trim();
-  const clienteObj = clientes.find(c => `${c.nombre} (${c.dir})` === clienteInputVal || c.nombre.toLowerCase() === clienteInputVal.toLowerCase());
+  const clienteIdSeleccionado = document.getElementById('input-cliente').value;
+  
+  if (!clienteIdSeleccionado) {
+    mostrarToast("Por favor seleccioná un cliente de la lista", "error");
+    return;
+  }
+
+  const clienteObj = clientes.find(c => c.id === clienteIdSeleccionado);
   
   const clienteId = clienteObj ? clienteObj.id : null;
-  const clienteNombre = clienteObj ? `${clienteObj.nombre} (${clienteObj.dir})` : clienteInputVal;
+  const clienteNombre = clienteObj ? `${clienteObj.nombre} (${clienteObj.dir})` : 'Cliente Seleccionado';
   
   const monto = parseFloat(document.getElementById('monto-prestamo').value);
   const interesPct = parseFloat(document.getElementById('interes-prestamo').value);
@@ -832,7 +852,7 @@ function alternarPestanaResumen(pestana) {
     vistaFinalizados.classList.remove('hidden');
   }
 
-  renderizarResumenYPrestamos();
+  renderizerResumenYPrestamos();
 }
 
 function renderizarResumenYPrestamos() {
@@ -925,9 +945,7 @@ function pagarSuscripcionMercadoPago() {
 function enviarComprobanteAlquilerWhatsApp() {
   if (!configSuscripcion.whatsapp) return mostrarToast("El administrador no configuró teléfono de WhatsApp todavía", "error");
   
-  const miNombre = document.getElementById('lbl-rol-usuario') ? document.getElementById('lbl-rol-usuario').innerText : 'Prestamista';
   const mensaje = encodeURIComponent(`Hola, envío el comprobante de mi alquiler mensual de la app CobroApp.`);
-  
   window.open(`https://wa.me/${configSuscripcion.whatsapp}?text=${mensaje}`, '_blank');
 }
 
@@ -958,10 +976,8 @@ async function cambiarMiContrasena(event) {
   }
 
   try {
-    // 1. Actualizar contraseña real en el servicio de autenticación
     await user.updatePassword(p1);
 
-    // 2. Actualizar clave legible en Firestore para que la veas en tu panel de Admin
     if (db) {
       await db.collection('usuarios').doc(user.uid).update({
         passwordVisual: p1

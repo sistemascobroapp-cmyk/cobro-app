@@ -2,7 +2,7 @@
 
 let usuarioActual = null;
 let rolUsuarioActual = 'prestamista';
-let unsubListenerUsuario = null; // Escuchador en tiempo real de cambios de cuenta
+let unsubListenerUsuario = null;
 
 window.onload = function() {
   aplicarTema(temaActual);
@@ -13,7 +13,6 @@ window.onload = function() {
   renderizarGridCalendarioVisual();
 
   auth.onAuthStateChanged(async user => {
-    // Si cambia de usuario, cancelar el listener anterior
     if (unsubListenerUsuario) {
       unsubListenerUsuario();
       unsubListenerUsuario = null;
@@ -32,7 +31,6 @@ window.onload = function() {
         // LISTENER EN TIEMPO REAL SOBRE EL DOCUMENTO DEL PRESTAMISTA
         unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
           if (!doc.exists) {
-            // SI LA CUENTA FUE ELIMINADA POR EL ADMIN
             mostrarToast("🚫 Tu cuenta ha sido dada de baja del sistema.", "error");
             auth.signOut();
             return;
@@ -88,7 +86,6 @@ window.onload = function() {
   });
 };
 
-// MOSTRAR PANTALLA INAMOVIBLE DE BLOQUEO POR SUSPENSIÓN
 function mostrarPantallaBloqueo(datosUsuario) {
   const modalBloqueo = document.getElementById('pantalla-bloqueo-suspension');
   if (!modalBloqueo) return;
@@ -102,7 +99,6 @@ function mostrarPantallaBloqueo(datosUsuario) {
   modalBloqueo.classList.remove('hidden');
 }
 
-// OCULTAR PANTALLA DE BLOQUEO CUANDO EL ADMIN ACTIVA / PAGA LA CUENTA
 function ocultarPantallaBloqueo() {
   const modalBloqueo = document.getElementById('pantalla-bloqueo-suspension');
   if (modalBloqueo) modalBloqueo.classList.add('hidden');
