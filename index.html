@@ -23,12 +23,46 @@
 
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background-color 0.3s, color 0.3s; }
-    body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; }
-    body.light-mode aside, body.light-mode header, body.light-mode nav.nav-mobile, body.light-mode .tarjeta-ui { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
-    body.light-mode .input-ui, body.light-mode select, body.light-mode input { background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
-    body.light-mode .text-white, body.light-mode .text-gray-100, body.light-mode .text-slate-100, body.light-mode .text-slate-200, body.light-mode .text-slate-300 { color: #0f172a !important; }
-    body.light-mode .text-slate-400, body.light-mode .text-slate-500 { color: #475569 !important; }
-    body.light-mode .bg-slate-800, body.light-mode .bg-slate-900, body.light-mode .bg-\[\#1E293B\], body.light-mode .bg-\[\#0F172A\] { background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+    
+    /* MODO CLARO DE ALTO CONTRASTE */
+    body.light-mode {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
+    body.light-mode aside,
+    body.light-mode header,
+    body.light-mode nav.nav-mobile,
+    body.light-mode .tarjeta-ui {
+      background-color: #ffffff !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+    body.light-mode .input-ui,
+    body.light-mode select,
+    body.light-mode input {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
+    body.light-mode .text-white,
+    body.light-mode .text-gray-100,
+    body.light-mode .text-slate-100,
+    body.light-mode .text-slate-200,
+    body.light-mode .text-slate-300 {
+      color: #0f172a !important;
+    }
+    body.light-mode .text-slate-400,
+    body.light-mode .text-slate-500 {
+      color: #475569 !important;
+    }
+    body.light-mode .bg-slate-800,
+    body.light-mode .bg-slate-900,
+    body.light-mode .bg-\[\#1E293B\],
+    body.light-mode .bg-\[\#0F172A\] {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+      color: #0f172a !important;
+    }
   </style>
 </head>
 <body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex flex-col md:flex-row">
@@ -128,7 +162,7 @@
         <h2 id="titulo-pantalla" class="text-base md:text-lg font-bold flex items-center gap-2"><span>💳</span> Registrar Préstamo</h2>
         <div class="flex items-center gap-3">
           <button id="btn-tema" onclick="alternarTema()" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 text-amber-400 border border-slate-700 hover:bg-slate-700 transition shadow">☀️ Modo Claro</button>
-          <button onclick="cerrarSesionApp()" class="md:hidden p-1.5 text-xs text-red-400">🚪 Salir</button>
+          <button onclick="cerrarSesionApp()" class="md:hidden p-1.5 text-xs text-red-400 font-bold">🚪 Salir</button>
         </div>
       </header>
 
@@ -370,7 +404,7 @@
 
   </div>
 
-  <!-- MODALES DE ASISTENCIA Y COBRO -->
+  <!-- MODAL COMPROBANTE WHATSAPP -->
   <div id="modal-comprobante-whatsapp" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-emerald-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -457,14 +491,13 @@
     </div>
   </div>
 
-  <!-- LIBRERÍAS FIREBASE -->
+  <!-- LIBRERÍAS OFICIALES DE FIREBASE -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-  <!-- LÓGICA DE LA APLICACIÓN -->
+  <!-- LÓGICA COMPLETA DE LA APLICACIÓN -->
   <script>
-    // CONFIGURACIÓN FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyCJC4CuD9nIpM4aeB2CetEr67mcIcYQAKU",
       authDomain: "cobro-app-sistema.firebaseapp.com",
@@ -477,7 +510,7 @@
     let db = null;
     let auth = null;
     let usuarioActual = null;
-    let rolUsuarioActual = null; // 'admin' o 'cliente'
+    let rolUsuarioActual = null;
 
     let clientes = [];
     let prestamos = [];
@@ -498,13 +531,12 @@
     window.onload = function() {
       aplicarTema(temaActual);
 
-      // LISTENER DE AUTENTICACIÓN
+      // LISTENER DE ESTADO DE AUTENTICACIÓN
       auth.onAuthStateChanged(async user => {
         if (user) {
           usuarioActual = user;
           document.getElementById('pantalla-login').classList.add('hidden');
 
-          // Buscar el documento del usuario en Firestore para saber su Rol
           const userDoc = await db.collection('usuarios').doc(user.uid).get();
           
           if (userDoc.exists) {
@@ -517,12 +549,10 @@
               iniciarModoCliente(data.clienteId);
             }
           } else {
-            // Si el correo es el admin por defecto
             rolUsuarioActual = 'admin';
             iniciarModoAdmin();
           }
         } else {
-          // No está logueado -> Mostrar Login
           document.getElementById('pantalla-login').classList.remove('hidden');
           document.getElementById('vista-admin').classList.add('hidden');
           document.getElementById('vista-cliente').classList.add('hidden');
@@ -548,9 +578,7 @@
       auth.signOut();
     }
 
-    // ==========================================
-    // LÓGICA MODO ADMINISTRADOR
-    // ==========================================
+    // MODO ADMINISTRADOR
     function iniciarModoAdmin() {
       document.getElementById('vista-admin').classList.remove('hidden');
       document.getElementById('vista-cliente').classList.add('hidden');
@@ -560,15 +588,10 @@
         renderizarClientesSelect();
         renderizarSelectUsuariosClientes();
         renderizarDirectorioClientes();
-        renderizarEstadoCuentas();
       });
 
       db.collection('prestamos').onSnapshot(snapshot => {
         prestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderizarResumenYPrestamos();
-        renderizarGridCalendarioVisual();
-        renderizarPlanificadorSemanal();
-        renderizarEstadoCuentas();
       });
     }
 
@@ -590,7 +613,6 @@
       if (!clienteId) return mostrarToast("Seleccioná un cliente de la lista", "error");
 
       try {
-        // Para no cerrar la sesión del admin actual al crear un usuario nuevo, usámos una instancia secundaria o petición directa
         const appSecundaria = firebase.initializeApp(firebaseConfig, "secundario");
         const res = await appSecundaria.auth().createUserWithEmailAndPassword(email, pass);
         
@@ -603,7 +625,7 @@
 
         await appSecundaria.delete();
 
-        mostrarToast("✅ ¡Usuario de cliente creado exitosamente!");
+        mostrarToast("✨ Usuario de cliente creado exitosamente");
         document.getElementById('usr-email').value = '';
         document.getElementById('usr-pass').value = '';
       } catch (error) {
@@ -612,9 +634,7 @@
       }
     }
 
-    // ==========================================
-    // LÓGICA MODO CLIENTE (SU PORTAL INDEPENDIENTE)
-    // ==========================================
+    // MODO CLIENTE
     function iniciarModoCliente(clienteId) {
       document.getElementById('vista-cliente').classList.remove('hidden');
       document.getElementById('vista-admin').classList.add('hidden');
@@ -624,8 +644,8 @@
         const c = doc.data();
         document.getElementById('cli-portal-nombre').innerText = c.nombre;
         document.getElementById('cli-portal-datos-contacto').innerHTML = `
-          <p>📍 <strong>Dirección Registrada:</strong> ${c.dir}</p>
-          <p>📞 <strong>Teléfono Personal:</strong> ${c.tel}</p>
+          <p>📍 <strong>Dirección:</strong> ${c.dir}</p>
+          <p>📞 <strong>Teléfono:</strong> ${c.tel}</p>
         `;
       });
 
@@ -670,7 +690,7 @@
               </div>
               <span class="text-xs font-bold px-2.5 py-1 rounded ${p.estado === 'finalizado' ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-400'}">${p.estado === 'finalizado' ? '🏁 Finalizado' : '🟢 Activo'}</span>
             </div>
-            <p class="text-xs text-slate-400">Progreso: ${cuotasPagadas} de ${p.numCuotas} cuotas abonas</p>
+            <p class="text-xs text-slate-400">Progreso: ${cuotasPagadas} de ${p.numCuotas} cuotas abonadas</p>
             <div class="space-y-1.5 max-h-48 overflow-y-auto pt-1">${cuotasHtml}</div>
           </div>
         `;
@@ -679,9 +699,7 @@
       document.getElementById('cli-portal-saldo-total').innerText = '$' + saldoTotalRestante.toLocaleString('es-AR');
     }
 
-    // ==========================================
-    // FUNCIONES AUXILIARES DE NAVEGACIÓN Y TEMA
-    // ==========================================
+    // UTILIDADES GENERALES
     function mostrarToast(mensaje, tipo = 'exito') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -707,7 +725,6 @@
       else document.getElementById('cuerpo-app').classList.remove('light-mode');
     }
 
-    // Lógicas previas adaptadas
     function renderizarClientesSelect() {
       const datalist = document.getElementById('lista-clientes-datalist');
       if (!datalist) return;
@@ -738,10 +755,6 @@
     }
 
     function generarSimulacion(e) { e.preventDefault(); mostrarToast("Generando simulación..."); }
-    function renderizarResumenYPrestamos() {}
-    function renderizarGridCalendarioVisual() {}
-    function renderizarPlanificadorSemanal() {}
-    function renderizarEstadoCuentas() {}
     function alCambiarFrecuencia() {}
     function convertirMontoEnLetras() {}
     function convertirMontoPagoEnLetras() {}
