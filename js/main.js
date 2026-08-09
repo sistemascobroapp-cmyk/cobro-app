@@ -322,3 +322,28 @@ function mostrarSeccion(idSeccion) {
 
   window.scrollTo(0, 0);
 }
+// CAPTURA EL EVENTO DE INSTALACIÓN PWA
+let diferidoPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  diferidoPrompt = e;
+
+  // Si tenés un botón con id "btn-instalar-app", lo hace visible
+  const btnInstalar = document.getElementById('btn-instalar-pwa');
+  if (btnInstalar) {
+    btnInstalar.classList.remove('hidden');
+  }
+});
+
+function instalarAppMovil() {
+  if (diferidoPrompt) {
+    diferidoPrompt.prompt();
+    diferidoPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        mostrarToast("🎉 ¡CobroApp se instaló correctamente!");
+      }
+      diferidoPrompt = null;
+    });
+  }
+}
