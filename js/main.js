@@ -261,7 +261,15 @@ function mostrarSeccion(idSeccion) {
 
     const mBtnElem = document.getElementById('m-btn-' + b);
     if (mBtnElem) {
-      if ('sec-' + b === idSeccion) {
+      // SI NO ES ADMIN Y EL BOTÓN ES USUARIOS -> MANTENER OCULTO
+      if (b === 'usuarios' && rolUsuarioActual !== 'admin') {
+        mBtnElem.className = "hidden";
+      }
+      // SI ES ADMIN Y EL BOTÓN ES SUSCRIPCIÓN -> MANTENER OCULTO
+      else if (b === 'suscripcion' && rolUsuarioActual === 'admin') {
+        mBtnElem.className = "hidden";
+      }
+      else if ('sec-' + b === idSeccion) {
         mBtnElem.className = "flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2";
       } else {
         mBtnElem.className = "flex flex-col items-center gap-1 text-slate-400 py-1 px-2";
