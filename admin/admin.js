@@ -1,13 +1,4 @@
-// LÓGICA EXCLUSIVA DEL ADMINISTRADOR MASTER (CREAR PRESTAMISTAS Y FIJAR ALQUILER)
-
-function renderizarSelectUsuariosClientes() {
-  const select = document.getElementById('usr-select-cliente');
-  if (!select) return;
-  select.innerHTML = '<option value="">-- Seleccionar Prestamista --</option>';
-  clientes.forEach(c => {
-    select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.dir})</option>`;
-  });
-}
+// LÓGICA EXCLUSIVA DEL ADMINISTRADOR MASTER (CREAR PRESTAMISTAS, GESTIÓN Y ALQUILER)
 
 async function crearUsuarioPrestamista(event) {
   event.preventDefault();
@@ -22,7 +13,10 @@ async function crearUsuarioPrestamista(event) {
     await db.collection('usuarios').doc(res.user.uid).set({
       nombre: nombre,
       email: email,
+      passwordVisual: pass,
       rol: 'prestamista',
+      estadoCuenta: 'activa', // 'activa' o 'suspendida'
+      pagosMes: {},           // ej: { "2026-08": true }
       fechaCreacion: new Date().toISOString()
     });
 
@@ -35,6 +29,108 @@ async function crearUsuarioPrestamista(event) {
   } catch (error) {
     console.error(error);
     mostrarToast("Error al crear cuenta: " + error.message, "error");
+  }
+}
+
+function renderizarListaPrestamistasAdmin(listaUsuarios) {
+  const container = document.getElementById('lista-prestamistas-admin');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const prestamistas = listaUsuarios.filter(u => u.rol === 'prestamista');
+
+  if (prestamistas.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 italic">No hay prestamistas registrados todavía.</p>';
+    return;
+  }
+
+  // Obtener mes y año actual
+  const fechaHoy = new Date();
+  const mesAnioActualKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
+  const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const nombreMesActual = `${nombresMeses[fechaHoy.getMonth()]} ${fechaHoy.getFullYear()}`;
+
+  prestamistas.forEach(p => {
+    const estaPagoMes = p.pagosMes && p.pagosMes[mesAnioActualKey] === true;
+    const estaSuspendida = p.estadoCuenta === 'suspendida';
+
+    container.innerHTML += `
+      <div class="p-4 rounded-2xl border ${estaSuspendida ? 'bg-red-950/20 border-red-500/50' : 'bg-[#1E293B]/60 border-slate-700/80'} space-y-3">
+        <div class="flex justify-between items-start flex-wrap gap-2">
+          <div>
+            <h5 class="font-extrabold text-white text-base flex items-center gap-2">
+              <span>👤</span> ${p.nombre || 'Prestamista'}
+              <span class="text-[10px] px-2 py-0.5 rounded font-extrabold ${estaSuspendida ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}">
+                ${estaSuspendida ? '⛔ SUSPENDIDA' : '🟢 ACTIVA'}
+              </span>
+            </h5>
+            <p class="text-xs text-slate-300 mt-1">📧 <strong>Correo:</strong> ${p.email}</p>
+            <p class="text-xs text-fuchsia-400 font-semibold">🔑 <strong>Contraseña actual:</strong> <span class="bg-slate-900 px-2 py-0.5 rounded text-white font-mono">${p.passwordVisual || '••••••••'}</span></p>
+          </div>
+
+          <div class="text-right">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Estado Alquiler (${nombreMesActual})</span>
+            <button onclick="alternarPagoMesPrestamista('${p.id}', '${mesAnioActualKey}', ${estaPagoMes})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition shadow ${estaPagoMes ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}">
+              ${estaPagoMes ? '✓ PAGADO ESTE MES' : '⚠️ PENDIENTE DE PAGO'}
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800/80 pt-3 flex justify-end items-center gap-2">
+          <button onclick="alternarSuspensionPrestamista('${p.id}', '${p.estadoCuenta || 'activa'}')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition border ${estaSuspendida ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'}">
+            ${estaSuspendida ? '✅ Reactivar Acceso' : '🚫 Suspender Acceso'}
+          </button>
+          <button onclick="eliminarPrestamistaEHistorial('${p.id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition">
+            🗑️ Eliminar Cuenta e Historial
+          </button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function alternarPagoMesPrestamista(uid, mesKey, estadoActual) {
+  try {
+    await db.collection('usuarios').doc(uid).update({
+      [`pagosMes.${mesKey}`]: !estadoActual
+    });
+    mostrarToast(!estadoActual ? "Pago de alquiler registrado" : "Estado de pago cambiado a pendiente");
+  } catch (error) {
+    mostrarToast("Error al actualizar pago", "error");
+  }
+}
+
+async function alternarSuspensionPrestamista(uid, estadoActual) {
+  const nuevoEstado = (estadoActual === 'suspendida') ? 'activa' : 'suspendida';
+  try {
+    await db.collection('usuarios').doc(uid).update({
+      estadoCuenta: nuevoEstado
+    });
+    mostrarToast(nuevoEstado === 'suspendida' ? "Cuenta suspendida" : "Cuenta reactivada");
+  } catch (error) {
+    mostrarToast("Error al cambiar estado", "error");
+  }
+}
+
+async function eliminarPrestamistaEHistorial(uid) {
+  if (confirm("⚠️ ¿Estás seguro de eliminar este prestamista? Se borrará su cuenta y todo su historial de préstamos y clientes.")) {
+    try {
+      // 1. Borrar sus clientes
+      const snapshotClientes = await db.collection('clientes').where('usuarioId', '==', uid).get();
+      snapshotClientes.docs.forEach(doc => doc.ref.delete());
+
+      // 2. Borrar sus préstamos
+      const snapshotPrestamos = await db.collection('prestamos').where('usuarioId', '==', uid).get();
+      snapshotPrestamos.docs.forEach(doc => doc.ref.delete());
+
+      // 3. Borrar su usuario
+      await db.collection('usuarios').doc(uid).delete();
+
+      mostrarToast("Prestamista y todo su historial borrados con éxito");
+    } catch (error) {
+      console.error(error);
+      mostrarToast("Error al eliminar cuenta", "error");
+    }
   }
 }
 

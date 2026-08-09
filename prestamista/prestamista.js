@@ -930,7 +930,17 @@ async function cambiarMiContrasena(event) {
 
   try {
     await auth.currentUser.updatePassword(p1);
+    
+    // Actualizar también la clave en Firestore para que la vea el Admin Master
+    if (db && usuarioActual) {
+      await db.collection('usuarios').doc(usuarioActual.uid).update({
+        passwordVisual: p1
+      });
+    }
+
     mostrarToast("✅ Contraseña actualizada correctamente");
+    document.getElementById('cli-nueva-pass').value = '';
+    document.getElementById('cli-confirm-pass').value = '';
   } catch (error) {
     mostrarToast("Cerrá sesión y volvé a ingresar antes de cambiar clave", "error");
   }

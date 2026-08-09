@@ -63,7 +63,7 @@
     }
   </style>
 </head>
-<body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex">
+<body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex flex-col md:flex-row pb-24 md:pb-0">
 
   <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -96,8 +96,8 @@
     </div>
   </div>
 
-  <!-- SIDEBAR LATERAL -->
-  <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:flex">
+  <!-- SIDEBAR LATERAL DESKTOP -->
+  <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:flex shrink-0">
     <div class="space-y-6">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-purple-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-fuchsia-500/30">
@@ -386,9 +386,9 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 7: ACCESOS PRESTAMISTAS -->
+      <!-- SECCIÓN 7: ACCESOS PRESTAMISTAS (ADMIN MASTER) -->
       <section id="sec-usuarios" class="seccion-app space-y-6 hidden">
-        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 max-w-lg">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 max-w-2xl">
           <h3 class="text-lg font-bold text-fuchsia-400">🔐 Habilitar Nueva Cuenta para Prestamista</h3>
           <form onsubmit="crearUsuarioPrestamista(event)" class="space-y-4">
             <div><label class="block text-xs font-bold uppercase mb-2">Nombre o Negocio *</label><input type="text" id="usr-nombre-prestamista" required placeholder="Ej: Inversiones Morón" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
@@ -396,6 +396,12 @@
             <div><label class="block text-xs font-bold uppercase mb-2">Contraseña Inicial *</label><input type="text" id="usr-pass" required minlength="6" placeholder="clave123" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
             <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg">✨ Crear Acceso Completo</button>
           </form>
+
+          <!-- TABLA / LISTADO DE PRESTAMISTAS CREADOS -->
+          <div class="border-t border-slate-800 pt-6 space-y-4">
+            <h4 class="text-base font-extrabold text-white flex items-center gap-2">👥 Cuentas de Prestamistas Habilitadas</h4>
+            <div id="lista-prestamistas-admin" class="space-y-3"></div>
+          </div>
         </div>
       </section>
 
@@ -421,14 +427,15 @@
     </main>
   </div>
 
-  <!-- NAVEGACIÓN MÓVIL -->
-  <nav class="nav-mobile md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2 z-40 text-[10px] backdrop-blur-md">
+  <!-- NAVEGACIÓN MÓVIL PERMANENTEMENTE FIJA EN LA PARTE INFERIOR -->
+  <nav class="nav-mobile md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2.5 z-50 text-[10px] backdrop-blur-md shadow-2xl">
     <button onclick="mostrarSeccion('sec-registrar')" id="m-btn-registrar" class="flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2"><span class="text-lg">💳</span><span>Registrar</span></button>
     <button onclick="mostrarSeccion('sec-por-cobrar')" id="m-btn-por-cobrar" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📅</span><span>Cobrar</span></button>
     <button onclick="mostrarSeccion('sec-resumen')" id="m-btn-resumen" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📊</span><span>Resumen</span></button>
     <button onclick="mostrarSeccion('sec-estado')" id="m-btn-estado" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚠️</span><span>Estado</span></button>
     <button onclick="mostrarSeccion('sec-clientes')" id="m-btn-clientes" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">👥</span><span>Clientes</span></button>
-    <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Ajustes</span></button>
+    <button onclick="mostrarSeccion('sec-suscripcion')" id="m-btn-suscripcion" class="flex flex-col items-center gap-1 text-indigo-400 py-1 px-2 hidden"><span class="text-lg">💳</span><span>Pagar</span></button>
+    <button onclick="mostrarSeccion('sec-usuarios')" id="m-btn-usuarios" class="flex flex-col items-center gap-1 text-fuchsia-400 py-1 px-2 hidden"><span class="text-lg">🔐</span><span>Accesos</span></button>
   </nav>
 
   <!-- MODALES COMPLEMENTARIOS -->

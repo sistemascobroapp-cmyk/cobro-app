@@ -1,4 +1,4 @@
-// PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN Y ENRUTAMIENTO
+// PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN, CONTROL DE SUSPENSIÓN Y ENRUTAMIENTO
 
 let usuarioActual = null;
 let rolUsuarioActual = 'prestamista';
@@ -14,15 +14,24 @@ window.onload = function() {
   auth.onAuthStateChanged(async user => {
     if (user) {
       usuarioActual = user;
-      document.getElementById('pantalla-login').classList.add('hidden');
 
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       
       if (userDoc.exists) {
-        rolUsuarioActual = userDoc.data().rol || 'prestamista';
+        const data = userDoc.data();
+        rolUsuarioActual = data.rol || 'prestamista';
+
+        // Verificación de suspensión de cuenta
+        if (data.estadoCuenta === 'suspendida' && rolUsuarioActual !== 'admin') {
+          mostrarToast("🚫 Tu cuenta se encuentra suspendida por falta de pago. Contactá al administrador.", "error");
+          auth.signOut();
+          return;
+        }
       } else {
         rolUsuarioActual = 'admin';
       }
+
+      document.getElementById('pantalla-login').classList.add('hidden');
 
       configurarInterfazPorRol();
       iniciarListenersFirestore();
@@ -36,21 +45,25 @@ window.onload = function() {
 function configurarInterfazPorRol() {
   const btnUsrs = document.getElementById('btn-sec-usuarios');
   const btnSub = document.getElementById('btn-sec-suscripcion');
+  const mBtnUsrs = document.getElementById('m-btn-usuarios');
+  const mBtnSub = document.getElementById('m-btn-suscripcion');
   const panelSubAdmin = document.getElementById('panel-cfg-suscripcion-admin');
   const lblRol = document.getElementById('lbl-rol-usuario');
 
   if (rolUsuarioActual === 'admin') {
     lblRol.innerText = "Panel Administrador Master";
-    btnUsrs.classList.remove('hidden');
-    btnUsrs.classList.add('flex');
-    btnSub.classList.add('hidden');
-    panelSubAdmin.classList.remove('hidden');
+    if (btnUsrs) { btnUsrs.classList.remove('hidden'); btnUsrs.classList.add('flex'); }
+    if (btnSub) { btnSub.classList.add('hidden'); btnSub.classList.remove('flex'); }
+    if (mBtnUsrs) { mBtnUsrs.classList.remove('hidden'); mBtnUsrs.classList.add('flex'); }
+    if (mBtnSub) { mBtnSub.classList.add('hidden'); mBtnSub.classList.remove('flex'); }
+    if (panelSubAdmin) panelSubAdmin.classList.remove('hidden');
   } else {
     lblRol.innerText = "Panel de Prestamista";
-    btnUsrs.classList.add('hidden');
-    btnSub.classList.remove('hidden');
-    btnSub.classList.add('flex');
-    panelSubAdmin.classList.add('hidden');
+    if (btnUsrs) { btnUsrs.classList.add('hidden'); btnUsrs.classList.remove('flex'); }
+    if (btnSub) { btnSub.classList.remove('hidden'); btnSub.classList.add('flex'); }
+    if (mBtnUsrs) { mBtnUsrs.classList.add('hidden'); mBtnUsrs.classList.remove('flex'); }
+    if (mBtnSub) { mBtnSub.classList.remove('hidden'); mBtnSub.classList.add('flex'); }
+    if (panelSubAdmin) panelSubAdmin.classList.add('hidden');
   }
 }
 
@@ -80,8 +93,12 @@ function iniciarListenersFirestore() {
     renderizarEstadoCuentas();
   });
 
+  // Listener exclusivo para la lista de prestamistas en el panel de Administrador
   if (rolUsuarioActual === 'admin') {
-    db.collection('clientes').onSnapshot(() => { renderizarSelectUsuariosClientes(); });
+    db.collection('usuarios').onSnapshot(snapshot => {
+      const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderizarListaPrestamistasAdmin(listaUsuarios);
+    });
   }
 }
 
