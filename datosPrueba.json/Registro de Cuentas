@@ -1,0 +1,10 @@
+const cliente = {
+  id: "cli_001",
+  nombreCompleto: "Marcos Rodríguez",
+  telefonoPersonal: "1122334455",
+  telefonoEmergencia: "1199887766", // Familiar / Nombre de contacto
+  direccion: "Av. San Martín 1420, Morón",
+  redesSociales: "@marcos_rod", // Opcional
+  fechaRegistro: "2026-08-01",
+  observaciones: "Casa con portón verde, llamar antes de ir"
+};

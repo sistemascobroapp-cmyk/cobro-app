@@ -1,0 +1,8 @@
+const pago = {
+  id: "pago_501",
+  cuotaId: "cuota_101_1",
+  montoRecibido: 13000,
+  fechaPago: "2026-08-08 17:45",
+  cobradoPor: "Tío", // Identifica quién agarró la plata
+  medioPago: "Efectivo"
+};
