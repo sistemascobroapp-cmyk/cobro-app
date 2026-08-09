@@ -2,7 +2,7 @@
 
 let clientes = [];
 let prestamos = [];
-let configSuscripcion = { monto: 0, link: '' };
+let configSuscripcion = { monto: 0, link: '', whatsapp: '' };
 
 let configIntereses = JSON.parse(localStorage.getItem('cobro_cfg_int')) || { diario: 5, semanal: 15, mensual: 30 };
 let configInteresesRetraso = JSON.parse(localStorage.getItem('cobro_cfg_int_retraso')) || { diario: 1, semanal: 3, mensual: 10 };
@@ -922,6 +922,15 @@ function pagarSuscripcionMercadoPago() {
   else { navigator.clipboard.writeText(configSuscripcion.link); mostrarToast(`📋 Alias copiado: ${configSuscripcion.link}`); }
 }
 
+function enviarComprobanteAlquilerWhatsApp() {
+  if (!configSuscripcion.whatsapp) return mostrarToast("El administrador no configuró teléfono de WhatsApp todavía", "error");
+  
+  const miNombre = document.getElementById('lbl-rol-usuario') ? document.getElementById('lbl-rol-usuario').innerText : 'Prestamista';
+  const mensaje = encodeURIComponent(`Hola, envío el comprobante de mi alquiler mensual de la app CobroApp.`);
+  
+  window.open(`https://wa.me/${configSuscripcion.whatsapp}?text=${mensaje}`, '_blank');
+}
+
 async function cambiarMiContrasena(event) {
   event.preventDefault();
   const p1 = document.getElementById('cli-nueva-pass').value;
@@ -931,7 +940,6 @@ async function cambiarMiContrasena(event) {
   try {
     await auth.currentUser.updatePassword(p1);
     
-    // Actualizar también la clave en Firestore para que la vea el Admin Master
     if (db && usuarioActual) {
       await db.collection('usuarios').doc(usuarioActual.uid).update({
         passwordVisual: p1

@@ -96,8 +96,8 @@
     </div>
   </div>
 
-  <!-- SIDEBAR LATERAL DESKTOP (OCULTO POR DEFECTO) -->
-  <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:flex shrink-0">
+  <!-- SIDEBAR LATERAL DESKTOP -->
+  <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:hidden shrink-0">
     <div class="space-y-6">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-purple-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-fuchsia-500/30">
@@ -368,6 +368,7 @@
             <form onsubmit="guardarConfigSuscripcion(event)" class="space-y-4">
               <div><label class="block text-xs font-bold uppercase mb-1">Precio Alquiler Mensual ($)</label><input type="number" id="cfg-sub-monto" required min="0" placeholder="Ej: 15000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
               <div><label class="block text-xs font-bold uppercase mb-1">Link MP / Alias / CBU</label><input type="text" id="cfg-sub-link" required placeholder="https://mpago.la/... o TU.ALIAS.MP" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1">Tu Teléfono WhatsApp para Comprobantes (sin + ni espacios)</label><input type="text" id="cfg-sub-whatsapp" required placeholder="Ej: 5491112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
               <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">💾 Guardar Ajustes de Alquiler App</button>
             </form>
           </div>
@@ -411,7 +412,15 @@
           <h3 class="text-lg font-bold text-indigo-300">💳 Estado de Alquiler de la App</h3>
           <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400">$0 / mes</p>
           <p id="cli-sub-link-info" class="text-xs text-slate-400 italic"></p>
-          <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg">📲 Pagar Alquiler por Mercado Pago</button>
+
+          <div class="space-y-2 pt-2">
+            <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2">
+              <span>💳</span> Pagar Alquiler por Mercado Pago
+            </button>
+            <button onclick="enviarComprobanteAlquilerWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2">
+              <span>📲</span> Enviar Comprobante por WhatsApp
+            </button>
+          </div>
         </div>
 
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4 max-w-lg">
@@ -427,7 +436,7 @@
     </main>
   </div>
 
-  <!-- NAVEGACIÓN MÓVIL (OCULTA POR DEFECTO HASTA INICIAR SESIÓN) -->
+  <!-- NAVEGACIÓN MÓVIL PERMANENTEMENTE FIJA EN LA PARTE INFERIOR -->
   <nav id="nav-mobile-app" class="nav-mobile hidden md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2.5 z-50 text-[10px] backdrop-blur-md shadow-2xl">
     <button onclick="mostrarSeccion('sec-registrar')" id="m-btn-registrar" class="flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2"><span class="text-lg">💳</span><span>Registrar</span></button>
     <button onclick="mostrarSeccion('sec-por-cobrar')" id="m-btn-por-cobrar" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📅</span><span>Cobrar</span></button>
@@ -437,6 +446,30 @@
     <button onclick="mostrarSeccion('sec-suscripcion')" id="m-btn-suscripcion" class="flex flex-col items-center gap-1 text-indigo-400 py-1 px-2 hidden"><span class="text-lg">💳</span><span>Pagar</span></button>
     <button onclick="mostrarSeccion('sec-usuarios')" id="m-btn-usuarios" class="flex flex-col items-center gap-1 text-fuchsia-400 py-1 px-2 hidden"><span class="text-lg">🔐</span><span>Accesos</span></button>
   </nav>
+
+  <!-- MODAL NOTIFICACIÓN RECORDATORIO DE SUSCRIPCIÓN (DÍAS 5 AL 10) -->
+  <div id="modal-notificacion-suscripcion" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center p-4 z-[90]">
+    <div class="tarjeta-ui bg-[#0F172A] border-2 border-indigo-500/80 p-6 rounded-3xl shadow-2xl max-w-md w-full space-y-5 relative">
+      <button onclick="cerrarNotificacionSuscripcionVisual()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white font-extrabold flex items-center justify-center border border-slate-700">✕</button>
+
+      <div class="space-y-3 pt-2">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30">
+          💳
+        </div>
+        <h3 id="notif-sub-titulo" class="text-xl font-extrabold text-white">Recordatorio de Alquiler</h3>
+        <p id="notif-sub-mensaje" class="text-sm text-slate-300 leading-relaxed"></p>
+      </div>
+
+      <div class="pt-2 flex flex-col gap-2">
+        <button onclick="irAPagarSuscripcionDesdeNotif()" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg">
+          📲 Pagar Alquiler Ahora
+        </button>
+        <button onclick="cerrarNotificacionSuscripcionVisual()" class="w-full bg-slate-800 text-slate-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700">
+          Cerrar hasta mañana
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODALES COMPLEMENTARIOS -->
   <div id="modal-comprobante-whatsapp" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">

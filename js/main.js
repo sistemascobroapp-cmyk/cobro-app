@@ -14,13 +14,13 @@ window.onload = function() {
   auth.onAuthStateChanged(async user => {
     if (user) {
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      
-      if (userDoc.exists) {
-        const data = userDoc.data();
-        rolUsuarioActual = data.rol || 'prestamista';
+      let datosUsuario = null;
 
-        // Verificación de suspensión de cuenta
-        if (data.estadoCuenta === 'suspendida' && rolUsuarioActual !== 'admin') {
+      if (userDoc.exists) {
+        datosUsuario = userDoc.data();
+        rolUsuarioActual = datosUsuario.rol || 'prestamista';
+
+        if (datosUsuario.estadoCuenta === 'suspendida' && rolUsuarioActual !== 'admin') {
           mostrarToast("🚫 Tu cuenta se encuentra suspendida por falta de pago. Contactá al administrador.", "error");
           auth.signOut();
           return;
@@ -31,14 +31,12 @@ window.onload = function() {
 
       usuarioActual = user;
 
-      // OCULTAR LOGIN Y MOSTRAR NAVEGACIÓN
+      // OCULTAR LOGIN Y MOSTRAR APP
       document.getElementById('pantalla-login').classList.add('hidden');
       
-      // MOSTRAR BARRA INFERIOR EN CELULARES
       const navMobile = document.getElementById('nav-mobile-app');
       if (navMobile) navMobile.classList.remove('hidden');
 
-      // SIDEBAR LATERAL: OCULTO EN CELULAR (hidden), VISIBLE SOLO EN COMPUTADORA (md:flex)
       const sidebar = document.getElementById('sidebar-app');
       if (sidebar) {
         sidebar.classList.add('hidden', 'md:flex');
@@ -48,8 +46,13 @@ window.onload = function() {
       configurarInterfazPorRol();
       iniciarListenersFirestore();
       escucharConfigSuscripcion();
+
+      // VERIFICAR NOTIFICACIÓN DÍAS 5 AL 10 (SÓLO PARA PRESTAMISTAS)
+      if (rolUsuarioActual !== 'admin') {
+        evaluarNotificacionSuscripcionDiaria(datosUsuario);
+      }
+
     } else {
-      // SI NO HAY USUARIO, OCULTAR NAVEGACIÓN Y MOSTRAR ÚNICAMENTE LOGIN
       usuarioActual = null;
       document.getElementById('pantalla-login').classList.remove('hidden');
 
@@ -64,6 +67,56 @@ window.onload = function() {
     }
   });
 };
+
+function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
+  if (!dataUsuario) return;
+
+  const fechaHoy = new Date();
+  const diaActual = fechaHoy.getDate(); 
+  const isoHoy = fechaHoy.toISOString().split('T')[0];
+
+  // Rango habilitado: Días 5 al 10 inclusive
+  if (diaActual >= 5 && diaActual <= 10) {
+    const mesAnioKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
+    const estaPagoMes = dataUsuario.pagosMes && dataUsuario.pagosMes[mesAnioKey] === true;
+
+    // Si ya pagó el mes en curso, no le mostramos nada
+    if (estaPagoMes) return;
+
+    // Verificar si ya cerró la notificación en el día de hoy
+    const yaVistoHoy = localStorage.getItem(`notif_sub_visto_${isoHoy}`);
+    if (yaVistoHoy) return;
+
+    // Calcular días faltantes para el día 10
+    const diasFaltantes = 10 - diaActual;
+    const elemTitulo = document.getElementById('notif-sub-titulo');
+    const elemMensaje = document.getElementById('notif-sub-mensaje');
+
+    if (diaActual === 10) {
+      if (elemTitulo) elemTitulo.innerText = "🚨 ÚLTIMO DÍA DE PAGO";
+      if (elemMensaje) elemMensaje.innerHTML = "¡Hoy <strong>día 10</strong> es el último día para abonar tu alquiler mensual de la aplicación! Evitá la suspensión del servicio.";
+    } else {
+      if (elemTitulo) elemTitulo.innerText = "💳 Pago de Suscripción Próximo";
+      if (elemMensaje) elemMensaje.innerHTML = `El día 10 vence la suscripción de tu app. En <strong>${diasFaltantes} días</strong> es la fecha límite.<br><br>Ya podés realizar el <strong>pago adelantado</strong> hoy mismo.`;
+    }
+
+    const modal = document.getElementById('modal-notificacion-suscripcion');
+    if (modal) modal.classList.remove('hidden');
+  }
+}
+
+function cerrarNotificacionSuscripcionVisual() {
+  const fechaHoy = new Date().toISOString().split('T')[0];
+  localStorage.setItem(`notif_sub_visto_${fechaHoy}`, 'true');
+  
+  const modal = document.getElementById('modal-notificacion-suscripcion');
+  if (modal) modal.classList.add('hidden');
+}
+
+function irAPagarSuscripcionDesdeNotif() {
+  cerrarNotificacionSuscripcionVisual();
+  mostrarSeccion('sec-suscripcion');
+}
 
 function configurarInterfazPorRol() {
   const btnUsrs = document.getElementById('btn-sec-usuarios');
@@ -116,7 +169,6 @@ function iniciarListenersFirestore() {
     renderizarEstadoCuentas();
   });
 
-  // Listener exclusivo para la lista de prestamistas en el panel de Administrador
   if (rolUsuarioActual === 'admin') {
     db.collection('usuarios').onSnapshot(snapshot => {
       const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -143,7 +195,6 @@ function cerrarSesionApp() {
 }
 
 function mostrarSeccion(idSeccion) {
-  // BLOQUEO DE SEGURIDAD: SI NO HAY SESIÓN INICIADA, SE CANCELA LA NAVEGACIÓN
   if (!usuarioActual) return;
 
   document.querySelectorAll('.seccion-app').forEach(sec => sec.classList.add('hidden'));

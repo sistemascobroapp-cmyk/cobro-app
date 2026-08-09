@@ -15,8 +15,8 @@ async function crearUsuarioPrestamista(event) {
       email: email,
       passwordVisual: pass,
       rol: 'prestamista',
-      estadoCuenta: 'activa', // 'activa' o 'suspendida'
-      pagosMes: {},           // ej: { "2026-08": true }
+      estadoCuenta: 'activa',
+      pagosMes: {},
       fechaCreacion: new Date().toISOString()
     });
 
@@ -44,7 +44,6 @@ function renderizarListaPrestamistasAdmin(listaUsuarios) {
     return;
   }
 
-  // Obtener mes y año actual
   const fechaHoy = new Date();
   const mesAnioActualKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
   const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -69,7 +68,7 @@ function renderizarListaPrestamistasAdmin(listaUsuarios) {
           </div>
 
           <div class="text-right">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Estado Alquiler (${nombreMesActual})</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Alquiler Vence Día 10 (${nombreMesActual})</span>
             <button onclick="alternarPagoMesPrestamista('${p.id}', '${mesAnioActualKey}', ${estaPagoMes})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition shadow ${estaPagoMes ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}">
               ${estaPagoMes ? '✓ PAGADO ESTE MES' : '⚠️ PENDIENTE DE PAGO'}
             </button>
@@ -115,15 +114,12 @@ async function alternarSuspensionPrestamista(uid, estadoActual) {
 async function eliminarPrestamistaEHistorial(uid) {
   if (confirm("⚠️ ¿Estás seguro de eliminar este prestamista? Se borrará su cuenta y todo su historial de préstamos y clientes.")) {
     try {
-      // 1. Borrar sus clientes
       const snapshotClientes = await db.collection('clientes').where('usuarioId', '==', uid).get();
       snapshotClientes.docs.forEach(doc => doc.ref.delete());
 
-      // 2. Borrar sus préstamos
       const snapshotPrestamos = await db.collection('prestamos').where('usuarioId', '==', uid).get();
       snapshotPrestamos.docs.forEach(doc => doc.ref.delete());
 
-      // 3. Borrar su usuario
       await db.collection('usuarios').doc(uid).delete();
 
       mostrarToast("Prestamista y todo su historial borrados con éxito");
@@ -141,8 +137,11 @@ function escucharConfigSuscripcion() {
 
       const inMonto = document.getElementById('cfg-sub-monto');
       const inLink = document.getElementById('cfg-sub-link');
+      const inWsp = document.getElementById('cfg-sub-whatsapp');
+      
       if (inMonto) inMonto.value = configSuscripcion.monto || 0;
       if (inLink) inLink.value = configSuscripcion.link || '';
+      if (inWsp) inWsp.value = configSuscripcion.whatsapp || '';
 
       const txtMonto = document.getElementById('cli-sub-monto-txt');
       const txtLinkInfo = document.getElementById('cli-sub-link-info');
@@ -156,7 +155,8 @@ async function guardarConfigSuscripcion(event) {
   event.preventDefault();
   const monto = parseFloat(document.getElementById('cfg-sub-monto').value) || 0;
   const link = document.getElementById('cfg-sub-link').value.trim();
+  const whatsapp = document.getElementById('cfg-sub-whatsapp').value.trim();
 
-  await db.collection('configuracion').doc('suscripcion').set({ monto, link });
+  await db.collection('configuracion').doc('suscripcion').set({ monto, link, whatsapp });
   mostrarToast("Ajustes de alquiler de app guardados");
 }
