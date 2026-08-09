@@ -961,7 +961,6 @@ function pagarSuscripcionMercadoPago() {
   }
 }
 
-}
 
 function enviarComprobanteAlquilerWhatsApp() {
   if (!configSuscripcion.whatsapp) return mostrarToast("El administrador no configuró teléfono de WhatsApp todavía", "error");
