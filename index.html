@@ -18,7 +18,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- LIBRERÍA HTML2CANVAS -->
+  <!-- LIBRERÍA HTML2CANVAS (RECIBOS EN IMAGEN) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
@@ -65,7 +65,7 @@
     }
   </style>
 </head>
-<body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex flex-col md:flex-row">
+<body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex">
 
   <!-- CONTENEDOR DE NOTIFICACIONES TOAST -->
   <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
@@ -80,7 +80,7 @@
           $
         </div>
         <h1 class="font-extrabold text-2xl tracking-wide text-white">CobroApp</h1>
-        <p class="text-xs text-fuchsia-400 font-semibold uppercase tracking-wider">Sistema de Gestión & Mi Cuenta</p>
+        <p class="text-xs text-fuchsia-400 font-semibold uppercase tracking-wider">Sistema de Gestión para Prestamistas</p>
       </div>
 
       <form onsubmit="iniciarSesionUsuario(event)" class="space-y-4">
@@ -101,423 +101,728 @@
     </div>
   </div>
 
-  <!-- ======================================================== -->
-  <!-- VISTA 1: MODO ADMINISTRADOR (TU PANEL DE CONTROL) -->
-  <!-- ======================================================== -->
-  <div id="vista-admin" class="hidden flex-1 flex flex-col md:flex-row min-h-screen w-full">
-    
-    <!-- SIDEBAR LATERAL -->
-    <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:flex">
-      <div class="space-y-6">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-purple-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-fuchsia-500/30">
-            $
-          </div>
-          <div>
-            <h1 class="font-extrabold text-lg tracking-wide">CobroApp</h1>
-            <p class="text-[10px] text-fuchsia-400 font-semibold uppercase tracking-wider">Panel Administrador</p>
-          </div>
-        </div>
-
-        <nav class="space-y-2" id="menu-sidebar">
-          <button id="btn-sec-registrar" onclick="mostrarSeccion('sec-registrar')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-lg shadow-fuchsia-600/20 flex items-center gap-3 transition">
-            <span>💳</span> Registrar Préstamo
-          </button>
-          <button id="btn-sec-por-cobrar" onclick="mostrarSeccion('sec-por-cobrar')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
-            <span>📅</span> Préstamos a Cobrar
-          </button>
-          <button id="btn-sec-resumen" onclick="mostrarSeccion('sec-resumen')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
-            <span>📊</span> Resumen de Préstamos
-          </button>
-          <button id="btn-sec-estado" onclick="mostrarSeccion('sec-estado')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center justify-between">
-            <div class="flex items-center gap-3"><span>⚠️</span> Estado de Cuentas</div>
-            <span id="badge-alertas-menu" class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold border border-red-500/30">0</span>
-          </button>
-          <button id="btn-sec-intereses" onclick="mostrarSeccion('sec-intereses')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
-            <span>⚙️</span> Config. Intereses & Cuotas
-          </button>
-          <button id="btn-sec-clientes" onclick="mostrarSeccion('sec-clientes')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
-            <span>👥</span> Registro de Clientes
-          </button>
-          <button id="btn-sec-usuarios" onclick="mostrarSeccion('sec-usuarios')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-fuchsia-400 hover:bg-slate-800/60 transition flex items-center gap-3 border border-fuchsia-500/30">
-            <span>🔐</span> Crear Accesos Clientes
-          </button>
-        </nav>
-      </div>
-
-      <div class="space-y-3">
-        <button onclick="cerrarSesionApp()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-2.5 rounded-xl text-xs transition">
-          🚪 Cerrar Sesión
-        </button>
-      </div>
-    </aside>
-
-    <!-- CONTENIDO PRINCIPAL ADMIN -->
-    <div class="flex-1 flex flex-col min-h-screen">
-      <header id="header-app" class="border-b border-slate-800 bg-[#0F172A]/90 backdrop-blur-md p-4 flex justify-between items-center sticky top-0 z-30">
-        <h2 id="titulo-pantalla" class="text-base md:text-lg font-bold flex items-center gap-2"><span>💳</span> Registrar Préstamo</h2>
-        <div class="flex items-center gap-3">
-          <button id="btn-tema" onclick="alternarTema()" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 text-amber-400 border border-slate-700 hover:bg-slate-700 transition shadow">☀️ Modo Claro</button>
-          <button onclick="cerrarSesionApp()" class="md:hidden p-1.5 text-xs text-red-400 font-bold">🚪 Salir</button>
-        </div>
-      </header>
-
-      <main class="p-4 md:p-8 max-w-5xl w-full mx-auto space-y-6 pb-28 md:pb-8">
-        
-        <!-- SECCIÓN 1: REGISTRAR PRÉSTAMO -->
-        <section id="sec-registrar" class="seccion-app space-y-6">
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-            <div class="border-b border-slate-800/80 pb-4">
-              <h3 class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
-              <p class="text-xs text-slate-400 mt-1">Escribí el nombre del cliente para buscarlo en tu lista de registrados o simular montos.</p>
-            </div>
-            <form id="form-prestamo" onsubmit="generarSimulacion(event)" class="space-y-5">
-              <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cliente Seleccionado *</label>
-                <input type="text" id="input-cliente" list="lista-clientes-datalist" placeholder="🔍 Escribí el nombre del cliente..." class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500" autocomplete="off">
-                <datalist id="lista-clientes-datalist"></datalist>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider mb-2">Monto a Prestar ($) *</label>
-                  <input type="number" id="monto-prestamo" oninput="convertirMontoEnLetras(this.value)" placeholder="Ej: 1000000" required min="1000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                  <p id="monto-en-letras" class="text-xs text-fuchsia-400 font-bold mt-1.5 italic min-h-[18px]"></p>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider mb-2">Interés (%) *</label>
-                  <input type="number" id="interes-prestamo" placeholder="Ej: 30" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                </div>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cuotas *</label>
-                  <input type="number" id="cuotas-prestamo" placeholder="Ej: 10" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                </div>
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider mb-2">Frecuencia *</label>
-                  <select id="frecuencia-prestamo" onchange="alCambiarFrecuencia()" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                    <option value="diario">Diario</option>
-                    <option value="semanal">Semanal</option>
-                    <option value="mensual" selected>Mensual</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold uppercase tracking-wider mb-2">Primer Cobro *</label>
-                  <input type="date" id="fecha-inicio" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm [color-scheme:dark]">
-                </div>
-              </div>
-              <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-fuchsia-400 font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2">
-                <span>🔍</span> Simular Cálculo de Préstamo
-              </button>
-            </form>
-
-            <div id="vista-simulacion" class="hidden border-t border-slate-800 pt-6 space-y-5">
-              <div class="bg-[#1E293B]/70 border border-slate-700/60 p-5 rounded-2xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                  <h4 class="font-extrabold text-base">📊 Resumen del Plan</h4>
-                  <span id="badge-cliente" class="text-xs font-bold px-3 py-1 rounded-full"></span>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                  <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Total Devolución</p><p id="sim-total" class="text-lg font-black text-fuchsia-400">$0</p></div>
-                  <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Ganancia Neta</p><p id="sim-ganancia" class="text-lg font-black text-emerald-400">$0</p></div>
-                  <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Valor Cuota</p><p id="sim-cuota" class="text-lg font-bold">$0</p></div>
-                  <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Plan</p><p id="sim-plan" class="text-sm font-bold text-slate-300 mt-1">-</p></div>
-                </div>
-              </div>
-              <div class="space-y-2">
-                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas & Calendario de Cobro:</h5>
-                <div id="sim-tabla-fechas" class="max-h-48 overflow-y-auto bg-[#1E293B]/40 border border-slate-800 rounded-xl divide-y divide-slate-800/60 text-sm"></div>
-              </div>
-              <div id="contenedor-acciones-prestamo" class="pt-2"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- SECCIÓN 2: PRÉSTAMOS A COBRAR -->
-        <section id="sec-por-cobrar" class="seccion-app space-y-6 hidden">
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div class="flex items-center gap-3">
-                <button onclick="cambiarMesCalendarioVisual(-1)" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold transition">◀ Anterior</button>
-                <h3 id="cal-vis-titulo-mes" class="text-lg font-extrabold text-white uppercase tracking-wider"></h3>
-                <button onclick="cambiarMesCalendarioVisual(1)" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold transition">Siguiente ▶</button>
-              </div>
-              <span id="rango-semana-actual" class="text-xs font-bold px-3 py-2 rounded-xl border"></span>
-            </div>
-            <div class="grid grid-cols-7 text-center text-xs font-extrabold text-slate-400 gap-1 pb-1"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div>
-            <div id="cal-vis-grid-dias" class="grid grid-cols-7 gap-2 text-xs text-center"></div>
-          </div>
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
-            <h3 class="text-lg font-bold border-b border-slate-800 pb-3">📅 Planificador & Cobros de la Semana Seleccionada</h3>
-            <div id="grid-dias-semana" class="space-y-4"></div>
-          </div>
-        </section>
-
-        <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS -->
-        <section id="sec-resumen" class="seccion-app space-y-6 hidden">
-          <div class="flex justify-between items-center flex-wrap gap-3">
-            <h3 class="text-xl font-bold">Resumen de Préstamos</h3>
-            <div class="flex items-center gap-2 bg-[#0F172A] border border-slate-800 p-1.5 rounded-2xl">
-              <button onclick="alternarPestanaResumen('activos')" id="btn-tab-activos" class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white border border-slate-700 shadow">🟢 Activos</button>
-              <button onclick="alternarPestanaResumen('finalizados')" id="btn-tab-finalizados" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition">🏁 Finalizados</button>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-5 rounded-2xl shadow-xl"><p class="text-xs font-bold text-slate-400 uppercase">Capital Invertido (Activos)</p><p id="resumen-capital" class="text-2xl font-black mt-1">$0</p></div>
-            <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-5 rounded-2xl shadow-xl"><p class="text-xs font-bold text-slate-400 uppercase">Ganancia Proyectada (Activos)</p><p id="resumen-ganancia" class="text-2xl font-black text-emerald-400 mt-1">+$0</p></div>
-          </div>
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 id="titulo-tabla-resumen" class="text-lg font-bold">Préstamos Activos en Curso</h3>
-            <div id="vista-prestamos-activos" class="overflow-x-auto">
-              <table class="w-full text-left text-sm">
-                <thead class="text-xs text-slate-400 uppercase bg-[#1E293B]/60 border-b border-slate-800">
-                  <tr><th class="p-3">Cliente</th><th class="p-3">Inicio</th><th class="p-3">Prestado</th><th class="p-3">Total Devolución</th><th class="p-3">Plan</th><th class="p-3">Acciones</th></tr>
-                </thead>
-                <tbody id="tabla-prestamos-body" class="divide-y divide-slate-800/60"></tbody>
-              </table>
-            </div>
-            <div id="vista-prestamos-finalizados" class="hidden space-y-4"></div>
-          </div>
-        </section>
-
-        <!-- SECCIÓN 4: ESTADO DE CUENTAS -->
-        <section id="sec-estado" class="seccion-app space-y-6 hidden">
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 class="text-lg font-bold">Estado General de Deudas y Recargos</h3>
-              <span id="badge-alertas-panel" class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-1 rounded-xl font-bold">0 Atrasos</span>
-            </div>
-            <div id="lista-cobros-dia" class="space-y-3"></div>
-          </div>
-        </section>
-
-        <!-- SECCIÓN 5: CONFIGURACIÓN Y SUSCRIPCIONES -->
-        <section id="sec-intereses" class="seccion-app space-y-6 hidden">
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 max-w-lg">
-            <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3">⚙️ Configuración de Tasas e Intereses</h3>
-            <form onsubmit="guardarInteresesConfig(event)" class="space-y-4">
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Diario (%)</label><input type="number" id="cfg-int-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Semanal (%)</label><input type="number" id="cfg-int-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Mensual (%)</label><input type="number" id="cfg-int-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              
-              <div class="border-t border-slate-800 pt-3 space-y-3">
-                <h4 class="text-xs font-bold text-red-400 uppercase">Recargos por Retraso</h4>
-                <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Recargo Diario (%)</label><input type="number" id="cfg-retraso-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-                <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Recargo Semanal (%)</label><input type="number" id="cfg-retraso-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-                <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Recargo Mensual (%)</label><input type="number" id="cfg-retraso-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              </div>
-
-              <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl border border-slate-700">💾 Guardar Tasas</button>
-            </form>
-
-            <div class="border-t border-slate-800 pt-5 space-y-4">
-              <h3 class="text-lg font-bold text-blue-400 flex items-center gap-2">💳 Cobro de Suscripción Mensual a Clientes</h3>
-              <p class="text-xs text-slate-400">Configurá el valor de la cuota del servicio y tu link o alias de Mercado Pago.</p>
-
-              <form onsubmit="guardarConfigSuscripcion(event)" class="space-y-4">
-                <div>
-                  <label class="block text-xs font-bold uppercase mb-1">Precio de Suscripción Mensual ($)</label>
-                  <input type="number" id="cfg-sub-monto" required min="0" placeholder="Ej: 15000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                </div>
-                <div>
-                  <label class="block text-xs font-bold uppercase mb-1">Link de Cobro MP / Alias / CBU</label>
-                  <input type="text" id="cfg-sub-link" required placeholder="https://mpago.la/... o ALIAS.MP" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg">
-                  💾 Guardar Ajustes de Suscripción
-                </button>
-              </form>
-            </div>
-          </div>
-        </section>
-
-        <!-- SECCIÓN 6: REGISTRO DE CLIENTES -->
-        <section id="sec-clientes" class="seccion-app space-y-6 hidden">
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 class="text-lg font-bold">Directorio de Clientes</h3>
-              <button onclick="abrirModalNuevoCliente()" class="bg-fuchsia-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-lg">+ Nuevo Cliente</button>
-            </div>
-            <div id="grid-clientes-directorio" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-          </div>
-        </section>
-
-        <!-- SECCIÓN 7: CREAR ACCESOS CLIENTES -->
-        <section id="sec-usuarios" class="seccion-app space-y-6 hidden">
-          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 max-w-lg">
-            <div class="border-b border-slate-800 pb-3">
-              <h3 class="text-lg font-bold text-fuchsia-400 flex items-center gap-2">🔐 Crear Usuario para Cliente</h3>
-              <p class="text-xs text-slate-400 mt-1">Acá le creás la cuenta a tu cliente para que entre a su app independiente.</p>
-            </div>
-
-            <form onsubmit="crearUsuarioParaCliente(event)" class="space-y-4">
-              <div>
-                <label class="block text-xs font-bold uppercase mb-2">Seleccionar Cliente *</label>
-                <select id="usr-select-cliente" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                  <option value="">Cargando clientes...</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold uppercase mb-2">Correo de Ingreso del Cliente *</label>
-                <input type="email" id="usr-email" required placeholder="cliente@cobroapp.com" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold uppercase mb-2">Contraseña Inicial *</label>
-                <input type="text" id="usr-pass" required minlength="6" placeholder="clave123" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-              </div>
-
-              <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg">
-                ✨ Crear Usuario e Identidad de Cliente
-              </button>
-            </form>
-          </div>
-        </section>
-
-      </main>
-    </div>
-
-    <!-- NAVEGACIÓN MÓVIL ADMIN -->
-    <nav class="nav-mobile md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2 z-40 text-[10px] backdrop-blur-md">
-      <button onclick="mostrarSeccion('sec-registrar')" id="m-btn-registrar" class="flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2"><span class="text-lg">💳</span><span>Registrar</span></button>
-      <button onclick="mostrarSeccion('sec-por-cobrar')" id="m-btn-por-cobrar" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📅</span><span>Cobrar</span></button>
-      <button onclick="mostrarSeccion('sec-resumen')" id="m-btn-resumen" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📊</span><span>Resumen</span></button>
-      <button onclick="mostrarSeccion('sec-estado')" id="m-btn-estado" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚠️</span><span>Estado</span></button>
-      <button onclick="mostrarSeccion('sec-clientes')" id="m-btn-clientes" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">👥</span><span>Clientes</span></button>
-      <button onclick="mostrarSeccion('sec-usuarios')" id="m-btn-usuarios" class="flex flex-col items-center gap-1 text-fuchsia-400 py-1 px-2"><span class="text-lg">🔐</span><span>Accesos</span></button>
-      <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Ajustes</span></button>
-    </nav>
-  </div>
-
-  <!-- ======================================================== -->
-  <!-- VISTA 2: MODO CLIENTE (APP PROPIA DEL DEUDOR) -->
-  <!-- ======================================================== -->
-  <div id="vista-cliente" class="hidden flex-1 flex-col min-h-screen w-full max-w-3xl mx-auto p-4 md:p-6 space-y-6 pb-24">
-    
-    <!-- ENCABEZADO CLIENTE CON NAVEGACIÓN -->
-    <header class="bg-[#0F172A] border border-slate-800 p-5 rounded-2xl flex justify-between items-center shadow-xl">
+  <!-- SIDEBAR LATERAL PRINCIPAL -->
+  <aside id="sidebar-app" class="w-64 bg-[#0F172A] border-r border-slate-800 p-5 flex flex-col justify-between hidden md:flex">
+    <div class="space-y-6">
+      
+      <!-- LOGO -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-purple-500 flex items-center justify-center font-black text-xl text-white shadow-lg">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-fuchsia-600 to-purple-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-fuchsia-500/30">
           $
         </div>
         <div>
-          <h2 id="cli-portal-nombre" class="font-extrabold text-base text-white">Mi Cuenta</h2>
-          <p class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">🟢 Portal de Cliente</p>
+          <h1 class="font-extrabold text-lg tracking-wide">CobroApp</h1>
+          <p id="lbl-rol-usuario" class="text-[10px] text-fuchsia-400 font-semibold uppercase tracking-wider">Gestión de Préstamos</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button onclick="alternarTabCliente('mis-cuentas')" id="tab-cli-cuentas" class="bg-fuchsia-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow">
-          📊 Mis Cuentas
+      <!-- MENÚ DE NAVEGACIÓN DESKTOP -->
+      <nav class="space-y-2" id="menu-sidebar">
+        <button id="btn-sec-registrar" onclick="mostrarSeccion('sec-registrar')" class="w-full text-left px-4 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-lg shadow-fuchsia-600/20 flex items-center gap-3 transition">
+          <span>💳</span> Registrar Préstamo
         </button>
-        <button onclick="alternarTabCliente('opciones')" id="tab-cli-opciones" class="bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-slate-700">
-          ⚙️ Opciones
+
+        <button id="btn-sec-por-cobrar" onclick="mostrarSeccion('sec-por-cobrar')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
+          <span>📅</span> Préstamos a Cobrar
         </button>
-        <button onclick="cerrarSesionApp()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold px-3 py-1.5 rounded-xl text-xs transition">
+
+        <button id="btn-sec-resumen" onclick="mostrarSeccion('sec-resumen')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
+          <span>📊</span> Resumen de Préstamos
+        </button>
+
+        <button id="btn-sec-estado" onclick="mostrarSeccion('sec-estado')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span>⚠️</span> Estado de Cuentas
+          </div>
+          <span id="badge-alertas-menu" class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold border border-red-500/30">0</span>
+        </button>
+
+        <button id="btn-sec-intereses" onclick="mostrarSeccion('sec-intereses')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
+          <span>⚙️</span> Config. de Intereses
+        </button>
+
+        <button id="btn-sec-clientes" onclick="mostrarSeccion('sec-clientes')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 hover:text-white transition flex items-center gap-3">
+          <span>👥</span> Registro de Clientes
+        </button>
+
+        <!-- PESTAÑA SOLO PARA ADMINISTRADOR MASTER -->
+        <button id="btn-sec-usuarios" onclick="mostrarSeccion('sec-usuarios')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-fuchsia-400 hover:bg-slate-800/60 transition items-center gap-3 border border-fuchsia-500/30 hidden">
+          <span>🔐</span> Accesos Prestamistas
+        </button>
+
+        <!-- PESTAÑA SOLO PARA PRESTAMISTAS (SUSCRIPCIÓN) -->
+        <button id="btn-sec-suscripcion" onclick="mostrarSeccion('sec-suscripcion')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-indigo-400 hover:bg-slate-800/60 transition items-center gap-3 border border-indigo-500/30 hidden">
+          <span>💳</span> Mi Suscripción & Clave
+        </button>
+      </nav>
+    </div>
+
+    <div class="space-y-3">
+      <button onclick="cerrarSesionApp()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-bold py-2.5 rounded-xl text-xs transition">
+        🚪 Cerrar Sesión
+      </button>
+      <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 text-xs text-slate-400 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Servidor Conectado</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div class="flex-1 flex flex-col min-h-screen">
+    
+    <!-- BARRA SUPERIOR -->
+    <header id="header-app" class="border-b border-slate-800 bg-[#0F172A]/90 backdrop-blur-md p-4 flex justify-between items-center sticky top-0 z-30">
+      <h2 id="titulo-pantalla" class="text-base md:text-lg font-bold flex items-center gap-2">
+        <span>💳</span> Registrar Préstamo
+      </h2>
+
+      <div class="flex items-center gap-3">
+        <button id="btn-tema" onclick="alternarTema()" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 text-amber-400 border border-slate-700 hover:bg-slate-700 transition flex items-center gap-1.5 shadow">
+          ☀️ Modo Claro
+        </button>
+        <button onclick="cerrarSesionApp()" class="md:hidden p-1.5 text-xs text-red-400 font-bold">
           🚪 Salir
         </button>
       </div>
     </header>
 
-    <!-- CONTENIDO 1: MIS CUENTAS Y PRÉSTAMOS -->
-    <div id="contenedor-cli-cuentas" class="space-y-6">
-      <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/40 p-6 rounded-2xl shadow-2xl space-y-4">
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mi Saldo Restante a Pagar</p>
-        <p id="cli-portal-saldo-total" class="text-3xl font-black text-fuchsia-400">$0</p>
-        <div id="cli-portal-datos-contacto" class="text-xs text-slate-300 border-t border-slate-800 pt-3 space-y-1"></div>
-      </div>
+    <!-- ÁREA PRINCIPAL -->
+    <main class="p-4 md:p-8 max-w-5xl w-full mx-auto space-y-6 pb-28 md:pb-8">
 
-      <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">
-        <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-          <span>📊</span> Mis Préstamos en Curso
-        </h3>
-        <div id="cli-portal-lista-prestamos" class="space-y-4"></div>
-      </div>
-    </div>
-
-    <!-- CONTENIDO 2: OPCIONES Y CAMBIO DE CLAVE + SUSCRIPCIÓN -->
-    <div id="contenedor-cli-opciones" class="space-y-6 hidden">
-      
-      <!-- CARD DE SUSCRIPCIÓN Y PAGO MP -->
-      <div class="tarjeta-ui bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] border border-indigo-500/50 p-6 rounded-2xl shadow-2xl space-y-4">
-        <div class="flex justify-between items-center border-b border-indigo-500/30 pb-3">
-          <h3 class="text-lg font-bold text-indigo-300 flex items-center gap-2">
-            <span>💳</span> Suscripción al Servicio
-          </h3>
-          <span class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2.5 py-1 rounded-full font-bold">Membresía Mensual</span>
-        </div>
-
-        <div class="space-y-2">
-          <p class="text-xs text-slate-300">Costo mensual por el uso de la plataforma:</p>
-          <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400">$0 / mes</p>
-          <p id="cli-sub-link-info" class="text-xs text-slate-400 italic"></p>
-        </div>
-
-        <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 text-sm transition active:scale-95">
-          <span>📲</span> Pagar Suscripción por Mercado Pago
-        </button>
-      </div>
-
-      <!-- CARD CAMBIAR CONTRASEÑA -->
-      <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">
-        <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
-          <span>🔒</span> Seguridad & Cambiar Contraseña
-        </h3>
-
-        <form onsubmit="cambiarMiContrasena(event)" class="space-y-4 max-w-md">
-          <div>
-            <label class="block text-xs font-bold uppercase mb-2 text-slate-300">Nueva Contraseña *</label>
-            <input type="password" id="cli-nueva-pass" required minlength="6" placeholder="Mínimo 6 caracteres" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 1: REGISTRAR PRÉSTAMO -->
+      <!-- ======================================================== -->
+      <section id="sec-registrar" class="seccion-app space-y-6">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+          <div class="border-b border-slate-800/80 pb-4">
+            <h3 class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
+            <p class="text-xs text-slate-400 mt-1">Escribí el nombre de tu cliente/deudor para buscarlo en tu lista o simular montos.</p>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold uppercase mb-2 text-slate-300">Confirmar Nueva Contraseña *</label>
-            <input type="password" id="cli-confirm-pass" required minlength="6" placeholder="Repetir contraseña" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
+          <form id="form-prestamo" onsubmit="generarSimulacion(event)" class="space-y-5">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cliente Seleccionado *</label>
+              <input type="text" id="input-cliente" list="lista-clientes-datalist" placeholder="🔍 Escribí el nombre del cliente..." class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500" autocomplete="off">
+              <datalist id="lista-clientes-datalist"></datalist>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Monto a Prestar ($) *</label>
+                <input type="number" id="monto-prestamo" oninput="convertirMontoEnLetras(this.value)" placeholder="Ej: 1000000" required min="1000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500">
+                <p id="monto-en-letras" class="text-xs text-fuchsia-400 font-bold mt-1.5 italic min-h-[18px]"></p>
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Interés (%) *</label>
+                <input type="number" id="interes-prestamo" placeholder="Ej: 30" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cuotas *</label>
+                <input type="number" id="cuotas-prestamo" placeholder="Ej: 10" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Frecuencia *</label>
+                <select id="frecuencia-prestamo" onchange="alCambiarFrecuencia()" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500">
+                  <option value="diario">Diario</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensual" selected>Mensual</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Primer Cobro *</label>
+                <input type="date" id="fecha-inicio" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-fuchsia-500 [color-scheme:dark]">
+              </div>
+            </div>
+
+            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-fuchsia-400 font-bold py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2">
+              <span>🔍</span> Simular Cálculo de Préstamo
+            </button>
+          </form>
+
+          <div id="vista-simulacion" class="hidden border-t border-slate-800 pt-6 space-y-5">
+            <div class="bg-[#1E293B]/70 border border-slate-700/60 p-5 rounded-2xl space-y-4">
+              <div class="flex justify-between items-center border-b border-slate-700/60 pb-3">
+                <h4 class="font-extrabold text-base">📊 Resumen del Plan</h4>
+                <span id="badge-cliente" class="text-xs font-bold px-3 py-1 rounded-full"></span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800">
+                  <p class="text-[10px] text-slate-400 uppercase font-bold">Total Devolución</p>
+                  <p id="sim-total" class="text-lg font-black text-fuchsia-400">$0</p>
+                </div>
+                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800">
+                  <p class="text-[10px] text-slate-400 uppercase font-bold">Ganancia Neta</p>
+                  <p id="sim-ganancia" class="text-lg font-black text-emerald-400">$0</p>
+                </div>
+                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800">
+                  <p class="text-[10px] text-slate-400 uppercase font-bold">Valor Cuota</p>
+                  <p id="sim-cuota" class="text-lg font-bold">$0</p>
+                </div>
+                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800">
+                  <p class="text-[10px] text-slate-400 uppercase font-bold">Plan</p>
+                  <p id="sim-plan" class="text-sm font-bold text-slate-300 mt-1">-</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas & Calendario de Cobro:</h5>
+              <div id="sim-tabla-fechas" class="max-h-48 overflow-y-auto bg-[#1E293B]/40 border border-slate-800 rounded-xl divide-y divide-slate-800/60 text-sm"></div>
+            </div>
+
+            <div id="contenedor-acciones-prestamo" class="pt-2"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 2: PRÉSTAMOS A COBRAR -->
+      <!-- ======================================================== -->
+      <section id="sec-por-cobrar" class="seccion-app space-y-6 hidden">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-3">
+              <button onclick="cambiarMesCalendarioVisual(-1)" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold transition">◀ Anterior</button>
+              <h3 id="cal-vis-titulo-mes" class="text-lg font-extrabold text-white uppercase tracking-wider"></h3>
+              <button onclick="cambiarMesCalendarioVisual(1)" class="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold transition">Siguiente ▶</button>
+            </div>
+            <span id="rango-semana-actual" class="text-xs font-bold px-3 py-2 rounded-xl border"></span>
           </div>
 
-          <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-fuchsia-400 font-bold py-3 rounded-xl border border-slate-700 transition">
-            🔑 Actualizar Mi Contraseña
+          <div class="grid grid-cols-7 text-center text-xs font-extrabold text-slate-400 gap-1 pb-1">
+            <span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span>
+          </div>
+
+          <div id="cal-vis-grid-dias" class="grid grid-cols-7 gap-2 text-xs text-center"></div>
+
+          <div class="border-t border-slate-800/80 pt-3 flex justify-between items-center text-xs text-slate-400 flex-wrap gap-2">
+            <span class="font-bold text-slate-300">Estados por color de día:</span>
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 🟢 Cobrado</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500"></span> 🔴 Atrasado</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400"></span> 🟡 Pendiente</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+          <h3 class="text-lg font-bold border-b border-slate-800 pb-3">📅 Planificador & Cobros de la Semana Seleccionada</h3>
+          <div id="grid-dias-semana" class="space-y-4"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS -->
+      <!-- ======================================================== -->
+      <section id="sec-resumen" class="seccion-app space-y-6 hidden">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <h3 class="text-xl font-bold">Resumen de Préstamos</h3>
+
+          <div class="flex items-center gap-2 bg-[#0F172A] border border-slate-800 p-1.5 rounded-2xl">
+            <button onclick="alternarPestanaResumen('activos')" id="btn-tab-activos" class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white border border-slate-700 shadow">🟢 Activos</button>
+            <button onclick="alternarPestanaResumen('finalizados')" id="btn-tab-finalizados" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition">🏁 Finalizados</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-5 rounded-2xl shadow-xl">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Capital Invertido (Activos)</p>
+            <p id="resumen-capital" class="text-2xl font-black mt-1">$0</p>
+            <p class="text-[10px] text-slate-500 mt-1">Monto otorgado en préstamos vigentes</p>
+          </div>
+          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-5 rounded-2xl shadow-xl">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ganancia Proyectada (Activos)</p>
+            <p id="resumen-ganancia" class="text-2xl font-black text-emerald-400 mt-1">+$0</p>
+            <p class="text-[10px] text-emerald-500/80 mt-1">Intereses a cobrar de vigentes</p>
+          </div>
+        </div>
+
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+          <h3 id="titulo-tabla-resumen" class="text-lg font-bold">Préstamos Activos en Curso</h3>
+          
+          <div id="vista-prestamos-activos" class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="text-xs text-slate-400 uppercase bg-[#1E293B]/60 border-b border-slate-800">
+                <tr>
+                  <th class="p-3 rounded-l-xl">Cliente</th>
+                  <th class="p-3">Inicio</th>
+                  <th class="p-3">Prestado</th>
+                  <th class="p-3">Total Devolución</th>
+                  <th class="p-3">Plan</th>
+                  <th class="p-3 rounded-r-xl">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-prestamos-body" class="divide-y divide-slate-800/60"></tbody>
+            </table>
+          </div>
+
+          <div id="vista-prestamos-finalizados" class="hidden space-y-4"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 4: ESTADO DE CUENTAS -->
+      <!-- ======================================================== -->
+      <section id="sec-estado" class="seccion-app space-y-6 hidden">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="text-lg font-bold">Estado General de Deudas y Recargos</h3>
+              <p class="text-xs text-slate-400">Las cuentas atrasadas se muestran de primeras en la lista.</p>
+            </div>
+            <span id="badge-alertas-panel" class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-1 rounded-xl font-bold">
+              0 Atrasos
+            </span>
+          </div>
+
+          <div id="lista-cobros-dia" class="space-y-3"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 5: CONFIGURACIÓN DE INTERESES & SUSCRIPCIÓN -->
+      <!-- ======================================================== -->
+      <section id="sec-intereses" class="seccion-app space-y-6 hidden">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+          <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>⚙️</span> Configuración de Tasas de Interés por Defecto
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Establecé el % de interés sugerido automáticamente al crear un préstamo nuevo.</p>
+          </div>
+
+          <form onsubmit="guardarInteresesConfig(event)" class="space-y-6 max-w-md">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">Interés Diario (%)</label>
+                <input type="number" id="cfg-int-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">Interés Semanal (%)</label>
+                <input type="number" id="cfg-int-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">Interés Mensual (%)</label>
+                <input type="number" id="cfg-int-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+            </div>
+
+            <div class="border-t border-slate-800 pt-5 space-y-4">
+              <div>
+                <h3 class="text-lg font-bold text-red-400 flex items-center gap-2">
+                  <span>🚨</span> Configuración de Tasas por Retraso
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">Recargo adicional según días, semanas o meses atrasados.</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-red-300">Interés por Retraso Diario (%)</label>
+                <input type="number" id="cfg-retraso-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-red-300">Interés por Retraso Semanal (%)</label>
+                <input type="number" id="cfg-retraso-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1 text-red-300">Interés por Retraso Mensual (%)</label>
+                <input type="number" id="cfg-retraso-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">
+              💾 Guardar Todos los Ajustes de Tasas
+            </button>
+          </form>
+
+          <!-- PANEL DE CONFIGURACIÓN DE SUSCRIPCIÓN (SOLO VISIBLE PARA ADMIN MASTER) -->
+          <div id="panel-cfg-suscripcion-admin" class="border-t border-slate-800 pt-6 space-y-4 hidden max-w-md">
+            <div>
+              <h3 class="text-lg font-bold text-indigo-400 flex items-center gap-2">
+                <span>💳</span> Ajustes de Cobro de Alquiler a Prestamistas
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">Establecé cuánto le cobrás por mes a los prestamistas y poné tu Link o Alias de Mercado Pago.</p>
+            </div>
+
+            <form onsubmit="guardarConfigSuscripcion(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">Precio Alquiler Mensual ($)</label>
+                <input type="number" id="cfg-sub-monto" required min="0" placeholder="Ej: 15000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">Link de Cobro MP / Alias / CBU</label>
+                <input type="text" id="cfg-sub-link" required placeholder="https://mpago.la/... o TU.ALIAS.MP" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              </div>
+              <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">
+                💾 Guardar Ajustes de Alquiler App
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 6: REGISTRO DE CLIENTES -->
+      <!-- ======================================================== -->
+      <section id="sec-clientes" class="seccion-app space-y-6 hidden">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold">Directorio de Clientes / Deudores</h3>
+            <button onclick="abrirModalNuevoCliente()" class="bg-fuchsia-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-lg">
+              + Nuevo Cliente
+            </button>
+          </div>
+
+          <div id="grid-clientes-directorio" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 7: CREAR ACCESOS A PRESTAMISTAS (ADMIN MASTER) -->
+      <!-- ======================================================== -->
+      <section id="sec-usuarios" class="seccion-app space-y-6 hidden">
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 max-w-lg">
+          <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-fuchsia-400 flex items-center gap-2">🔐 Habilitar Nueva Cuenta para Prestamista</h3>
+            <p class="text-xs text-slate-400 mt-1">Crea el usuario y contraseña para tus clientes prestamistas. Ellos tendrán su propio panel privado completo.</p>
+          </div>
+
+          <form onsubmit="crearUsuarioPrestamista(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold uppercase mb-2">Nombre o Negocio del Prestamista *</label>
+              <input type="text" id="usr-nombre-prestamista" required placeholder="Ej: Inversiones Morón" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase mb-2">Correo Electrónico de Ingreso *</label>
+              <input type="email" id="usr-email" required placeholder="prestamista@cobroapp.com" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase mb-2">Contraseña Inicial *</label>
+              <input type="text" id="usr-pass" required minlength="6" placeholder="clave123" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg">
+              ✨ Crear Acceso Completo de Prestamista
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECCIÓN 8: MI SUSCRIPCIÓN & CLAVE (PARA PRESTAMISTAS) -->
+      <!-- ======================================================== -->
+      <section id="sec-suscripcion" class="seccion-app space-y-6 hidden">
+        <!-- CARD DE SUSCRIPCIÓN Y PAGO MP -->
+        <div class="tarjeta-ui bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] border border-indigo-500/50 p-6 rounded-2xl shadow-2xl space-y-4 max-w-lg">
+          <div class="flex justify-between items-center border-b border-indigo-500/30 pb-3">
+            <h3 class="text-lg font-bold text-indigo-300 flex items-center gap-2">
+              <span>💳</span> Estado de Alquiler de la App
+            </h3>
+            <span class="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2.5 py-1 rounded-full font-bold">Membresía Mensual</span>
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-xs text-slate-300">Costo mensual por el uso de la plataforma:</p>
+            <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400">$0 / mes</p>
+            <p id="cli-sub-link-info" class="text-xs text-slate-400 italic"></p>
+          </div>
+
+          <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 text-sm transition active:scale-95">
+            <span>📲</span> Pagar Alquiler por Mercado Pago / Transferir
           </button>
-        </form>
-      </div>
+        </div>
 
-    </div>
+        <!-- CARD CAMBIAR CONTRASEÑA -->
+        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4 max-w-lg">
+          <h3 class="text-lg font-bold text-white border-b border-slate-800 pb-3 flex items-center gap-2">
+            <span>🔒</span> Seguridad & Cambiar Mi Contraseña
+          </h3>
 
+          <form onsubmit="cambiarMiContrasena(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold uppercase mb-2 text-slate-300">Nueva Contraseña *</label>
+              <input type="password" id="cli-nueva-pass" required minlength="6" placeholder="Mínimo 6 caracteres" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase mb-2 text-slate-300">Confirmar Nueva Contraseña *</label>
+              <input type="password" id="cli-confirm-pass" required minlength="6" placeholder="Repetir contraseña" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
+            </div>
+
+            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-fuchsia-400 font-bold py-3 rounded-xl border border-slate-700 transition">
+              🔑 Actualizar Mi Contraseña
+            </button>
+          </form>
+        </div>
+      </section>
+
+    </main>
   </div>
 
-  <!-- MODALES DE ASISTENCIA Y COBRO -->
+  <!-- BARRA DE NAVEGACIÓN INFERIOR MÓVIL -->
+  <nav class="nav-mobile md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2 z-40 text-[10px] backdrop-blur-md">
+    <button onclick="mostrarSeccion('sec-registrar')" id="m-btn-registrar" class="flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2">
+      <span class="text-lg">💳</span><span>Registrar</span>
+    </button>
+    <button onclick="mostrarSeccion('sec-por-cobrar')" id="m-btn-por-cobrar" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2">
+      <span class="text-lg">📅</span><span>Cobrar</span>
+    </button>
+    <button onclick="mostrarSeccion('sec-resumen')" id="m-btn-resumen" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2">
+      <span class="text-lg">📊</span><span>Resumen</span>
+    </button>
+    <button onclick="mostrarSeccion('sec-estado')" id="m-btn-estado" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2">
+      <span class="text-lg">⚠️</span><span>Estado</span>
+    </button>
+    <button onclick="mostrarSeccion('sec-clientes')" id="m-btn-clientes" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2">
+      <span class="text-lg">👥</span><span>Clientes</span>
+    </button>
+    <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2">
+      <span class="text-lg">⚙️</span><span>Ajustes</span>
+    </button>
+  </nav>
+
+  <!-- ======================================================== -->
+  <!-- MODALES DE LA APLICACIÓN -->
+  <!-- ======================================================== -->
+
+  <!-- MODAL: ENVIAR COMPROBANTE DE PAGO DIGITAL COMO FOTO / IMAGEN -->
   <div id="modal-comprobante-whatsapp" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-emerald-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2"><span>📸</span> Comprobante Oficial en Foto</h3>
+        <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+          <span>📸</span> Comprobante Oficial en Foto
+        </h3>
         <button onclick="cerrarModalComprobante()" class="text-slate-400 hover:text-white font-bold">✕</button>
       </div>
+
+      <p class="text-xs text-slate-300">Vista previa del recibo que se enviará por WhatsApp:</p>
+
       <div id="ticket-recibo-card" class="bg-gradient-to-b from-[#0F172A] to-[#1E293B] border-2 border-emerald-500/60 p-5 rounded-2xl space-y-4 text-white shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-700/80 pb-3">
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-base">$</div>
+            <div class="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center font-black text-slate-950 text-base shadow">
+              $
+            </div>
             <div>
-              <h4 class="font-extrabold text-sm text-white">CobroApp</h4>
-              <p class="text-[9px] text-emerald-400 font-bold uppercase">Recibo Digital de Pago</p>
+              <h4 class="font-extrabold text-sm tracking-wide text-white">CobroApp</h4>
+              <p class="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Recibo Digital de Pago</p>
             </div>
           </div>
           <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-full font-extrabold">✓ PAGADO</span>
         </div>
+
         <div class="space-y-3 py-1">
-          <div><p class="text-[10px] text-slate-400 uppercase font-bold">Cliente</p><p id="recibo-card-cliente" class="text-base font-extrabold text-white"></p></div>
-          <div class="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl text-center"><p class="text-[10px] text-emerald-400 uppercase font-bold">Monto Recibido</p><p id="recibo-card-monto" class="text-3xl font-black text-emerald-400">$0</p></div>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60"><p class="text-[9px] text-slate-400 font-bold uppercase">Fecha y Hora</p><p id="recibo-card-fecha" class="font-semibold text-slate-200"></p></div>
-            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60"><p class="text-[9px] text-slate-400 font-bold uppercase">Concepto / Detalle</p><p id="recibo-card-concepto" class="font-semibold text-slate-200"></p></div>
+          <div>
+            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Cliente</p>
+            <p id="recibo-card-cliente" class="text-base font-extrabold text-white"></p>
           </div>
-          <div class="bg-slate-800/40 border border-slate-700/60 p-2.5 rounded-xl flex justify-between items-center text-xs"><span class="text-slate-400 font-semibold">Saldo Pendiente:</span><strong id="recibo-card-saldo" class="text-amber-400 text-sm font-bold">$0</strong></div>
+
+          <div class="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl text-center">
+            <p class="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">Monto Recibido</p>
+            <p id="recibo-card-monto" class="text-3xl font-black text-emerald-400 mt-0.5">$0</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60">
+              <p class="text-[9px] text-slate-400 font-bold uppercase">Fecha y Hora</p>
+              <p id="recibo-card-fecha" class="font-semibold text-slate-200 mt-0.5"></p>
+            </div>
+            <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/60">
+              <p class="text-[9px] text-slate-400 font-bold uppercase">Concepto / Detalle</p>
+              <p id="recibo-card-concepto" class="font-semibold text-slate-200 mt-0.5"></p>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/40 border border-slate-700/60 p-2.5 rounded-xl flex justify-between items-center text-xs">
+            <span class="text-slate-400 font-semibold">Saldo Pendiente:</span>
+            <strong id="recibo-card-saldo" class="text-amber-400 text-sm font-bold">$0</strong>
+          </div>
+        </div>
+
+        <div class="border-t border-dashed border-slate-700/80 pt-2.5 text-center">
+          <p class="text-[10px] text-slate-400 font-medium">¡Muchas gracias por su pago! 🙌</p>
         </div>
       </div>
+
       <div class="flex gap-3 pt-2">
-        <button type="button" onclick="cerrarModalComprobante()" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cerrar</button>
-        <button type="button" onclick="compartirComprobanteImagen()" class="w-2/3 bg-emerald-600 text-white font-extrabold py-3 rounded-xl text-xs shadow-lg flex justify-center items-center gap-2"><span>📲</span> Enviar Foto por WhatsApp</button>
+        <button type="button" onclick="cerrarModalComprobante()" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">
+          Cerrar
+        </button>
+        <button type="button" onclick="compartirComprobanteImagen()" class="w-2/3 bg-emerald-600 text-white font-extrabold py-3 rounded-xl text-xs shadow-lg shadow-emerald-600/30 flex justify-center items-center gap-2">
+          <span>📲</span> Enviar Foto por WhatsApp
+        </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADVERTENCIA CLIENTE CON PRÉSTAMO ACTIVO -->
+  <div id="modal-advertencia-prestamo-activo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-amber-500/60 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <h3 class="text-lg font-bold text-amber-400 flex items-center gap-2">⚠️ Cliente con Préstamo Activo</h3>
+      <p class="text-xs text-slate-300">Este cliente ya tiene una cuenta activa en curso. ¿Estás seguro de darle otro préstamo?</p>
+      <div class="bg-slate-800/80 p-3 rounded-xl text-xs space-y-1">
+        <p><strong class="text-slate-400">Cliente:</strong> <span id="adv-cli-nombre" class="text-white font-bold"></span></p>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="cancelarPrestamoDuplicado()" class="w-1/2 bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+        <button onclick="aceptarPrestamoDuplicado()" class="w-1/2 bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-amber-600/30">Sí, Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALLE COMPLETO DE UN PRÉSTAMO ACTIVO -->
+  <div id="modal-detalle-prestamo-activo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/40 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-fuchsia-400 flex items-center gap-2">
+          <span>📊</span> Detalle del Préstamo Activo
+        </h3>
+        <button onclick="cerrarModalDetalleActivo()" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <div class="space-y-1 bg-slate-800/50 p-3 rounded-xl text-xs border border-slate-700/60">
+        <p><strong class="text-slate-400">Cliente:</strong> <span id="det-act-cliente" class="font-bold text-white text-sm"></span></p>
+        <p><strong class="text-slate-400">Fecha de Inicio:</strong> <span id="det-act-fechainicio" class="text-slate-200"></span></p>
+        <div class="grid grid-cols-3 gap-2 pt-2 text-center">
+          <div class="bg-slate-900 p-2 rounded-lg">
+            <p class="text-[10px] text-slate-400">Prestado</p>
+            <p id="det-act-monto" class="font-bold text-white"></p>
+          </div>
+          <div class="bg-slate-900 p-2 rounded-lg">
+            <p class="text-[10px] text-slate-400">Total Devolución</p>
+            <p id="det-act-total" class="font-bold text-fuchsia-400"></p>
+          </div>
+          <div class="bg-slate-900 p-2 rounded-lg">
+            <p class="text-[10px] text-slate-400">Ganancia</p>
+            <p id="det-act-ganancia" class="font-bold text-emerald-400"></p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-bold text-xs uppercase text-slate-400 mb-2">Desglose de Cuotas:</h4>
+        <div id="det-act-lista-cuotas" class="space-y-1.5 max-h-52 overflow-y-auto border-t border-b border-slate-800 py-2"></div>
+      </div>
+
+      <button onclick="cerrarModalDetalleActivo()" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">
+        Cerrar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR FINALIZAR MANUAL -->
+  <div id="modal-confirmar-finalizar-prestamo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-emerald-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <h3 class="text-lg font-bold text-emerald-400 flex items-center gap-2">🏁 Confirmar Finalización</h3>
+      <p class="text-xs text-slate-300">¿Estás seguro de enviar este préstamo a la carpeta de Finalizados?</p>
+      <div class="bg-slate-800/80 p-3 rounded-xl text-xs space-y-1">
+        <p><strong class="text-slate-400">Cliente:</strong> <span id="fin-prestamo-cliente" class="text-white font-bold"></span></p>
+        <p><strong class="text-slate-400">Monto:</strong> <span id="fin-prestamo-monto" class="text-fuchsia-400 font-bold"></span></p>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="cerrarModalFinalizarPrestamo()" class="w-1/2 bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+        <button onclick="confirmarFinalizacionPrestamo()" class="w-1/2 bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/30">Sí, Finalizar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR ELIMINAR PRÉSTAMO -->
+  <div id="modal-confirmar-eliminar-prestamo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-red-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <h3 class="text-lg font-bold text-red-400 flex items-center gap-2">⚠️ Confirmar Eliminación</h3>
+      <p class="text-xs text-slate-300">¿Estás seguro de eliminar este préstamo del sistema?</p>
+      <div class="bg-slate-800/80 p-3 rounded-xl text-xs space-y-1">
+        <p><strong class="text-slate-400">Cliente:</strong> <span id="del-prestamo-cliente" class="text-white font-bold"></span></p>
+        <p><strong class="text-slate-400">Monto:</strong> <span id="del-prestamo-monto" class="text-fuchsia-400 font-bold"></span></p>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="cerrarModalEliminarPrestamo()" class="w-1/2 bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">Cancelar</button>
+        <button onclick="confirmarEliminacionPrestamo()" class="w-1/2 bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-red-600/30">Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALLE CUOTAS ATRASADAS DE UN CLIENTE -->
+  <div id="modal-atrasados-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-red-500/40 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-red-400 flex items-center gap-2">
+          <span>🚨</span> Desglose de Cuotas Atrasadas
+        </h3>
+        <button onclick="cerrarModalAtrasados()" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <div class="space-y-1">
+        <p id="atrasados-cli-nombre" class="font-bold text-white text-base"></p>
+        <p id="atrasados-cli-dir" class="text-xs text-slate-400"></p>
+      </div>
+
+      <div id="lista-cuotas-atrasadas-modal" class="max-h-60 overflow-y-auto space-y-2 border-t border-b border-slate-800 py-3"></div>
+
+      <button onclick="cerrarModalAtrasados()" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">
+        Cerrar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: PAGAR DEUDA ATRASADA ACUMULADA -->
+  <div id="modal-pago-atrasado-agrupado" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-red-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-red-400 flex items-center gap-2">
+          <span>💵</span> Cobrar Deuda Atrasada
+        </h3>
+        <button onclick="cerrarModalPagoAtrasadoTotal()" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <div class="bg-red-950/30 border border-red-500/30 p-3 rounded-xl space-y-1.5 text-xs">
+        <p><span class="text-slate-400">Cliente:</span> <strong id="pago-atrasado-cli-nombre" class="text-white"></strong></p>
+        <p><span class="text-slate-400">Deuda Base Vencida:</span> <span id="pago-atrasado-monto-base" class="text-slate-200 font-bold">$0</span></p>
+        <p id="box-info-tiempo-agrupado" class="text-slate-300"><span class="text-slate-400">Tiempo de Atraso:</span> <strong id="pago-atrasado-tiempo-txt" class="text-red-400">0 días</strong></p>
+        <p id="box-info-recargo-agrupado" class="text-red-400 font-bold"><span class="text-slate-400">Recargo por Interés:</span> +$<span id="pago-atrasado-monto-recargo">0</span></p>
+        <div class="border-t border-red-500/30 pt-1.5 text-sm">
+          <span class="text-slate-300 font-bold">Total a Cobrar:</span> <strong id="pago-atrasado-monto-total" class="text-red-400 text-base">$0</strong>
+        </div>
+      </div>
+
+      <div id="contenedor-chk-recargo-agrupado" class="flex items-center gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700 text-xs">
+        <input type="checkbox" id="chk-aplicar-retraso-agrupado" onchange="alternarRecargoAgrupado()" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+        <label for="chk-aplicar-retraso-agrupado" class="text-slate-200 font-bold cursor-pointer">
+          Incluir recargo por días atrasados acumulados
+        </label>
+      </div>
+
+      <form onsubmit="confirmarPagoAtrasadoAgrupado(event)" class="space-y-4">
+        <input type="hidden" id="pago-atrasado-cliente-id">
+
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1">Monto que paga hoy ($) *</label>
+          <input type="number" id="pago-atrasado-monto-ingresado" oninput="convertirMontoPagoAtrasadoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-red-500">
+          <div class="flex justify-between items-center mt-1 flex-wrap gap-1">
+            <p id="pago-atrasado-monto-en-letras" class="text-xs text-red-400 font-bold italic min-h-[18px]"></p>
+            <p id="pago-atrasado-max-hint" class="text-[11px] text-slate-400 font-bold"></p>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="cerrarModalPagoAtrasadoTotal()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">
+            Cancelar
+          </button>
+          <button type="submit" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-red-600/30">
+            Confirmar Pago
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -525,49 +830,132 @@
   <div id="modal-pago-cuota" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="text-lg font-bold flex items-center gap-2"><span>💵</span> Registrar Cobro</h3>
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <span>💵</span> Registrar Cobro
+        </h3>
         <button onclick="cerrarModalPago()" class="text-slate-400 hover:text-white font-bold">✕</button>
       </div>
+
       <div class="bg-slate-800/60 p-3 rounded-xl space-y-1 text-xs">
         <p><span class="text-slate-400">Cliente:</span> <strong id="pago-cli-nombre" class="text-white"></strong></p>
         <p><span class="text-slate-400">Cuota Número:</span> <strong id="pago-cuota-num" class="text-fuchsia-400"></strong></p>
         <p><span class="text-slate-400">Cuota Base Pendiente:</span> <strong id="pago-cuota-base" class="text-slate-200">$0</strong></p>
         <p><span class="text-slate-400">Saldo Total del Préstamo:</span> <strong id="pago-saldo-total-prestamo" class="text-fuchsia-400 font-bold">$0</strong></p>
+        
+        <div id="box-recargo-cuota-indiv" class="hidden border-t border-slate-700/60 pt-1 text-xs text-red-400 space-y-0.5">
+          <p>⏱️ <strong>Atraso:</strong> <span id="pago-dias-atraso-txt">0 días</span></p>
+          <p>🚨 <strong>Recargo por Retraso:</strong> +$<span id="pago-monto-recargo-txt">0</span></p>
+        </div>
+
+        <p class="pt-1 text-sm border-t border-slate-700/60"><span class="text-slate-300 font-bold">Total a Cobrar Hoy:</span> <strong id="pago-cuota-total-sugerido" class="text-emerald-400 text-base">$0</strong></p>
       </div>
+
+      <div id="contenedor-chk-recargo-cuota" class="hidden items-center gap-2 bg-slate-800/80 p-3 rounded-xl border border-red-500/30 text-xs">
+        <input type="checkbox" id="chk-aplicar-retraso-cuota" onchange="alternarRecargoCuota()" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+        <label for="chk-aplicar-retraso-cuota" class="text-slate-200 font-bold cursor-pointer">
+          Incluir recargo por retraso en este cobro
+        </label>
+      </div>
+
       <form onsubmit="confirmarRegistroPago(event)" class="space-y-4">
-        <input type="hidden" id="pago-prestamo-id"><input type="hidden" id="pago-cuota-id">
+        <input type="hidden" id="pago-prestamo-id">
+        <input type="hidden" id="pago-cuota-id">
+
         <div>
           <label class="block text-xs font-bold uppercase mb-1">Monto que entrega hoy ($) *</label>
-          <input type="number" id="pago-monto-ingresado" oninput="convertirMontoPagoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-          <p id="pago-monto-en-letras" class="text-xs text-emerald-400 font-bold italic mt-1 min-h-[18px]"></p>
+          <input type="number" id="pago-monto-ingresado" oninput="convertirMontoPagoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-emerald-500">
+          <div class="flex justify-between items-center mt-1 flex-wrap gap-1">
+            <p id="pago-monto-en-letras" class="text-xs text-emerald-400 font-bold italic min-h-[18px]"></p>
+            <p id="pago-monto-max-hint" class="text-[11px] text-amber-400 font-bold"></p>
+          </div>
         </div>
+
         <div class="flex gap-3 pt-2">
-          <button type="button" onclick="cerrarModalPago()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
-          <button type="submit" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg">Confirmar Pago</button>
+          <button type="button" onclick="cerrarModalPago()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">
+            Cancelar
+          </button>
+          <button type="submit" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-emerald-600/30">
+            Confirmar Pago
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL NUEVO CLIENTE -->
-  <div id="modal-nuevo-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-    <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-4">
+  <!-- MODAL: FICHA E HISTORIAL COMPLETO DEL CLIENTE -->
+  <div id="modal-info-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 id="modal-cliente-titulo" class="text-lg font-bold">👤 Registrar Nuevo Cliente</h3>
-        <button onclick="cerrarModalCliente()" class="text-slate-400 font-bold">✕</button>
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <span>📜</span> Historial & Ficha de Cliente
+        </h3>
+        <button onclick="cerrarModalInfoCliente()" class="text-slate-400 hover:text-white font-bold">✕</button>
       </div>
+
+      <div class="space-y-2 text-xs bg-slate-800/40 p-3 rounded-xl border border-slate-700/60">
+        <p><strong class="text-slate-400">Nombre:</strong> <span id="info-cli-nombre" class="font-bold text-white text-sm"></span></p>
+        <p><strong class="text-slate-400">Personal:</strong> <span id="info-cli-tel" class="text-fuchsia-400 font-semibold"></span> | <strong class="text-slate-400">Emergencia:</strong> <span id="info-cli-emer" class="text-amber-400 font-semibold"></span></p>
+        <p><strong class="text-slate-400">Dirección:</strong> <span id="info-cli-dir" class="text-slate-200"></span></p>
+        <p><strong class="text-slate-400">Notas:</strong> <span id="info-cli-redes" class="text-slate-300 italic"></span></p>
+      </div>
+
+      <div>
+        <h4 class="font-bold text-sm text-white mb-2">Desglose Histórico de Préstamos:</h4>
+        <div id="contenedor-historial-prestamos-cliente" class="space-y-3"></div>
+      </div>
+
+      <button onclick="cerrarModalInfoCliente()" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">
+        Cerrar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL PARA REGISTRAR O EDITAR CLIENTE -->
+  <div id="modal-nuevo-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-5">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 id="modal-cliente-titulo" class="text-lg font-bold flex items-center gap-2">
+          <span>👤</span> Registrar Nuevo Cliente / Deudor
+        </h3>
+        <button onclick="cerrarModalCliente()" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
       <form onsubmit="guardarYVincularCliente(event)" class="space-y-4">
         <input type="hidden" id="cli-edit-id" value="">
-        <div><label class="block text-xs font-bold uppercase mb-1">Nombre Completo *</label><input type="text" id="cli-nombre" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-bold uppercase mb-1">Tel. Personal (10 dígitos) *</label><input type="tel" id="cli-tel" required minlength="10" maxlength="10" pattern="[0-9]{10}" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1">Tel. Emergencia *</label><input type="tel" id="cli-emergencia" required minlength="10" maxlength="10" pattern="[0-9]{10}" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1">Nombre Completo *</label>
+          <input type="text" id="cli-nombre" required placeholder="Ej: Juan Pérez" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
         </div>
-        <div><label class="block text-xs font-bold uppercase mb-1">Dirección de Cobro *</label><input type="text" id="cli-direccion" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
-        <div><label class="block text-xs font-bold uppercase mb-1">Notas Opcionales</label><input type="text" id="cli-redes" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
-        <div class="flex gap-3 pt-2">
-          <button type="button" onclick="cerrarModalCliente()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
-          <button type="submit" class="w-1/2 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl text-xs shadow-lg">Guardar</button>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase mb-1">Teléfono Personal (10 dígitos) *</label>
+            <input type="tel" id="cli-tel" required minlength="10" maxlength="10" pattern="[0-9]{10}" placeholder="1122334455" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase mb-1">Tel. Emergencia (10 dígitos) *</label>
+            <input type="tel" id="cli-emergencia" required minlength="10" maxlength="10" pattern="[0-9]{10}" placeholder="1122334455" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1">Dirección de Cobro *</label>
+          <input type="text" id="cli-direccion" required placeholder="Calle 123, Morón" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1">Redes / Notas Opcionales</label>
+          <input type="text" id="cli-redes" placeholder="@instagram / Casa portón verde" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
+        </div>
+
+        <div class="flex gap-3 pt-3">
+          <button type="button" onclick="cerrarModalCliente()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">
+            Cancelar
+          </button>
+          <button type="submit" class="w-1/2 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl text-xs shadow-lg">
+            Guardar
+          </button>
         </div>
       </form>
     </div>
@@ -580,6 +968,7 @@
 
   <!-- LÓGICA COMPLETA DE LA APLICACIÓN -->
   <script>
+    // 1. CONFIGURACIÓN FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyCJC4CuD9nIpM4aeB2CetEr67mcIcYQAKU",
       authDomain: "cobro-app-sistema.firebaseapp.com",
@@ -592,7 +981,7 @@
     let db = null;
     let auth = null;
     let usuarioActual = null;
-    let rolUsuarioActual = null;
+    let rolUsuarioActual = 'prestamista'; // 'admin' o 'prestamista'
 
     let clientes = [];
     let prestamos = [];
@@ -600,21 +989,39 @@
 
     let configIntereses = JSON.parse(localStorage.getItem('cobro_cfg_int')) || { diario: 5, semanal: 15, mensual: 30 };
     let configInteresesRetraso = JSON.parse(localStorage.getItem('cobro_cfg_int_retraso')) || { diario: 1, semanal: 3, mensual: 10 };
+
     let temaActual = localStorage.getItem('cobro_tema') || 'oscuro';
+    let pestanaResumenActual = 'activos';
+    let fechaPlanificadorSeleccionADA = new Date();
+    let idPrestamoAEliminar = null;
+    let idPrestamoAFinalizar = null;
+    let datosPrestamoSimuladoPendiente = null;
+    let datosPrestamoSimulado = null;
+
+    let telefonoClienteActualWA = '';
+    let datosRecargoModalCuota = { base: 0, montoRecargo: 0, saldoTotalPrestamo: 0, maxPermitido: 0 };
+    let datosRecargoModalAgrupado = { base: 0, montoRecargo: 0, diasAtraso: 0, maxPermitido: 0 };
 
     let mesCalVisual = new Date().getMonth();
     let anioCalVisual = new Date().getFullYear();
-    let fechaPlanificadorSeleccionADA = new Date();
 
     try {
       firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
       auth = firebase.auth();
-    } catch (e) { console.warn("Error Firebase:", e); }
+    } catch (e) {
+      console.warn("Error Firebase:", e);
+    }
 
     window.onload = function() {
       aplicarTema(temaActual);
+      cargarCamposConfigIntereses();
 
+      document.getElementById('frecuencia-prestamo').value = 'mensual';
+      alCambiarFrecuencia();
+      renderizarGridCalendarioVisual();
+
+      // CONTROLADOR DE SESIÓN CON AISLAMIENTO DE DATOS POR USUARIO
       auth.onAuthStateChanged(async user => {
         if (user) {
           usuarioActual = user;
@@ -624,26 +1031,75 @@
           
           if (userDoc.exists) {
             const data = userDoc.data();
-            rolUsuarioActual = data.rol || 'cliente';
-
-            if (rolUsuarioActual === 'admin') {
-              iniciarModoAdmin();
-            } else {
-              iniciarModoCliente(data.clienteId);
-            }
+            rolUsuarioActual = data.rol || 'prestamista';
           } else {
-            rolUsuarioActual = 'admin';
-            iniciarModoAdmin();
+            rolUsuarioActual = 'admin'; // Primer usuario master
           }
 
+          configurarInterfazPorRol();
+          iniciarListenersFirestore();
           escucharConfigSuscripcion();
+
         } else {
           document.getElementById('pantalla-login').classList.remove('hidden');
-          document.getElementById('vista-admin').classList.add('hidden');
-          document.getElementById('vista-cliente').classList.add('hidden');
         }
       });
     };
+
+    function configurarInterfazPorRol() {
+      const btnUsrs = document.getElementById('btn-sec-usuarios');
+      const btnSub = document.getElementById('btn-sec-suscripcion');
+      const panelSubAdmin = document.getElementById('panel-cfg-suscripcion-admin');
+      const lblRol = document.getElementById('lbl-rol-usuario');
+
+      if (rolUsuarioActual === 'admin') {
+        lblRol.innerText = "Panel Administrador Master";
+        btnUsrs.classList.remove('hidden');
+        btnUsrs.classList.add('flex');
+        btnSub.classList.add('hidden');
+        panelSubAdmin.classList.remove('hidden');
+      } else {
+        lblRol.innerText = "Panel de Prestamista";
+        btnUsrs.classList.add('hidden');
+        btnSub.classList.remove('hidden');
+        btnSub.classList.add('flex');
+        panelSubAdmin.classList.add('hidden');
+      }
+    }
+
+    function iniciarListenersFirestore() {
+      if (!db || !usuarioActual) return;
+
+      // Cada prestamista ve únicamente sus propios clientes deudores y préstamos
+      let consultaClientes = db.collection('clientes');
+      let consultaPrestamos = db.collection('prestamos');
+
+      if (rolUsuarioActual !== 'admin') {
+        consultaClientes = consultaClientes.where('usuarioId', '==', usuarioActual.uid);
+        consultaPrestamos = consultaPrestamos.where('usuarioId', '==', usuarioActual.uid);
+      }
+
+      consultaClientes.onSnapshot(snapshot => {
+        clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderizarClientesSelect();
+        renderizarDirectorioClientes();
+        renderizarEstadoCuentas();
+      });
+
+      consultaPrestamos.onSnapshot(snapshot => {
+        prestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderizarResumenYPrestamos();
+        renderizarGridCalendarioVisual();
+        renderizarPlanificadorSemanal();
+        renderizarEstadoCuentas();
+      });
+
+      if (rolUsuarioActual === 'admin') {
+        db.collection('clientes').onSnapshot(snapshot => {
+          renderizarSelectUsuariosClientes();
+        });
+      }
+    }
 
     async function iniciarSesionUsuario(event) {
       event.preventDefault();
@@ -654,6 +1110,7 @@
         await auth.signInWithEmailAndPassword(email, pass);
         mostrarToast("Bienvenido al sistema");
       } catch (error) {
+        console.error(error);
         mostrarToast("Correo o contraseña incorrectos", "error");
       }
     }
@@ -686,7 +1143,7 @@
       const link = document.getElementById('cfg-sub-link').value.trim();
 
       await db.collection('configuracion').doc('suscripcion').set({ monto, link });
-      mostrarToast("Ajustes de suscripción actualizados para todos los clientes");
+      mostrarToast("Ajustes de alquiler de app guardados");
     }
 
     function pagarSuscripcionMercadoPago() {
@@ -699,7 +1156,7 @@
         window.open(configSuscripcion.link, '_blank');
       } else {
         navigator.clipboard.writeText(configSuscripcion.link);
-        mostrarToast(`📋 Alias/CVU copiado: ${configSuscripcion.link}. Realizá la transferencia desde tu billetera.`);
+        mostrarToast(`📋 Alias/CVU copiado: ${configSuscripcion.link}. Realizá la transferencia desde tu homebanking.`);
       }
     }
 
@@ -719,165 +1176,362 @@
         document.getElementById('cli-nueva-pass').value = '';
         document.getElementById('cli-confirm-pass').value = '';
       } catch (error) {
-        mostrarToast("Para cambiar tu contraseña, cerrá sesión y volvé a ingresar por seguridad.", "error");
+        mostrarToast("Por seguridad, cerrá sesión y volvé a ingresar antes de cambiar tu contraseña.", "error");
       }
-    }
-
-    function alternarTabCliente(tab) {
-      const btnCuentas = document.getElementById('tab-cli-cuentas');
-      const btnOpciones = document.getElementById('tab-cli-opciones');
-      const contCuentas = document.getElementById('contenedor-cli-cuentas');
-      const contOpciones = document.getElementById('contenedor-cli-opciones');
-
-      if (tab === 'mis-cuentas') {
-        btnCuentas.className = "bg-fuchsia-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow";
-        btnOpciones.className = "bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-slate-700";
-        contCuentas.classList.remove('hidden');
-        contOpciones.classList.add('hidden');
-      } else {
-        btnOpciones.className = "bg-fuchsia-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition shadow";
-        btnCuentas.className = "bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-slate-700";
-        contOpciones.classList.remove('hidden');
-        contCuentas.classList.add('hidden');
-      }
-    }
-
-    // MODO ADMIN
-    function iniciarModoAdmin() {
-      document.getElementById('vista-admin').classList.remove('hidden');
-      document.getElementById('vista-cliente').classList.add('hidden');
-
-      db.collection('clientes').onSnapshot(snapshot => {
-        clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderizarClientesSelect();
-        renderizarSelectUsuariosClientes();
-        renderizarDirectorioClientes();
-        renderizarEstadoCuentas();
-      });
-
-      db.collection('prestamos').onSnapshot(snapshot => {
-        prestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderizarResumenYPrestamos();
-        renderizarGridCalendarioVisual();
-        renderizarPlanificadorSemanal();
-        renderizarEstadoCuentas();
-      });
     }
 
     function renderizarSelectUsuariosClientes() {
       const select = document.getElementById('usr-select-cliente');
       if (!select) return;
-      select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
-      clientes.forEach(c => { select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.dir})</option>`; });
+      select.innerHTML = '<option value="">-- Seleccionar Prestamista --</option>';
+      clientes.forEach(c => {
+        select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.dir})</option>`;
+      });
     }
 
-    async function crearUsuarioParaCliente(event) {
+    async function crearUsuarioPrestamista(event) {
       event.preventDefault();
-      const clienteId = document.getElementById('usr-select-cliente').value;
+      const nombre = document.getElementById('usr-nombre-prestamista').value.trim();
       const email = document.getElementById('usr-email').value.trim();
       const pass = document.getElementById('usr-pass').value.trim();
-
-      if (!clienteId) return mostrarToast("Seleccioná un cliente de la lista", "error");
 
       try {
         const appSecundaria = firebase.initializeApp(firebaseConfig, "secundario");
         const res = await appSecundaria.auth().createUserWithEmailAndPassword(email, pass);
         
         await db.collection('usuarios').doc(res.user.uid).set({
+          nombre: nombre,
           email: email,
-          rol: 'cliente',
-          clienteId: clienteId,
+          rol: 'prestamista',
           fechaCreacion: new Date().toISOString()
         });
 
         await appSecundaria.delete();
 
-        mostrarToast("✨ Usuario de cliente creado exitosamente");
+        mostrarToast("✨ ¡Cuenta de prestamista habilitada correctamente!");
+        document.getElementById('usr-nombre-prestamista').value = '';
         document.getElementById('usr-email').value = '';
         document.getElementById('usr-pass').value = '';
       } catch (error) {
-        mostrarToast("Error al crear usuario: " + error.message, "error");
+        console.error(error);
+        mostrarToast("Error al crear cuenta: " + error.message, "error");
       }
     }
 
-    // MODO CLIENTE
-    function iniciarModoCliente(clienteId) {
-      document.getElementById('vista-cliente').classList.remove('hidden');
-      document.getElementById('vista-admin').classList.add('hidden');
-
-      db.collection('clientes').doc(clienteId).onSnapshot(doc => {
-        if (!doc.exists) return;
-        const c = doc.data();
-        document.getElementById('cli-portal-nombre').innerText = c.nombre;
-        document.getElementById('cli-portal-datos-contacto').innerHTML = `
-          <p>📍 <strong>Dirección:</strong> ${c.dir}</p>
-          <p>📞 <strong>Teléfono:</strong> ${c.tel}</p>
-        `;
-      });
-
-      db.collection('prestamos').where('clienteId', '==', clienteId).onSnapshot(snapshot => {
-        const misPrestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderizarPortalCliente(misPrestamos);
-      });
-    }
-
-    function renderizarPortalCliente(misPrestamos) {
-      let saldoTotalRestante = 0;
-      const container = document.getElementById('cli-portal-lista-prestamos');
-      container.innerHTML = '';
-
-      if (misPrestamos.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 italic">No tenés préstamos registrados actualmente.</p>';
-      }
-
-      misPrestamos.forEach(p => {
-        let cuotasHtml = '';
-        let cuotasPagadas = 0;
-
-        if (p.calendario) {
-          p.calendario.forEach(cq => {
-            if (cq.pagado) {
-              cuotasPagadas++;
-              cuotasHtml += `<div class="p-2 rounded bg-emerald-500/10 text-emerald-400 text-xs flex justify-between"><span>Cuota ${cq.numero} (${cq.fechaTexto || cq.fechaISO})</span><span>✓ Pagado ($${cq.monto.toLocaleString('es-AR')})</span></div>`;
-            } else {
-              const pend = cq.monto - (cq.montoPagado || 0);
-              saldoTotalRestante += pend;
-              cuotasHtml += `<div class="p-2 rounded bg-slate-800 text-slate-300 text-xs flex justify-between"><span>Cuota ${cq.numero} (${cq.fechaTexto || cq.fechaISO})</span><span class="text-amber-400 font-bold">Pendiente ($${pend.toLocaleString('es-AR')})</span></div>`;
-            }
-          });
-        }
-
-        container.innerHTML += `
-          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-              <div>
-                <p class="font-extrabold text-white text-sm">Préstamo por $${p.monto.toLocaleString('es-AR')}</p>
-                <p class="text-[10px] text-slate-400">Total a devolver: $${p.totalADevolver.toLocaleString('es-AR')}</p>
-              </div>
-              <span class="text-xs font-bold px-2.5 py-1 rounded ${p.estado === 'finalizado' ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-400'}">${p.estado === 'finalizado' ? '🏁 Finalizado' : '🟢 Activo'}</span>
-            </div>
-            <p class="text-xs text-slate-400">Progreso: ${cuotasPagadas} de ${p.numCuotas} cuotas abonadas</p>
-            <div class="space-y-1.5 max-h-48 overflow-y-auto pt-1">${cuotasHtml}</div>
-          </div>
-        `;
-      });
-
-      document.getElementById('cli-portal-saldo-total').innerText = '$' + saldoTotalRestante.toLocaleString('es-AR');
-    }
-
-    // UTILIDADES GENERALES
     function mostrarToast(mensaje, tipo = 'exito') {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
-      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-2xl border text-white text-xs font-bold shadow-2xl backdrop-blur-md ${tipo === 'exito' ? 'bg-emerald-600/90 border-emerald-400' : 'bg-red-600/90 border-red-400'}`;
-      toast.innerHTML = `<span>${tipo === 'exito' ? '✅' : '⚠️'}</span> <span>${mensaje}</span>`;
+      
+      const colorBg = (tipo === 'exito') 
+        ? 'bg-emerald-600/90 border-emerald-400 shadow-emerald-950/50' 
+        : (tipo === 'error' ? 'bg-red-600/90 border-red-400 shadow-red-950/50' : 'bg-fuchsia-600/90 border-fuchsia-400 shadow-fuchsia-950/50');
+      
+      const icono = (tipo === 'exito') ? '✅' : (tipo === 'error' ? '⚠️' : 'ℹ️');
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-white text-xs font-bold shadow-2xl backdrop-blur-md transform transition-all duration-300 translate-x-full opacity-0 ${colorBg}`;
+      toast.innerHTML = `<span class="text-base">${icono}</span> <span>${mensaje}</span>`;
+      
       container.appendChild(toast);
-      setTimeout(() => toast.remove(), 3200);
+
+      setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+      setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
     }
 
-    function mostrarSeccion(idSeccion) {
-      document.querySelectorAll('.seccion-app').forEach(sec => sec.classList.add('hidden'));
-      document.getElementById(idSeccion).classList.remove('hidden');
+    function obtenerTextoTiempoAtraso(dias) {
+      if (!dias || dias <= 0) return "0 días";
+      let texto = `${dias} día${dias > 1 ? 's' : ''}`;
+      
+      let partes = [];
+      if (dias >= 7) {
+        const sem = (dias / 7).toFixed(1).replace('.0', '');
+        partes.push(`${sem} sem`);
+      }
+      if (dias >= 30) {
+        const mes = (dias / 30).toFixed(1).replace('.0', '');
+        partes.push(`${mes} mes${mes !== '1' ? 'es' : ''}`);
+      }
+      
+      if (partes.length > 0) {
+        texto += ` (${partes.join(' / ')})`;
+      }
+      return texto;
+    }
+
+    function formatearTelefonoWhatsApp(tel) {
+      if (!tel) return '';
+      let num = tel.toString().replace(/\D/g, ''); 
+      if (num.length === 10) {
+        return '549' + num;
+      }
+      return num;
+    }
+
+    function mostrarModalComprobanteWhatsApp(clienteObj, montoAbonado, detalleConcepto, saldoRestanteTotal) {
+      const fechaHoy = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const horaHoy = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+      const nombreLimpio = clienteObj ? clienteObj.nombre : 'Cliente';
+      telefonoClienteActualWA = clienteObj ? formatearTelefonoWhatsApp(clienteObj.tel) : '';
+
+      document.getElementById('recibo-card-cliente').innerText = nombreLimpio;
+      document.getElementById('recibo-card-monto').innerText = '$' + montoAbonado.toLocaleString('es-AR');
+      document.getElementById('recibo-card-fecha').innerText = `${fechaHoy} ${horaHoy}`;
+      document.getElementById('recibo-card-concepto').innerText = detalleConcepto;
+      document.getElementById('recibo-card-saldo').innerText = '$' + Math.max(0, saldoRestanteTotal).toLocaleString('es-AR');
+
+      document.getElementById('modal-comprobante-whatsapp').classList.remove('hidden');
+    }
+
+    async function compartirComprobanteImagen() {
+      const card = document.getElementById('ticket-recibo-card');
+      mostrarToast("⏳ Generando foto del comprobante...", "info");
+
+      try {
+        const canvas = await html2canvas(card, {
+          scale: 3,
+          backgroundColor: '#0F172A',
+          useCORS: true
+        });
+
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            mostrarToast("Error al procesar la imagen", "error");
+            return;
+          }
+
+          const file = new File([blob], `Comprobante_Pago_${Date.now()}.png`, { type: 'image/png' });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: 'Comprobante de Pago',
+                text: 'Recibo Oficial de Pago'
+              });
+              mostrarToast("✅ Comprobante enviado correctamente");
+              return;
+            } catch (err) {
+              console.log('Share nativo no completado');
+            }
+          }
+
+          try {
+            if (navigator.clipboard && window.ClipboardItem) {
+              await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+              ]);
+              mostrarToast("📷 ¡Foto copiada! Pégala en WhatsApp con Ctrl + V");
+            } else {
+              descargarBlob(blob, `Comprobante_Pago.png`);
+              mostrarToast("📷 Foto descargada. Adjúntala en WhatsApp");
+            }
+          } catch (e) {
+            descargarBlob(blob, `Comprobante_Pago.png`);
+            mostrarToast("📷 Foto descargada. Adjúntala en WhatsApp");
+          }
+
+          const urlWa = telefonoClienteActualWA 
+            ? `https://wa.me/${telefonoClienteActualWA}` 
+            : `https://wa.me/`;
+          
+          window.open(urlWa, '_blank');
+        }, 'image/png');
+
+      } catch (e) {
+        console.error("Error al generar imagen:", e);
+        mostrarToast("Ocurrió un problema al crear la imagen", "error");
+      }
+    }
+
+    function descargarBlob(blob, fileName) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      link.click();
+    }
+
+    function cerrarModalComprobante() {
+      document.getElementById('modal-comprobante-whatsapp').classList.add('hidden');
+    }
+
+    function cerrarModalPago() {
+      document.getElementById('modal-pago-cuota').classList.add('hidden');
+    }
+
+    function calcularSaldoPendienteTotalCliente(clienteId) {
+      let saldo = 0;
+      prestamos.forEach(p => {
+        if (p.clienteId === clienteId && p.estado !== 'finalizado' && p.calendario) {
+          p.calendario.forEach(cq => {
+            if (!cq.pagado) {
+              saldo += (cq.monto - (cq.montoPagado || 0));
+            }
+          });
+        }
+      });
+      return saldo;
+    }
+
+    function convertirMontoEnLetras(valor) {
+      const p = document.getElementById('monto-en-letras');
+      const num = parseInt(valor);
+      if (!num || isNaN(num) || num <= 0) {
+        p.innerText = '';
+        return;
+      }
+      p.innerText = '🗣️ ' + numeroALetras(num);
+    }
+
+    function convertirMontoPagoEnLetras(valor) {
+      const p = document.getElementById('pago-monto-en-letras');
+      if (!p) return;
+      const num = parseInt(valor);
+      if (!num || isNaN(num) || num <= 0) {
+        p.innerText = '';
+        return;
+      }
+      p.innerText = '🗣️ ' + numeroALetras(num);
+    }
+
+    function convertirMontoPagoAtrasadoEnLetras(valor) {
+      const p = document.getElementById('pago-atrasado-monto-en-letras');
+      if (!p) return;
+      const num = parseInt(valor);
+      if (!num || isNaN(num) || num <= 0) {
+        p.innerText = '';
+        return;
+      }
+      p.innerText = '🗣️ ' + numeroALetras(num);
+    }
+
+    function Unidades(num){
+      switch(num){
+        case 1: return "UN"; case 2: return "DOS"; case 3: return "TRES"; case 4: return "CUATRO";
+        case 5: return "CINCO"; case 6: return "SEIS"; case 7: return "SIETE"; case 8: return "OCHO"; case 9: return "NUEVE";
+      }
+      return "";
+    }
+    function Decenas(num){
+      let decena = Math.floor(num/10); let unidad = num - (decena*10);
+      switch(decena){
+        case 1:
+          switch(unidad){
+            case 0: return "DIEZ"; case 1: return "ONCE"; case 2: return "DOCE"; case 3: return "TRECE"; case 4: return "CATORCE"; case 5: return "QUINCE";
+            default: return "DIECI" + Unidades(unidad);
+          }
+        case 2:
+          switch(unidad){ case 0: return "VEINTE"; default: return "VEINTI" + Unidades(unidad); }
+        case 3: return (unidad>0)? "TREINTA Y " + Unidades(unidad): "TREINTA";
+        case 4: return (unidad>0)? "CUARENTA Y " + Unidades(unidad): "CUARENTA";
+        case 5: return (unidad>0)? "CINCUENTA Y " + Unidades(unidad): "CINCUENTA";
+        case 6: return (unidad>0)? "SESENTA Y " + Unidades(unidad): "SESENTA";
+        case 7: return (unidad>0)? "SETENTA Y " + Unidades(unidad): "SETENTA";
+        case 8: return (unidad>0)? "OCHENTA Y " + Unidades(unidad): "OCHENTA";
+        case 9: return (unidad>0)? "NOVENTA Y " + Unidades(unidad): "NOVENTA";
+        case 0: return Unidades(unidad);
+      }
+    }
+    function Centenas(num){
+      let centenas = Math.floor(num/100); let decenas = num - (centenas*100);
+      switch(centenas){
+        case 1: return (decenas>0)? "CIENTO " + Decenas(decenas): "CIEN";
+        case 2: return "DOSCIENTOS " + Decenas(decenas); case 3: return "TRESCIENTOS " + Decenas(decenas);
+        case 4: return "CUATROCIENTOS " + Decenas(decenas); case 5: return "QUINIENTOS " + Decenas(decenas);
+        case 6: return "SEISCIENTOS " + Decenas(decenas); case 7: return "SETIECIENTOS " + Decenas(decenas);
+        case 8: return "OCHOCIENTOS " + Decenas(decenas); case 9: return "NOVECIENTOS " + Decenas(decenas);
+      }
+      return Decenas(decenas);
+    }
+    function numeroALetras(num){
+      num = Math.floor(num);
+      if (num === 0) return "CERO PESOS";
+
+      let millones = Math.floor(num / 1000000);
+      let miles = Math.floor((num % 1000000) / 1000);
+      let cientos = num % 1000;
+
+      let strMillones = "";
+      if (millones > 0) {
+        if (millones === 1) {
+          strMillones = (miles === 0 && cientos === 0) ? "UN MILLÓN DE" : "UN MILLÓN";
+        } else {
+          strMillones = (miles === 0 && cientos === 0) ? Centenas(millones) + " MILLONES DE" : Centenas(millones) + " MILLONES";
+        }
+      }
+
+      let strMiles = "";
+      if (miles > 0) {
+        strMiles = (miles === 1) ? "MIL" : Centenas(miles) + " MIL";
+      }
+
+      let strCientos = Centenas(cientos);
+
+      let resultado = [strMillones, strMiles, strCientos].filter(Boolean).join(" ");
+      return resultado.trim() + " PESOS";
+    }
+
+    function cargarCamposConfigIntereses() {
+      document.getElementById('cfg-int-diario').value = configIntereses.diario;
+      document.getElementById('cfg-int-semanal').value = configIntereses.semanal;
+      document.getElementById('cfg-int-mensual').value = configIntereses.mensual;
+
+      document.getElementById('cfg-retraso-diario').value = configInteresesRetraso.diario;
+      document.getElementById('cfg-retraso-semanal').value = configInteresesRetraso.semanal;
+      document.getElementById('cfg-retraso-mensual').value = configInteresesRetraso.mensual;
+    }
+
+    function guardarInteresesConfig(event) {
+      event.preventDefault();
+      configIntereses = {
+        diario: parseFloat(document.getElementById('cfg-int-diario').value) || 0,
+        semanal: parseFloat(document.getElementById('cfg-int-semanal').value) || 0,
+        mensual: parseFloat(document.getElementById('cfg-int-mensual').value) || 0
+      };
+      configInteresesRetraso = {
+        diario: parseFloat(document.getElementById('cfg-retraso-diario').value) || 0,
+        semanal: parseFloat(document.getElementById('cfg-retraso-semanal').value) || 0,
+        mensual: parseFloat(document.getElementById('cfg-retraso-mensual').value) || 0
+      };
+      
+      localStorage.setItem('cobro_cfg_int', JSON.stringify(configIntereses));
+      localStorage.setItem('cobro_cfg_int_retraso', JSON.stringify(configInteresesRetraso));
+      alCambiarFrecuencia();
+      mostrarToast("Todos los ajustes de interés guardados correctamente");
+    }
+
+    function alCambiarFrecuencia() {
+      const freq = document.getElementById('frecuencia-prestamo').value;
+      if (configIntereses[freq] !== undefined) {
+        document.getElementById('interes-prestamo').value = configIntereses[freq];
+      }
+    }
+
+    function calcularRecargoDeCuota(cuota, frecuencia = 'mensual') {
+      const hoyISO = new Date().toISOString().split('T')[0];
+      if (cuota.pagado || cuota.fechaISO >= hoyISO) {
+        return { diasAtraso: 0, montoRecargo: 0 };
+      }
+
+      const fVenc = new Date(cuota.fechaISO + 'T00:00:00');
+      const fHoy = new Date(hoyISO + 'T00:00:00');
+      const diffMs = fHoy.getTime() - fVenc.getTime();
+      const diasAtraso = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diasAtraso <= 0) return { diasAtraso: 0, montoRecargo: 0 };
+
+      const debia = cuota.monto - (cuota.montoPagado || 0);
+
+      let tasaDiaria = configInteresesRetraso.diario;
+      if (frecuencia === 'semanal') tasaDiaria = configInteresesRetraso.semanal / 7;
+      if (frecuencia === 'mensual') tasaDiaria = configInteresesRetraso.mensual / 30;
+
+      const pctRecargoAcumulado = tasaDiaria * diasAtraso;
+      const montoRecargo = Math.round(debia * (pctRecargoAcumulado / 100));
+
+      return { diasAtraso, montoRecargo };
     }
 
     function alternarTema() {
@@ -887,15 +1541,148 @@
     }
 
     function aplicarTema(tema) {
-      if (tema === 'claro') document.getElementById('cuerpo-app').classList.add('light-mode');
-      else document.getElementById('cuerpo-app').classList.remove('light-mode');
+      const body = document.getElementById('cuerpo-app');
+      const btnTema = document.getElementById('btn-tema');
+
+      if (tema === 'claro') {
+        body.classList.add('light-mode');
+        btnTema.innerHTML = '🌙 Modo Oscuro';
+        btnTema.className = "px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-200 text-slate-800 border border-slate-300 hover:bg-slate-300 transition flex items-center gap-1.5 shadow";
+      } else {
+        body.classList.remove('light-mode');
+        btnTema.innerHTML = '☀️ Modo Claro';
+        btnTema.className = "px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 text-amber-400 border border-slate-700 hover:bg-slate-700 transition flex items-center gap-1.5 shadow";
+      }
+    }
+
+    function mostrarSeccion(idSeccion) {
+      document.querySelectorAll('.seccion-app').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById(idSeccion).classList.remove('hidden');
+
+      const btns = ['registrar', 'por-cobrar', 'resumen', 'estado', 'intereses', 'clientes', 'usuarios', 'suscripcion'];
+      
+      btns.forEach(b => {
+        const btnElem = document.getElementById('btn-sec-' + b);
+        if (btnElem) {
+          if ('sec-' + b === idSeccion) {
+            btnElem.className = "w-full text-left px-4 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow-lg shadow-fuchsia-600/20 flex items-center justify-between transition";
+          } else {
+            btnElem.className = "w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center justify-between";
+          }
+        }
+
+        const mBtnElem = document.getElementById('m-btn-' + b);
+        if (mBtnElem) {
+          if ('sec-' + b === idSeccion) {
+            mBtnElem.className = "flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2";
+          } else {
+            mBtnElem.className = "flex flex-col items-center gap-1 text-slate-400 py-1 px-2";
+          }
+        }
+      });
+
+      const titulos = {
+        'sec-registrar': '💳 Registrar Préstamo',
+        'sec-por-cobrar': '📅 Préstamos a Cobrar & Calendario',
+        'sec-resumen': '📊 Resumen de Préstamos & Ganancias',
+        'sec-estado': '⚠️ Estado de Cuentas & Recargos',
+        'sec-intereses': '⚙️ Configuración de Intereses & Alquiler',
+        'sec-clientes': '👥 Registro de Clientes / Deudores',
+        'sec-usuarios': '🔐 Habilitar Accesos Prestamistas',
+        'sec-suscripcion': '💳 Mi Suscripción & Clave'
+      };
+      if (document.getElementById('titulo-pantalla')) {
+        document.getElementById('titulo-pantalla').innerText = titulos[idSeccion] || 'CobroApp';
+      }
+
+      window.scrollTo(0, 0);
+    }
+
+    function verFichaCliente(clienteId) {
+      const c = clientes.find(x => x.id === clienteId);
+      if (!c) return mostrarToast("No se encontraron los datos de este cliente", "error");
+      
+      document.getElementById('info-cli-nombre').innerText = c.nombre;
+      document.getElementById('info-cli-tel').innerText = c.tel;
+      document.getElementById('info-cli-emer').innerText = c.emer || 'No asignado';
+      document.getElementById('info-cli-dir').innerText = c.dir;
+      document.getElementById('info-cli-redes').innerText = c.redes || 'Sin notas';
+
+      const contenedorHistorial = document.getElementById('contenedor-historial-prestamos-cliente');
+      contenedorHistorial.innerHTML = '';
+
+      const hoyISO = new Date().toISOString().split('T')[0];
+      const prestamosCliente = prestamos.filter(p => p.clienteId === clienteId);
+      prestamosCliente.sort((a,b) => (a.estado === 'finalizado' ? 1 : -1));
+
+      if (prestamosCliente.length === 0) {
+        contenedorHistorial.innerHTML = '<p class="text-xs text-slate-500 italic">Este cliente no tiene préstamos registrados.</p>';
+      } else {
+        prestamosCliente.forEach(p => {
+          let cuotasPagadasCount = 0;
+          let cuotasHtml = '';
+          const esFinalizado = p.estado === 'finalizado';
+          const fechaInicioTexto = p.fechaInicio ? new Date(p.fechaInicio + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'S/D';
+
+          if (p.calendario) {
+            p.calendario.forEach(cq => {
+              const estaPagadoCompleto = esFinalizado || cq.pagado;
+              if (estaPagadoCompleto) cuotasPagadasCount++;
+
+              const esVencida = !estaPagadoCompleto && (cq.fechaISO < hoyISO);
+
+              let claseEstiloCuota = 'bg-slate-800 text-slate-300';
+              let textoEstado = `$${(cq.monto - (cq.montoPagado || 0)).toLocaleString('es-AR')} pend.`;
+
+              if (estaPagadoCompleto) {
+                claseEstiloCuota = 'bg-emerald-500/10 text-emerald-400 font-semibold';
+                textoEstado = `✓ Pagado ($${cq.monto.toLocaleString('es-AR')})`;
+              } else if (esVencida) {
+                claseEstiloCuota = 'bg-red-950/50 text-red-400 border border-red-500/40 font-black';
+                textoEstado = `⚠️ VENCIDA ($${(cq.monto - (cq.montoPagado || 0)).toLocaleString('es-AR')} PEND.)`;
+              }
+
+              cuotasHtml += `
+                <div class="flex justify-between items-center text-[11px] p-1.5 rounded ${claseEstiloCuota}">
+                  <span>Cuota ${cq.numero} (${cq.fechaTexto || cq.fechaISO})</span>
+                  <span>${textoEstado}</span>
+                </div>
+              `;
+            });
+          }
+
+          contenedorHistorial.innerHTML += `
+            <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-xl space-y-2 text-xs">
+              <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <div>
+                  <span class="font-bold text-white">Monto: $${p.monto.toLocaleString('es-AR')}</span>
+                  <p class="text-[10px] text-slate-400">Fecha de Inicio: <strong class="text-slate-200">${fechaInicioTexto}</strong></p>
+                </div>
+                <span class="px-2.5 py-1 rounded text-[10px] font-bold ${esFinalizado ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${esFinalizado ? '🏁 Finalizado' : '🟢 Activo'}</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Devuelve: $${p.totalADevolver.toLocaleString('es-AR')} | Progreso: ${cuotasPagadasCount} de ${p.numCuotas} cuotas saldadas</p>
+              <div class="space-y-1 mt-1 max-h-36 overflow-y-auto">
+                ${cuotasHtml}
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      document.getElementById('modal-info-cliente').classList.remove('hidden');
+    }
+
+    function cerrarModalInfoCliente() {
+      document.getElementById('modal-info-cliente').classList.add('hidden');
     }
 
     function renderizarClientesSelect() {
       const datalist = document.getElementById('lista-clientes-datalist');
       if (!datalist) return;
       datalist.innerHTML = '';
-      clientes.forEach(c => { datalist.innerHTML += `<option value="${c.nombre} (${c.dir})"></option>`; });
+      clientes.forEach(c => {
+        datalist.innerHTML += `<option value="${c.nombre} (${c.dir})"></option>`;
+      });
     }
 
     function renderizarDirectorioClientes() {
@@ -923,7 +1710,7 @@
 
     function abrirModalNuevoCliente() {
       document.getElementById('cli-edit-id').value = '';
-      document.getElementById('modal-cliente-titulo').innerText = '👤 Registrar Nuevo Cliente';
+      document.getElementById('modal-cliente-titulo').innerText = '👤 Registrar Nuevo Cliente / Deudor';
       document.getElementById('cli-nombre').value = '';
       document.getElementById('cli-tel').value = '';
       document.getElementById('cli-emergencia').value = '';
@@ -945,28 +1732,47 @@
       document.getElementById('modal-nuevo-cliente').classList.remove('hidden');
     }
 
-    function cerrarModalCliente() { document.getElementById('modal-nuevo-cliente').classList.add('hidden'); }
-    function cerrarModalPago() { document.getElementById('modal-pago-cuota').classList.add('hidden'); }
-    function cerrarModalComprobante() { document.getElementById('modal-comprobante-whatsapp').classList.add('hidden'); }
+    function cerrarModalCliente() {
+      document.getElementById('modal-nuevo-cliente').classList.add('hidden');
+    }
 
-    async function guardarYVincularCliente(e) {
-      e.preventDefault();
+    async function guardarYVincularCliente(event) {
+      event.preventDefault();
+
       const editId = document.getElementById('cli-edit-id').value;
-      const datos = {
+      const tel = document.getElementById('cli-tel').value.trim();
+      const emer = document.getElementById('cli-emergencia').value.trim();
+
+      if (!/^\d{10}$/.test(tel)) {
+        mostrarToast("El celular personal debe tener exactamente 10 números", "error");
+        return;
+      }
+
+      if (!/^\d{10}$/.test(emer)) {
+        mostrarToast("El celular de emergencia debe tener exactamente 10 números", "error");
+        return;
+      }
+
+      const datosCliente = {
+        usuarioId: usuarioActual ? usuarioActual.uid : 'sin_usuario',
         nombre: document.getElementById('cli-nombre').value,
-        tel: document.getElementById('cli-tel').value,
-        emer: document.getElementById('cli-emergencia').value,
+        tel: tel,
+        emer: emer,
         dir: document.getElementById('cli-direccion').value,
         redes: document.getElementById('cli-redes').value
       };
 
       if (editId) {
-        if (db) await db.collection('clientes').doc(editId).update(datos);
+        if (db) await db.collection('clientes').doc(editId).update(datosCliente);
         mostrarToast("Cliente actualizado correctamente");
       } else {
-        if (db) await db.collection('clientes').add(datos);
+        if (db) {
+          const docRef = await db.collection('clientes').add(datosCliente);
+          datosCliente.id = docRef.id;
+        }
         mostrarToast("Cliente registrado e ingresado al directorio");
       }
+
       cerrarModalCliente();
     }
 
@@ -977,10 +1783,9 @@
       }
     }
 
-    let datosPrestamoSimulado = null;
-
     function generarSimulacion(event) {
       event.preventDefault();
+
       const clienteInputVal = document.getElementById('input-cliente').value.trim();
       const clienteObj = clientes.find(c => `${c.nombre} (${c.dir})` === clienteInputVal || c.nombre.toLowerCase() === clienteInputVal.toLowerCase());
       
@@ -1016,7 +1821,8 @@
         if (frecuencia === 'mensual') fechaActual.setMonth(fechaActual.getMonth() + 1);
       }
 
-      datosPrestamoSimulado = {
+      const datosCalculados = {
+        usuarioId: usuarioActual ? usuarioActual.uid : 'sin_usuario',
         clienteId,
         clienteNombre,
         monto,
@@ -1031,7 +1837,29 @@
         fechaCreacion: new Date().toISOString()
       };
 
+      const tieneCuentaActiva = clienteId && prestamos.some(p => p.clienteId === clienteId && p.estado !== 'finalizado');
+
+      if (tieneCuentaActiva) {
+        datosPrestamoSimuladoPendiente = datosCalculados;
+        document.getElementById('adv-cli-nombre').innerText = clienteNombre;
+        document.getElementById('modal-advertencia-prestamo-activo').classList.remove('hidden');
+      } else {
+        datosPrestamoSimulado = datosCalculados;
+        renderizarSimulacion();
+      }
+    }
+
+    function aceptarPrestamoDuplicado() {
+      datosPrestamoSimulado = datosPrestamoSimuladoPendiente;
+      datosPrestamoSimuladoPendiente = null;
+      document.getElementById('modal-advertencia-prestamo-activo').classList.add('hidden');
       renderizarSimulacion();
+    }
+
+    function cancelarPrestamoDuplicado() {
+      datosPrestamoSimuladoPendiente = null;
+      document.getElementById('modal-advertencia-prestamo-activo').classList.add('hidden');
+      document.getElementById('vista-simulacion').classList.add('hidden');
     }
 
     function renderizarSimulacion() {
@@ -1040,7 +1868,12 @@
       document.getElementById('sim-total').innerText = '$' + datosPrestamoSimulado.totalADevolver.toLocaleString('es-AR');
       document.getElementById('sim-ganancia').innerText = '+$' + datosPrestamoSimulado.ganancia.toLocaleString('es-AR');
       document.getElementById('sim-cuota').innerText = '$' + datosPrestamoSimulado.valorCuota.toLocaleString('es-AR');
-      document.getElementById('sim-plan').innerText = `${datosPrestamoSimulado.numCuotas} cuotas (${datosPrestamoSimulado.frecuencia})`;
+      
+      let textoFrec = 'diarias';
+      if (datosPrestamoSimulado.frecuencia === 'semanal') textoFrec = 'semanales';
+      if (datosPrestamoSimulado.frecuencia === 'mensual') textoFrec = 'mensuales';
+
+      document.getElementById('sim-plan').innerText = `${datosPrestamoSimulado.numCuotas} cuotas ${textoFrec}`;
 
       const badge = document.getElementById('badge-cliente');
       const contenedorAcciones = document.getElementById('contenedor-acciones-prestamo');
@@ -1059,7 +1892,7 @@
         badge.innerText = "⚠️ Cliente No Registrado";
 
         contenedorAcciones.innerHTML = `
-          <button onclick="abrirModalNuevoCliente()" class="w-full bg-fuchsia-600/20 hover:bg-fuchsia-600/30 border border-fuchsia-500/40 text-fuchsia-300 font-bold py-3 rounded-xl transition">
+          <button onclick="abrirModalNuevoCliente()" class="w-full bg-fuchsia-600/20 hover:bg-fuchsia-600/30 border border-fuchsia-500/40 text-fuchsia-300 font-bold py-3 rounded-xl transition flex justify-center items-center gap-2">
             👤 Registrar Este Cliente para Otorgar
           </button>
         `;
@@ -1086,14 +1919,24 @@
       mostrarToast(`Préstamo de $${datosPrestamoSimulado.monto.toLocaleString('es-AR')} registrado con éxito`);
       document.getElementById('form-prestamo').reset();
       document.getElementById('input-cliente').value = '';
+      document.getElementById('monto-en-letras').innerText = '';
       document.getElementById('vista-simulacion').classList.add('hidden');
+      
+      document.getElementById('frecuencia-prestamo').value = 'mensual';
+      alCambiarFrecuencia();
+
       datosPrestamoSimulado = null;
     }
 
     function cambiarMesCalendarioVisual(delta) {
       mesCalVisual += delta;
-      if (mesCalVisual > 11) { mesCalVisual = 0; anioCalVisual++; }
-      else if (mesCalVisual < 0) { mesCalVisual = 11; anioCalVisual--; }
+      if (mesCalVisual > 11) {
+        mesCalVisual = 0;
+        anioCalVisual++;
+      } else if (mesCalVisual < 0) {
+        mesCalVisual = 11;
+        anioCalVisual--;
+      }
       renderizarGridCalendarioVisual();
     }
 
@@ -1108,16 +1951,47 @@
 
       const primerDiaMes = new Date(anioCalVisual, mesCalVisual, 1);
       const ultimoDiaMes = new Date(anioCalVisual, mesCalVisual + 1, 0);
+      
       let diaInicioSemana = primerDiaMes.getDay(); 
       diaInicioSemana = (diaInicioSemana === 0) ? 6 : diaInicioSemana - 1; 
 
-      for (let e = 0; e < diaInicioSemana; e++) { grid.innerHTML += `<div></div>`; }
+      const hoyISO = new Date().toISOString().split('T')[0];
+
+      for (let e = 0; e < diaInicioSemana; e++) {
+        grid.innerHTML += `<div></div>`;
+      }
 
       for (let d = 1; d <= ultimoDiaMes.getDate(); d++) {
-        const isoDia = new Date(anioCalVisual, mesCalVisual, d).toISOString().split('T')[0];
+        const fechaDiaObj = new Date(anioCalVisual, mesCalVisual, d);
+        const isoDia = fechaDiaObj.toISOString().split('T')[0];
+
+        let cobrosDia = [];
+        prestamos.forEach(p => {
+          if (p.estado !== 'finalizado' && p.calendario) {
+            p.calendario.forEach(c => {
+              if (c.fechaISO === isoDia) cobrosDia.push(c);
+            });
+          }
+        });
+
+        let claseEstiloDia = "bg-slate-800/40 text-slate-400 border border-slate-700/40 hover:bg-slate-700/60";
+
+        if (cobrosDia.length > 0) {
+          const todosSaldados = cobrosDia.every(x => x.pagado);
+          const tieneVencidos = cobrosDia.some(x => !x.pagado && x.fechaISO < hoyISO);
+
+          if (todosSaldados) {
+            claseEstiloDia = "bg-emerald-500/20 text-emerald-300 border-2 border-emerald-500 font-bold hover:bg-emerald-500/40";
+          } else if (tieneVencidos) {
+            claseEstiloDia = "bg-red-500/20 text-red-300 border-2 border-red-500 font-bold hover:bg-red-500/40 animate-pulse";
+          } else {
+            claseEstiloDia = "bg-amber-500/20 text-amber-300 border-2 border-amber-400 font-bold hover:bg-amber-500/40";
+          }
+        }
+
         grid.innerHTML += `
-          <button onclick="seleccionarDiaDesdeCalendarioVisual('${isoDia}')" class="p-3 rounded-xl bg-slate-800/40 border border-slate-700/40 text-slate-300 hover:bg-slate-700">
-            <span>${d}</span>
+          <button onclick="seleccionarDiaDesdeCalendarioVisual('${isoDia}')" class="p-3 rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${claseEstiloDia}">
+            <span class="text-sm">${d}</span>
           </button>
         `;
       }
@@ -1132,70 +2006,873 @@
     function renderizarPlanificadorSemanal() {
       const container = document.getElementById('grid-dias-semana');
       if (!container) return;
-      container.innerHTML = '<p class="text-xs text-slate-400">Seleccioná un día en el calendario arriba para planificar cobros.</p>';
+      container.innerHTML = '';
+
+      const hoy = new Date();
+      const hoyISO = hoy.toISOString().split('T')[0];
+
+      const tempHoy = new Date();
+      const diaSemanaHoy = tempHoy.getDay(); 
+      const diffLunesHoy = tempHoy.getDate() - (diaSemanaHoy === 0 ? 6 : diaSemanaHoy - 1);
+      const lunesHoyReal = new Date(tempHoy.setDate(diffLunesHoy));
+      const lunesHoyISO = lunesHoyReal.toISOString().split('T')[0];
+
+      const refFecha = new Date(fechaPlanificadorSeleccionADA);
+      const diaSemana = refFecha.getDay(); 
+      const diffLunes = refFecha.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1);
+      
+      const lunesActual = new Date(refFecha.setDate(diffLunes));
+      const lunesISO = lunesActual.toISOString().split('T')[0];
+
+      const domingoActual = new Date(lunesActual);
+      domingoActual.setDate(domingoActual.getDate() + 6);
+
+      const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+      const badgeRango = document.getElementById('rango-semana-actual');
+      const rangoTexto = `${lunesActual.getDate()}/${lunesActual.getMonth()+1} al ${domingoActual.getDate()}/${domingoActual.getMonth()+1}`;
+
+      if (badgeRango) {
+        if (lunesISO === lunesHoyISO) {
+          badgeRango.className = "text-xs font-bold px-3 py-2 bg-emerald-500/20 text-emerald-300 rounded-xl border border-emerald-500/40";
+          badgeRango.innerText = `Semana Actual (${rangoTexto})`;
+        } else if (lunesISO > lunesHoyISO) {
+          badgeRango.className = "text-xs font-bold px-3 py-2 bg-amber-500/20 text-amber-300 rounded-xl border border-amber-500/40";
+          badgeRango.innerText = `⏩ Cobro Adelantado (${rangoTexto})`;
+        } else {
+          badgeRango.className = "text-xs font-bold px-3 py-2 bg-slate-800 text-slate-300 rounded-xl border border-slate-700";
+          badgeRango.innerText = `⏪ Semana Pasada (${rangoTexto})`;
+        }
+      }
+
+      let mapaAtrasadosPorCliente = {};
+
+      prestamos.forEach(p => {
+        if (p.estado !== 'finalizado' && p.calendario) {
+          p.calendario.forEach(c => {
+            if (!c.pagado && c.fechaISO < lunesHoyISO) {
+              if (!mapaAtrasadosPorCliente[p.clienteId]) {
+                mapaAtrasadosPorCliente[p.clienteId] = {
+                  clienteId: p.clienteId,
+                  clienteNombre: p.clienteNombre,
+                  prestamoId: p.id,
+                  frecuencia: p.frecuencia,
+                  cuotas: []
+                };
+              }
+              mapaAtrasadosPorCliente[p.clienteId].cuotas.push({ ...c, prestamoId: p.id });
+            }
+          });
+        }
+      });
+
+      const listaClientesAtrasados = Object.values(mapaAtrasadosPorCliente);
+
+      if (listaClientesAtrasados.length > 0) {
+        let HTMLAtrasadosGroup = '';
+
+        listaClientesAtrasados.forEach(item => {
+          let totalDeudaBase = 0;
+          let totalRecargo = 0;
+
+          item.cuotas.forEach(cq => {
+            totalDeudaBase += (cq.monto - (cq.montoPagado || 0));
+            const r = calcularRecargoDeCuota(cq, item.frecuencia);
+            totalRecargo += r.montoRecargo;
+          });
+
+          HTMLAtrasadosGroup += `
+            <div class="p-3.5 rounded-xl border border-red-500/50 bg-red-950/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <button onclick="verFichaCliente('${item.clienteId}')" class="font-bold text-white hover:text-red-300 text-sm flex items-center gap-1.5 underline underline-offset-2">
+                    <span>👤</span> ${item.clienteNombre ? item.clienteNombre.split('(')[0] : 'Cliente'}
+                  </button>
+                  <button onclick="abrirModalAtrasadosCliente('${item.clienteId}')" class="text-[10px] bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-bold transition">
+                    ⚠️ ${item.cuotas.length} Cuota(s) Atrasada(s)
+                  </button>
+                </div>
+                <p class="text-xs text-slate-300">Base Vencida: <strong class="text-slate-200">$${totalDeudaBase.toLocaleString('es-AR')}</strong> | Recargo: <strong class="text-red-400">+$${totalRecargo.toLocaleString('es-AR')}</strong></p>
+              </div>
+
+              <button onclick="abrirModalPagoAtrasadoTotal('${item.clienteId}')" class="bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-4 py-2 rounded-xl shadow transition active:scale-95 flex items-center gap-1.5">
+                <span>💵</span> Pagar Deuda
+              </button>
+            </div>
+          `;
+        });
+
+        container.innerHTML += `
+          <div class="bg-red-950/20 border-2 border-red-500/40 p-4 rounded-2xl space-y-3 shadow-lg shadow-red-950/50 mb-2">
+            <div class="flex justify-between items-center border-b border-red-800/50 pb-2">
+              <span class="text-sm font-black text-red-400 uppercase tracking-wider flex items-center gap-2">
+                <span>🚨</span> Cobros Atrasados de Semanas Anteriores (${listaClientesAtrasados.length} Clientes)
+              </span>
+            </div>
+            <div class="space-y-2">
+              ${HTMLAtrasadosGroup}
+            </div>
+          </div>
+        `;
+      }
+
+      for (let i = 0; i < 7; i++) {
+        const diaFecha = new Date(lunesActual);
+        diaFecha.setDate(lunesActual.getDate() + i);
+        const fechaIsoDia = diaFecha.toISOString().split('T')[0];
+
+        let cobrosDelDia = [];
+
+        prestamos.forEach(p => {
+          if (p.estado !== 'finalizado' && p.calendario) {
+            p.calendario.forEach(c => {
+              if (c.fechaISO === fechaIsoDia) {
+                cobrosDelDia.push({ prestamoId: p.id, clienteId: p.clienteId, cliente: p.clienteNombre, cuota: c, frecuencia: p.frecuencia });
+              }
+            });
+          }
+        });
+
+        let colorBordeDia = 'border-slate-700/60';
+        let dotColor = '';
+
+        if (cobrosDelDia.length > 0) {
+          const todosSaldados = cobrosDelDia.every(x => x.cuota.pagado);
+          const tieneVencidos = cobrosDelDia.some(x => !x.cuota.pagado && x.cuota.fechaISO < hoyISO);
+
+          if (todosSaldados) {
+            colorBordeDia = 'border-emerald-500/50';
+            dotColor = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>';
+          } else if (tieneVencidos) {
+            colorBordeDia = 'border-red-500/60';
+            dotColor = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>';
+          } else {
+            colorBordeDia = 'border-amber-400/50';
+            dotColor = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>';
+          }
+        }
+
+        let HTMLCobros = '';
+        if (cobrosDelDia.length === 0) {
+          HTMLCobros = `<p class="text-xs text-slate-500 italic py-1">No hay cobros agendados para este día.</p>`;
+        } else {
+          cobrosDelDia.forEach(item => {
+            const esPagado = item.cuota.pagado;
+            const esVencido = !esPagado && (item.cuota.fechaISO < hoyISO);
+            const restoPendiente = item.cuota.monto - (item.cuota.montoPagado || 0);
+
+            let tarjetaEstilo = 'bg-slate-800/80 border-slate-700';
+            let badgeHtml = '';
+            let botonEstilo = 'bg-emerald-600 hover:bg-emerald-500 text-white';
+
+            if (esPagado) {
+              tarjetaEstilo = 'bg-emerald-500/10 border-emerald-500/30';
+              badgeHtml = `<span class="text-xs font-extrabold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 rounded-xl">✓ Pagado</span>`;
+            } else if (esVencido) {
+              tarjetaEstilo = 'bg-red-950/30 border-red-500/50';
+              badgeHtml = `<span class="text-[10px] font-extrabold text-red-400 bg-red-500/20 border border-red-500/40 px-2 py-0.5 rounded uppercase">⚠️ Pasó la fecha</span>`;
+              botonEstilo = 'bg-red-600 hover:bg-red-500 text-white';
+            }
+
+            HTMLCobros += `
+              <div class="p-3 rounded-xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${tarjetaEstilo}">
+                <div class="space-y-0.5">
+                  <div class="flex items-center gap-2">
+                    <button onclick="verFichaCliente('${item.clienteId}')" class="font-bold text-white hover:text-fuchsia-400 text-sm flex items-center gap-1.5 underline decoration-fuchsia-500/50">
+                      <span>👤</span> ${item.cliente ? item.cliente.split('(')[0] : 'Cliente'}
+                    </button>
+                    <button onclick="verFichaCliente('${item.clienteId}')" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded text-slate-300 font-semibold">Ver Ficha</button>
+                    ${!esPagado && esVencido ? badgeHtml : ''}
+                  </div>
+                  <p class="text-xs text-slate-400">Cuota ${item.cuota.numero} | 📍 ${item.cliente ? (item.cliente.split('(')[1] || '').replace(')', '') : ''}</p>
+                </div>
+
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-slate-700/50 pt-2 sm:pt-0">
+                  <div class="text-right">
+                    <span class="font-black text-base ${esPagado ? 'text-emerald-400' : (esVencido ? 'text-red-400' : 'text-fuchsia-400')}">$${restoPendiente.toLocaleString('es-AR')}</span>
+                    ${item.cuota.montoPagado > 0 && !esPagado ? `<p class="text-[10px] text-amber-400 font-semibold">Abonó $${item.cuota.montoPagado.toLocaleString('es-AR')}</p>` : ''}
+                  </div>
+                  ${esPagado ? 
+                    badgeHtml : 
+                    `<button onclick="abrirModalPagoCuota('${item.prestamoId}', '${item.cuota.idCuota}')" class="${botonEstilo} font-bold text-xs px-3.5 py-1.5 rounded-xl shadow transition active:scale-95">Cobrar</button>`
+                  }
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        container.innerHTML += `
+          <div class="bg-[#1E293B]/40 border ${colorBordeDia} p-4 rounded-2xl space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
+              <span class="text-sm font-black text-fuchsia-400 uppercase tracking-wider flex items-center gap-2">
+                ${dotColor} ${nombresDias[i]}
+              </span>
+              <span class="text-xs font-bold text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-700">${diaFecha.getDate()}/${diaFecha.getMonth()+1}/${diaFecha.getFullYear()}</span>
+            </div>
+            <div class="space-y-2">
+              ${HTMLCobros}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function abrirModalPagoAtrasadoTotal(clienteId) {
+      const c = clientes.find(x => x.id === clienteId);
+      if (!c) return;
+
+      const tempHoy = new Date();
+      const diaSemana = tempHoy.getDay();
+      const diffLunes = tempHoy.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1);
+      const lunesActualISO = new Date(tempHoy.setDate(diffLunes)).toISOString().split('T')[0];
+
+      let baseSum = 0;
+      let recargoSum = 0;
+      let maxDiasAtraso = 0;
+
+      prestamos.forEach(p => {
+        if (p.clienteId === clienteId && p.estado !== 'finalizado' && p.calendario) {
+          p.calendario.forEach(cq => {
+            if (!cq.pagado && cq.fechaISO < lunesActualISO) {
+              const pend = cq.monto - (cq.montoPagado || 0);
+              baseSum += pend;
+              const recargoInfo = calcularRecargoDeCuota(cq, p.frecuencia);
+              recargoSum += recargoInfo.montoRecargo;
+              if (recargoInfo.diasAtraso > maxDiasAtraso) {
+                maxDiasAtraso = recargoInfo.diasAtraso;
+              }
+            }
+          });
+        }
+      });
+
+      datosRecargoModalAgrupado = { base: baseSum, montoRecargo: recargoSum, diasAtraso: maxDiasAtraso, maxPermitido: baseSum + recargoSum };
+
+      document.getElementById('pago-atrasado-cliente-id').value = clienteId;
+      document.getElementById('pago-atrasado-cli-nombre').innerText = c.nombre;
+      document.getElementById('pago-atrasado-monto-base').innerText = '$' + baseSum.toLocaleString('es-AR');
+      document.getElementById('pago-atrasado-monto-recargo').innerText = recargoSum.toLocaleString('es-AR');
+      document.getElementById('pago-atrasado-tiempo-txt').innerText = obtenerTextoTiempoAtraso(maxDiasAtraso);
+
+      const chkRecargo = document.getElementById('chk-aplicar-retraso-agrupado');
+      chkRecargo.checked = true;
+
+      alternarRecargoAgrupado();
+
+      document.getElementById('modal-pago-atrasado-agrupado').classList.remove('hidden');
+    }
+
+    function alternarRecargoAgrupado() {
+      const chkRecargo = document.getElementById('chk-aplicar-retraso-agrupado');
+      const boxRecargo = document.getElementById('box-info-recargo-agrupado');
+      const boxTiempo = document.getElementById('box-info-tiempo-agrupado');
+      const inputMonto = document.getElementById('pago-atrasado-monto-ingresado');
+      const totalTxt = document.getElementById('pago-atrasado-monto-total');
+      const hintMax = document.getElementById('pago-atrasado-max-hint');
+
+      if (chkRecargo.checked) {
+        if (boxRecargo) boxRecargo.classList.remove('hidden');
+        if (boxTiempo) boxTiempo.classList.remove('hidden');
+        const total = datosRecargoModalAgrupado.base + datosRecargoModalAgrupado.montoRecargo;
+        datosRecargoModalAgrupado.maxPermitido = total;
+        totalTxt.innerText = '$' + total.toLocaleString('es-AR');
+        inputMonto.value = total;
+        inputMonto.max = total;
+      } else {
+        if (boxRecargo) boxRecargo.classList.add('hidden');
+        if (boxTiempo) boxTiempo.classList.add('hidden');
+        const total = datosRecargoModalAgrupado.base;
+        datosRecargoModalAgrupado.maxPermitido = total;
+        totalTxt.innerText = '$' + total.toLocaleString('es-AR');
+        inputMonto.value = total;
+        inputMonto.max = total;
+      }
+
+      if (hintMax) {
+        hintMax.innerText = `Monto máx. a cobrar: $${datosRecargoModalAgrupado.maxPermitido.toLocaleString('es-AR')}`;
+      }
+
+      convertirMontoPagoAtrasadoEnLetras(inputMonto.value);
+    }
+
+    function cerrarModalPagoAtrasadoTotal() {
+      document.getElementById('modal-pago-atrasado-agrupado').classList.add('hidden');
+    }
+
+    async function confirmarPagoAtrasadoAgrupado(event) {
+      event.preventDefault();
+      const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
+      let montoRestanteCobrado = parseFloat(document.getElementById('pago-atrasado-monto-ingresado').value) || 0;
+
+      if (montoRestanteCobrado > datosRecargoModalAgrupado.maxPermitido) {
+        mostrarToast(`El monto no puede superar el límite máximo ($${datosRecargoModalAgrupado.maxPermitido.toLocaleString('es-AR')})`, "error");
+        return;
+      }
+
+      const montoTotalEfectivoPagado = montoRestanteCobrado;
+
+      if (montoRestanteCobrado <= 0) return;
+
+      const tempHoy = new Date();
+      const diaSemana = tempHoy.getDay();
+      const diffLunes = tempHoy.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1);
+      const lunesActualISO = new Date(tempHoy.setDate(diffLunes)).toISOString().split('T')[0];
+
+      const prestamosCliente = prestamos.filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
+
+      for (let p of prestamosCliente) {
+        if (montoRestanteCobrado <= 0) break;
+        if (!p.calendario) continue;
+
+        let calModificado = JSON.parse(JSON.stringify(p.calendario));
+        let huboCambios = false;
+
+        calModificado.sort((a,b) => a.fechaISO.localeCompare(b.fechaISO));
+
+        for (let i = 0; i < calModificado.length; i++) {
+          let cq = calModificado[i];
+          if (!cq.pagado && cq.fechaISO < lunesActualISO) {
+            let debia = cq.monto - (cq.montoPagado || 0);
+            if (montoRestanteCobrado >= debia) {
+              cq.montoPagado = cq.monto;
+              cq.pagado = true;
+              montoRestanteCobrado -= debia;
+              huboCambios = true;
+            } else {
+              cq.montoPagado = (cq.montoPagado || 0) + montoRestanteCobrado;
+              montoRestanteCobrado = 0;
+              huboCambios = true;
+              break;
+            }
+          }
+        }
+
+        if (huboCambios) {
+          const todasPagadas = calModificado.every(c => c.pagado);
+          const nuevoEstado = todasPagadas ? 'finalizado' : 'activo';
+
+          if (db) {
+            await db.collection('prestamos').doc(p.id).update({ 
+              calendario: calModificado,
+              estado: nuevoEstado 
+            });
+          }
+
+          if (todasPagadas) {
+            mostrarToast(`🎉 ¡Préstamo de $${p.monto.toLocaleString('es-AR')} finalizado y archivado!`, "exito");
+          }
+        }
+      }
+
+      cerrarModalPagoAtrasadoTotal();
+      cerrarModalAtrasados();
+      mostrarToast("Cobro de deuda atrasada registrado correctamente");
+
+      const cliObj = clientes.find(c => c.id === clienteId);
+      const saldoRestanteCliente = calcularSaldoPendienteTotalCliente(clienteId) - montoTotalEfectivoPagado;
+
+      mostrarModalComprobanteWhatsApp(cliObj, montoTotalEfectivoPagado, "Deuda Atrasada Acumulada", saldoRestanteCliente);
+    }
+
+    function abrirModalAtrasadosCliente(clienteId) {
+      const c = clientes.find(x => x.id === clienteId);
+      document.getElementById('atrasados-cli-nombre').innerText = c ? c.nombre : 'Cliente';
+      document.getElementById('atrasados-cli-dir').innerText = c ? c.dir : '';
+
+      const listaModal = document.getElementById('lista-cuotas-atrasadas-modal');
+      listaModal.innerHTML = '';
+
+      const tempHoy = new Date();
+      const diaSemana = tempHoy.getDay();
+      const diffLunes = tempHoy.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1);
+      const lunesActualISO = new Date(tempHoy.setDate(diffLunes)).toISOString().split('T')[0];
+
+      prestamos.forEach(p => {
+        if (p.clienteId === clienteId && p.estado !== 'finalizado' && p.calendario) {
+          p.calendario.forEach(cq => {
+            if (!cq.pagado && cq.fechaISO < lunesActualISO) {
+              const restoPendiente = cq.monto - (cq.montoPagado || 0);
+              const r = calcularRecargoDeCuota(cq, p.frecuencia);
+              listaModal.innerHTML += `
+                <div class="p-3 bg-slate-900 border border-slate-700 rounded-xl flex justify-between items-center text-xs">
+                  <div>
+                    <p class="font-bold text-white">Cuota ${cq.numero} (${cq.fechaTexto || cq.fechaISO})</p>
+                    <p class="text-slate-300 text-[11px]">Base: $${restoPendiente.toLocaleString('es-AR')} | <span class="text-red-400 font-bold">Recargo (+${r.diasAtraso}d): +$${r.montoRecargo.toLocaleString('es-AR')}</span></p>
+                  </div>
+                  <button onclick="abrirModalPagoCuota('${p.id}', '${cq.idCuota}')" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded-lg">
+                    Cobrar Cuota
+                  </button>
+                </div>
+              `;
+            }
+          });
+        }
+      });
+
+      document.getElementById('modal-atrasados-cliente').classList.remove('hidden');
+    }
+
+    function cerrarModalAtrasados() {
+      document.getElementById('modal-atrasados-cliente').classList.add('hidden');
+    }
+
+    function abrirModalPagoCuota(prestamoId, idCuota) {
+      const p = prestamos.find(x => x.id === prestamoId);
+      if (!p) return;
+      const c = p.calendario.find(x => x.idCuota === idCuota);
+      if (!c) return;
+
+      const restoPendienteCuota = c.monto - (c.montoPagado || 0);
+      const recargoInfo = calcularRecargoDeCuota(c, p.frecuencia);
+
+      let saldoTotalRestante = 0;
+      p.calendario.forEach(cq => {
+        if (!cq.pagado) {
+          saldoTotalRestante += (cq.monto - (cq.montoPagado || 0));
+        }
+      });
+
+      datosRecargoModalCuota = { 
+        base: restoPendienteCuota, 
+        montoRecargo: recargoInfo.montoRecargo, 
+        saldoTotalPrestamo: saldoTotalRestante,
+        maxPermitido: saldoTotalRestante + recargoInfo.montoRecargo
+      };
+
+      document.getElementById('pago-prestamo-id').value = prestamoId;
+      document.getElementById('pago-cuota-id').value = idCuota;
+      document.getElementById('pago-cli-nombre').innerText = p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente';
+      document.getElementById('pago-cuota-num').innerText = c.numero;
+      document.getElementById('pago-cuota-base').innerText = '$' + restoPendienteCuota.toLocaleString('es-AR');
+      document.getElementById('pago-saldo-total-prestamo').innerText = '$' + saldoTotalRestante.toLocaleString('es-AR');
+
+      const boxRecargo = document.getElementById('box-recargo-cuota-indiv');
+      const contenedorChk = document.getElementById('contenedor-chk-recargo-cuota');
+      const chkRecargo = document.getElementById('chk-aplicar-retraso-cuota');
+
+      if (recargoInfo.diasAtraso > 0) {
+        boxRecargo.classList.remove('hidden');
+        contenedorChk.classList.remove('hidden');
+        contenedorChk.classList.add('flex');
+        document.getElementById('pago-dias-atraso-txt').innerText = obtenerTextoTiempoAtraso(recargoInfo.diasAtraso);
+        document.getElementById('pago-monto-recargo-txt').innerText = recargoInfo.montoRecargo.toLocaleString('es-AR');
+        chkRecargo.checked = true;
+      } else {
+        boxRecargo.classList.add('hidden');
+        contenedorChk.classList.add('hidden');
+        contenedorChk.classList.remove('flex');
+        chkRecargo.checked = false;
+      }
+
+      alternarRecargoCuota();
+
+      document.getElementById('modal-pago-cuota').classList.remove('hidden');
+    }
+
+    function alternarRecargoCuota() {
+      const chkRecargo = document.getElementById('chk-aplicar-retraso-cuota');
+      const totalSugerido = document.getElementById('pago-cuota-total-sugerido');
+      const inputMonto = document.getElementById('pago-monto-ingresado');
+      const hintMax = document.getElementById('pago-monto-max-hint');
+
+      let recargo = (chkRecargo.checked && datosRecargoModalCuota.montoRecargo > 0) ? datosRecargoModalCuota.montoRecargo : 0;
+      
+      const sugeridoCuota = datosRecargoModalCuota.base + recargo;
+      totalSugerido.innerText = '$' + sugeridoCuota.toLocaleString('es-AR');
+
+      datosRecargoModalCuota.maxPermitido = datosRecargoModalCuota.saldoTotalPrestamo + recargo;
+
+      inputMonto.value = sugeridoCuota;
+      inputMonto.max = datosRecargoModalCuota.maxPermitido;
+
+      if (hintMax) {
+        hintMax.innerText = `Monto máx. para saldar todo: $${datosRecargoModalCuota.maxPermitido.toLocaleString('es-AR')}`;
+      }
+
+      convertirMontoPagoEnLetras(inputMonto.value);
+    }
+
+    async function confirmarRegistroPago(event) {
+      event.preventDefault();
+
+      const prestamoId = document.getElementById('pago-prestamo-id').value;
+      const idCuota = document.getElementById('pago-cuota-id').value;
+      let montoIngresado = parseFloat(document.getElementById('pago-monto-ingresado').value);
+
+      const p = prestamos.find(x => x.id === prestamoId);
+      if (!p) return;
+
+      if (isNaN(montoIngresado) || montoIngresado <= 0) return;
+
+      if (montoIngresado > datosRecargoModalCuota.maxPermitido) {
+        mostrarToast(`El monto no puede superar el saldo total restante ($${datosRecargoModalCuota.maxPermitido.toLocaleString('es-AR')})`, "error");
+        return;
+      }
+
+      const montoEfectivoPagado = montoIngresado;
+      let numeroCuotaTexto = "";
+
+      let calModificado = JSON.parse(JSON.stringify(p.calendario || []));
+      calModificado.sort((a,b) => a.numero - b.numero);
+
+      const idx = calModificado.findIndex(c => c.idCuota === idCuota);
+
+      if (idx !== -1) {
+        numeroCuotaTexto = `Cuota N° ${calModificado[idx].numero} de ${p.numCuotas}`;
+
+        for (let i = idx; i < calModificado.length; i++) {
+          if (montoIngresado <= 0) break;
+          let cq = calModificado[i];
+          if (!cq.pagado) {
+            let debia = cq.monto - (cq.montoPagado || 0);
+            if (montoIngresado >= debia) {
+              cq.montoPagado = cq.monto;
+              cq.pagado = true;
+              montoIngresado -= debia;
+            } else {
+              cq.montoPagado = (cq.montoPagado || 0) + montoIngresado;
+              montoIngresado = 0;
+              break;
+            }
+          }
+        }
+      }
+
+      const todasPagadas = calModificado.every(c => c.pagado);
+      const nuevoEstado = todasPagadas ? 'finalizado' : 'activo';
+
+      if (db) {
+        await db.collection('prestamos').doc(prestamoId).update({ 
+          calendario: calModificado,
+          estado: nuevoEstado 
+        });
+      }
+
+      cerrarModalPago();
+      cerrarModalAtrasados();
+
+      if (todasPagadas) {
+        mostrarToast("🎉 ¡Préstamo pagado al 100% y movido a la carpeta de Finalizados!", "exito");
+      } else {
+        mostrarToast("Cobro registrado con éxito");
+      }
+
+      const cliObj = clientes.find(c => c.id === p.clienteId);
+      const saldoRestanteCliente = calcularSaldoPendienteTotalCliente(p.clienteId) - montoEfectivoPagado;
+
+      mostrarModalComprobanteWhatsApp(cliObj, montoEfectivoPagado, numeroCuotaTexto, saldoRestanteCliente);
+    }
+
+    function verDetallePrestamoActivo(id) {
+      const p = prestamos.find(x => x.id === id);
+      if (!p) return;
+
+      document.getElementById('det-act-cliente').innerText = p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente';
+      document.getElementById('det-act-fechainicio').innerText = p.fechaInicio ? new Date(p.fechaInicio + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'S/D';
+      document.getElementById('det-act-monto').innerText = '$' + p.monto.toLocaleString('es-AR');
+      document.getElementById('det-act-total').innerText = '$' + p.totalADevolver.toLocaleString('es-AR');
+      document.getElementById('det-act-ganancia').innerText = '+$' + p.ganancia.toLocaleString('es-AR');
+
+      const lista = document.getElementById('det-act-lista-cuotas');
+      lista.innerHTML = '';
+
+      const hoyISO = new Date().toISOString().split('T')[0];
+
+      if (p.calendario) {
+        p.calendario.forEach(c => {
+          const esPagado = c.pagado;
+          const esAtrasado = !esPagado && c.fechaISO < hoyISO;
+          const restante = c.monto - (c.montoPagado || 0);
+
+          let estadoText = `<span class="text-emerald-400 font-bold">✓ Pagado</span>`;
+          let bgClass = "bg-emerald-500/10 border-emerald-500/20";
+
+          if (esAtrasado) {
+            estadoText = `<span class="text-red-400 font-bold">⚠️ Atrasado ($${restante.toLocaleString('es-AR')} pend.)</span>`;
+            bgClass = "bg-red-950/30 border-red-500/30";
+          } else if (!esPagado) {
+            estadoText = `<span class="text-amber-400 font-bold">🟡 Pendiente ($${restante.toLocaleString('es-AR')})</span>`;
+            bgClass = "bg-slate-800 border-slate-700";
+          }
+
+          lista.innerHTML += `
+            <div class="flex justify-between items-center text-xs p-2 rounded-xl border ${bgClass}">
+              <span>Cuota ${c.numero} (${c.fechaTexto || c.fechaISO})</span>
+              <span>${estadoText}</span>
+            </div>
+          `;
+        });
+      }
+
+      document.getElementById('modal-detalle-prestamo-activo').classList.remove('hidden');
+    }
+
+    function cerrarModalDetalleActivo() {
+      document.getElementById('modal-detalle-prestamo-activo').classList.add('hidden');
+    }
+
+    function alternarPestanaResumen(pestana) {
+      pestanaResumenActual = pestana;
+      
+      const btnActivos = document.getElementById('btn-tab-activos');
+      const btnFinalizados = document.getElementById('btn-tab-finalizados');
+      const titulo = document.getElementById('titulo-tabla-resumen');
+      const vistaActivos = document.getElementById('vista-prestamos-activos');
+      const vistaFinalizados = document.getElementById('vista-prestamos-finalizados');
+
+      if (pestana === 'activos') {
+        btnActivos.className = "px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white border border-slate-700 shadow";
+        btnFinalizados.className = "px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition";
+        titulo.innerText = "Préstamos Activos en Curso";
+        vistaActivos.classList.remove('hidden');
+        vistaFinalizados.classList.add('hidden');
+      } else {
+        btnFinalizados.className = "px-4 py-2 text-xs font-bold rounded-xl bg-slate-800 text-white border border-slate-700 shadow";
+        btnActivos.className = "px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition";
+        titulo.innerText = "📁 Archivo de Préstamos Finalizados (Organizados por Fecha)";
+        vistaActivos.classList.add('hidden');
+        vistaFinalizados.classList.remove('hidden');
+      }
+
+      renderizarResumenYPrestamos();
     }
 
     function renderizarResumenYPrestamos() {
       let totalCapitalActivos = 0;
       let totalGananciaActivos = 0;
+
       const tablaBody = document.getElementById('tabla-prestamos-body');
       if (!tablaBody) return;
       tablaBody.innerHTML = '';
+
+      const contenedorFinalizados = document.getElementById('vista-prestamos-finalizados');
+      if (contenedorFinalizados) contenedorFinalizados.innerHTML = '';
+
+      let mapaFinalizadosAnioMes = {};
 
       prestamos.forEach(p => {
         if (p.estado !== 'finalizado') {
           totalCapitalActivos += p.monto;
           totalGananciaActivos += p.ganancia;
 
+          const fechaInicioTexto = p.fechaInicio ? new Date(p.fechaInicio + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'S/D';
+
           tablaBody.innerHTML += `
-            <tr class="hover:bg-slate-800/40 transition">
-              <td class="p-3 font-semibold text-white">👤 ${p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente'}</td>
-              <td class="p-3 text-slate-300">${p.fechaInicio || 'S/D'}</td>
+            <tr class="hover:bg-slate-800/40 cursor-pointer transition" onclick="verDetallePrestamoActivo('${p.id}')">
+              <td class="p-3 font-semibold text-white underline decoration-fuchsia-500/50 flex items-center gap-1.5">
+                <span>👤</span> ${p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente'}
+              </td>
+              <td class="p-3 text-slate-300 font-semibold">${fechaInicioTexto}</td>
               <td class="p-3">$${p.monto.toLocaleString('es-AR')}</td>
               <td class="p-3 font-bold text-fuchsia-400">$${p.totalADevolver.toLocaleString('es-AR')}</td>
-              <td class="p-3 uppercase text-xs">${p.numCuotas} (${p.frecuencia})</td>
-              <td class="p-3">
-                <button onclick="solicitarEliminarPrestamo('${p.id}')" class="text-red-400 p-1">🗑️</button>
+              <td class="p-3 uppercase text-xs">${p.numCuotas} cuotas (${p.frecuencia})</td>
+              <td class="p-3" onclick="event.stopPropagation()">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="solicitarFinalizarPrestamo('${p.id}')" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-2 py-1 rounded-lg transition">🏁 Finalizar</button>
+                  <button onclick="solicitarEliminarPrestamo('${p.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold p-1 rounded-lg transition">🗑️</button>
+                </div>
               </td>
             </tr>
           `;
+        } else if (contenedorFinalizados) {
+          const fObj = p.fechaInicio ? new Date(p.fechaInicio + 'T00:00:00') : new Date();
+          const anio = fObj.getFullYear();
+          const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+          const mesNom = mesesNombres[fObj.getMonth()];
+
+          if (!mapaFinalizadosAnioMes[anio]) mapaFinalizadosAnioMes[anio] = {};
+          if (!mapaFinalizadosAnioMes[anio][mesNom]) mapaFinalizadosAnioMes[anio][mesNom] = [];
+
+          mapaFinalizadosAnioMes[anio][mesNom].push(p);
         }
       });
+
+      if (contenedorFinalizados) {
+        const aniosClaves = Object.keys(mapaFinalizadosAnioMes).sort((a,b) => b - a);
+
+        if (aniosClaves.length === 0) {
+          contenedorFinalizados.innerHTML = '<p class="text-xs text-slate-500 italic p-3">No hay préstamos finalizados en el archivo.</p>';
+        } else {
+          aniosClaves.forEach(anio => {
+            let htmlMeses = '';
+            const mesesClaves = Object.keys(mapaFinalizadosAnioMes[anio]);
+
+            mesesClaves.forEach(mes => {
+              const listaP = mapaFinalizadosAnioMes[anio][mes];
+              let tarjetasPrestamos = '';
+
+              listaP.forEach(p => {
+                const fechaTexto = p.fechaInicio ? new Date(p.fechaInicio + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'S/D';
+                tarjetasPrestamos += `
+                  <div class="p-3 bg-slate-900 border border-slate-700/80 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                      <h5 class="font-bold text-white text-sm">👤 ${p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente'}</h5>
+                      <p class="text-xs text-slate-400">Inicio: ${fechaTexto} | Plan: ${p.numCuotas} cuotas (${p.frecuencia})</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <span class="font-black text-emerald-400 text-sm">$${p.totalADevolver.toLocaleString('es-AR')}</span>
+                      <button onclick="solicitarEliminarPrestamo('${p.id}')" class="text-red-400 hover:text-red-300 p-1 text-xs">🗑️</button>
+                    </div>
+                  </div>
+                `;
+              });
+
+              htmlMeses += `
+                <details class="bg-slate-800/50 border border-slate-700/80 rounded-xl p-3 space-y-2 group">
+                  <summary class="font-bold text-sm text-slate-200 cursor-pointer flex justify-between items-center">
+                    <span>📁 Mes: ${mes} (${listaP.length} Préstamo/s)</span>
+                    <span class="text-xs text-fuchsia-400 font-semibold">Ver Carpeta ▼</span>
+                  </summary>
+                  <div class="pt-2 space-y-2 border-t border-slate-700/60">
+                    ${tarjetasPrestamos}
+                  </div>
+                </details>
+              `;
+            });
+
+            contenedorFinalizados.innerHTML += `
+              <div class="bg-[#1E293B]/40 border border-slate-700 p-4 rounded-2xl space-y-3">
+                <h4 class="font-extrabold text-base text-fuchsia-400 border-b border-slate-700 pb-2">📅 Carpeta Año ${anio}</h4>
+                <div class="space-y-2">
+                  ${htmlMeses}
+                </div>
+              </div>
+            `;
+          });
+        }
+      }
 
       document.getElementById('resumen-capital').innerText = '$' + totalCapitalActivos.toLocaleString('es-AR');
       document.getElementById('resumen-ganancia').innerText = '+$' + totalGananciaActivos.toLocaleString('es-AR');
     }
 
-    async function solicitarEliminarPrestamo(id) {
-      if (confirm("¿Estás seguro de eliminar este préstamo?")) {
-        if (db) await db.collection('prestamos').doc(id).delete();
-        mostrarToast("Préstamo eliminado");
+    function solicitarFinalizarPrestamo(id) {
+      const p = prestamos.find(x => x.id === id);
+      if (!p) return;
+      idPrestamoAFinalizar = id;
+      document.getElementById('fin-prestamo-cliente').innerText = p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente';
+      document.getElementById('fin-prestamo-monto').innerText = '$' + p.monto.toLocaleString('es-AR');
+      document.getElementById('modal-confirmar-finalizar-prestamo').classList.remove('hidden');
+    }
+
+    function cerrarModalFinalizarPrestamo() {
+      idPrestamoAFinalizar = null;
+      document.getElementById('modal-confirmar-finalizar-prestamo').classList.add('hidden');
+    }
+
+    async function confirmarFinalizacionPrestamo() {
+      if (idPrestamoAFinalizar && db) {
+        await db.collection('prestamos').doc(idPrestamoAFinalizar).update({ estado: 'finalizado' });
+        cerrarModalFinalizarPrestamo();
+        mostrarToast("Préstamo enviado a la carpeta de Finalizados");
+      }
+    }
+
+    function solicitarEliminarPrestamo(id) {
+      const p = prestamos.find(x => x.id === id);
+      if (!p) return;
+      idPrestamoAEliminar = id;
+      document.getElementById('del-prestamo-cliente').innerText = p.clienteNombre ? p.clienteNombre.split('(')[0] : 'Cliente';
+      document.getElementById('del-prestamo-monto').innerText = '$' + p.monto.toLocaleString('es-AR');
+      document.getElementById('modal-confirmar-eliminar-prestamo').classList.remove('hidden');
+    }
+
+    function cerrarModalEliminarPrestamo() {
+      idPrestamoAEliminar = null;
+      document.getElementById('modal-confirmar-eliminar-prestamo').classList.add('hidden');
+    }
+
+    async function confirmarEliminacionPrestamo() {
+      if (idPrestamoAEliminar && db) {
+        await db.collection('prestamos').doc(idPrestamoAEliminar).delete();
+        cerrarModalEliminarPrestamo();
+        mostrarToast("Préstamo eliminado de la base de datos");
       }
     }
 
     function renderizarEstadoCuentas() {
       const lista = document.getElementById('lista-cobros-dia');
+      const badgePanel = document.getElementById('badge-alertas-panel');
+      const badgeMenu = document.getElementById('badge-alertas-menu');
+
       if (!lista) return;
       lista.innerHTML = '';
+      let contadorAtrasos = 0;
+
+      const tempHoy = new Date();
+      const diaSemana = tempHoy.getDay();
+      const diffLunes = tempHoy.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1);
+      const lunesActualISO = new Date(tempHoy.setDate(diffLunes)).toISOString().split('T')[0];
+
+      let listaClientesEstado = [];
 
       clientes.forEach(c => {
+        const prestamosDelCliente = prestamos.filter(p => p.clienteId === c.id && p.estado !== 'finalizado');
+        
+        if (prestamosDelCliente.length > 0) {
+          let totalDeudaAtrasadaReal = 0;
+
+          prestamosDelCliente.forEach(p => {
+            if (p.calendario) {
+              p.calendario.forEach(cq => {
+                if (!cq.pagado && cq.fechaISO < lunesActualISO) {
+                  totalDeudaAtrasadaReal += (cq.monto - (cq.montoPagado || 0));
+                }
+              });
+            }
+          });
+
+          const tieneAtraso = totalDeudaAtrasadaReal > 0;
+          if (tieneAtraso) contadorAtrasos++;
+
+          listaClientesEstado.push({
+            cliente: c,
+            tieneAtraso: tieneAtraso,
+            totalDeudaAtrasadaReal: totalDeudaAtrasadaReal
+          });
+        }
+      });
+
+      listaClientesEstado.sort((a, b) => {
+        if (a.tieneAtraso && !b.tieneAtraso) return -1;
+        if (!a.tieneAtraso && b.tieneAtraso) return 1;
+        return b.totalDeudaAtrasadaReal - a.totalDeudaAtrasadaReal;
+      });
+
+      listaClientesEstado.forEach(item => {
+        const c = item.cliente;
+        const tieneAtraso = item.tieneAtraso;
+        const totalDeudaAtrasadaReal = item.totalDeudaAtrasadaReal;
+
         lista.innerHTML += `
-          <div class="p-4 rounded-2xl bg-[#1E293B]/40 border border-slate-700/60 flex justify-between items-center">
-            <div>
-              <h4 class="font-bold text-white">${c.nombre}</h4>
+          <div class="p-4 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${tieneAtraso ? 'bg-red-950/20 border-red-500/40' : 'bg-[#1E293B]/40 border-slate-700/60'}">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <h4 class="font-bold text-white text-base">${c.nombre}</h4>
+                ${tieneAtraso ? `<span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] px-2 py-0.5 rounded font-bold">⚠️ DEUDA ATRASADA</span>` : `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded font-bold">AL DÍA</span>`}
+              </div>
               <p class="text-xs text-slate-400">📍 ${c.dir} | 📞 ${c.tel}</p>
             </div>
-            <span class="text-xs font-bold bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-xl">AL DÍA</span>
+
+            <div class="text-right space-y-1 w-full sm:w-auto">
+              <p class="text-xs text-slate-400 font-bold uppercase">Saldo Atrasado Pendiente</p>
+              <p class="text-xl font-black ${tieneAtraso ? 'text-red-400' : 'text-emerald-400'}">$${totalDeudaAtrasadaReal.toLocaleString('es-AR')}</p>
+              <button onclick="verFichaCliente('${c.id}')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl border border-slate-700 transition">
+                📜 Ver Historial Completo
+              </button>
+            </div>
           </div>
         `;
       });
-    }
 
-    function alternarPestanaResumen(p) {}
-    function alCambiarFrecuencia() {}
-    function convertirMontoEnLetras() {}
-    function convertirMontoPagoEnLetras() {}
-    function guardarInteresesConfig(e) { e.preventDefault(); mostrarToast("Tasas de interés guardadas"); }
+      if (lista.innerHTML === '') {
+        lista.innerHTML = '<p class="text-xs text-slate-500 italic p-2">No hay deudas activas actualmente.</p>';
+      }
+
+      if (badgePanel) badgePanel.innerText = `${contadorAtrasos} Atrasos`;
+      if (badgeMenu) badgeMenu.innerText = contadorAtrasos;
+    }
   </script>
 </body>
-</html>
+</html>sf
