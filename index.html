@@ -690,7 +690,8 @@
 
         <div>
           <label class="block text-xs font-bold uppercase mb-1">Monto que paga hoy ($) *</label>
-          <input type="number" id="pago-atrasado-monto-ingresado" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-red-500">
+          <input type="number" id="pago-atrasado-monto-ingresado" oninput="convertirMontoPagoAtrasadoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-red-500">
+          <p id="pago-atrasado-monto-en-letras" class="text-xs text-red-400 font-bold mt-1.5 italic min-h-[18px]"></p>
         </div>
 
         <div class="flex gap-3 pt-2">
@@ -741,7 +742,8 @@
 
         <div>
           <label class="block text-xs font-bold uppercase mb-1">Monto que entrega hoy ($) *</label>
-          <input type="number" id="pago-monto-ingresado" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-emerald-500">
+          <input type="number" id="pago-monto-ingresado" oninput="convertirMontoPagoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:border-emerald-500">
+          <p id="pago-monto-en-letras" class="text-xs text-emerald-400 font-bold mt-1.5 italic min-h-[18px]"></p>
         </div>
 
         <div class="flex gap-3 pt-2">
@@ -1071,6 +1073,28 @@
       p.innerText = '🗣️ ' + numeroALetras(num);
     }
 
+    function convertirMontoPagoEnLetras(valor) {
+      const p = document.getElementById('pago-monto-en-letras');
+      if (!p) return;
+      const num = parseInt(valor);
+      if (!num || isNaN(num) || num <= 0) {
+        p.innerText = '';
+        return;
+      }
+      p.innerText = '🗣️ ' + numeroALetras(num);
+    }
+
+    function convertirMontoPagoAtrasadoEnLetras(valor) {
+      const p = document.getElementById('pago-atrasado-monto-en-letras');
+      if (!p) return;
+      const num = parseInt(valor);
+      if (!num || isNaN(num) || num <= 0) {
+        p.innerText = '';
+        return;
+      }
+      p.innerText = '🗣️ ' + numeroALetras(num);
+    }
+
     function Unidades(num){
       switch(num){
         case 1: return "UN"; case 2: return "DOS"; case 3: return "TRES"; case 4: return "CUATRO";
@@ -1225,7 +1249,6 @@
 
       const btns = ['registrar', 'por-cobrar', 'resumen', 'estado', 'intereses', 'clientes'];
       
-      // Actualizar menú escritorio
       btns.forEach(b => {
         const btnElem = document.getElementById('btn-sec-' + b);
         if (btnElem) {
@@ -1236,7 +1259,6 @@
           }
         }
 
-        // Actualizar menú móvil
         const mBtnElem = document.getElementById('m-btn-' + b);
         if (mBtnElem) {
           if ('sec-' + b === idSeccion) {
@@ -1257,7 +1279,6 @@
       };
       document.getElementById('titulo-pantalla').innerText = titulos[idSeccion];
 
-      // Ir arriba de todo al cambiar de pantalla
       window.scrollTo(0, 0);
     }
 
@@ -1947,6 +1968,7 @@
         inputMonto.value = total;
         inputMonto.max = total;
       }
+      convertirMontoPagoAtrasadoEnLetras(inputMonto.value);
     }
 
     function cerrarModalPagoAtrasadoTotal() {
@@ -2112,37 +2134,55 @@
         totalSugerido.innerText = '$' + total.toLocaleString('es-AR');
         inputMonto.value = total;
       }
+      convertirMontoPagoEnLetras(inputMonto.value);
     }
 
     function cerrarModalPago() {
       document.getElementById('modal-pago-cuota').classList.add('hidden');
     }
 
+    // REGISTRO DE PAGO CON DESCUENTO AUTOMÁTICO EN CUOTAS SIGUIENTES
     async function confirmarRegistroPago(event) {
       event.preventDefault();
 
       const prestamoId = document.getElementById('pago-prestamo-id').value;
       const idCuota = document.getElementById('pago-cuota-id').value;
-      const montoIngresado = parseFloat(document.getElementById('pago-monto-ingresado').value);
+      let montoIngresado = parseFloat(document.getElementById('pago-monto-ingresado').value);
 
       const p = prestamos.find(x => x.id === prestamoId);
       if (!p) return;
 
+      if (isNaN(montoIngresado) || montoIngresado <= 0) return;
+
+      const montoEfectivoPagado = montoIngresado;
       let numeroCuotaTexto = "";
 
-      const calModificado = p.calendario.map(c => {
-        if (c.idCuota === idCuota) {
-          numeroCuotaTexto = `Cuota N° ${c.numero} de ${p.numCuotas}`;
-          const acumulado = (c.montoPagado || 0) + montoIngresado;
-          const estaSaldado = acumulado >= c.monto;
-          return {
-            ...c,
-            montoPagado: acumulado,
-            pagado: estaSaldado
-          };
+      let calModificado = JSON.parse(JSON.stringify(p.calendario || []));
+      calModificado.sort((a,b) => a.numero - b.numero);
+
+      const idx = calModificado.findIndex(c => c.idCuota === idCuota);
+
+      if (idx !== -1) {
+        numeroCuotaTexto = `Cuota N° ${calModificado[idx].numero} de ${p.numCuotas}`;
+
+        // Descontar abonando desde la cuota seleccionada hacia las cuotas siguientes
+        for (let i = idx; i < calModificado.length; i++) {
+          if (montoIngresado <= 0) break;
+          let cq = calModificado[i];
+          if (!cq.pagado) {
+            let debia = cq.monto - (cq.montoPagado || 0);
+            if (montoIngresado >= debia) {
+              cq.montoPagado = cq.monto;
+              cq.pagado = true;
+              montoIngresado -= debia;
+            } else {
+              cq.montoPagado = (cq.montoPagado || 0) + montoIngresado;
+              montoIngresado = 0;
+              break;
+            }
+          }
         }
-        return c;
-      });
+      }
 
       if (db) {
         await db.collection('prestamos').doc(prestamoId).update({ calendario: calModificado });
@@ -2153,9 +2193,9 @@
       mostrarToast("Cobro registrado con éxito");
 
       const cliObj = clientes.find(c => c.id === p.clienteId);
-      const saldoRestanteCliente = calcularSaldoPendienteTotalCliente(p.clienteId) - montoIngresado;
+      const saldoRestanteCliente = calcularSaldoPendienteTotalCliente(p.clienteId) - montoEfectivoPagado;
 
-      mostrarModalComprobanteWhatsApp(cliObj, montoIngresado, numeroCuotaTexto, saldoRestanteCliente);
+      mostrarModalComprobanteWhatsApp(cliObj, montoEfectivoPagado, numeroCuotaTexto, saldoRestanteCliente);
 
       verificarAutoFinalizacion(prestamoId);
     }
