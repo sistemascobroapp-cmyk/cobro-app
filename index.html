@@ -1022,6 +1022,10 @@
       document.getElementById('modal-comprobante-whatsapp').classList.add('hidden');
     }
 
+    function cerrarModalPago() {
+      document.getElementById('modal-pago-cuota').classList.add('hidden');
+    }
+
     function calcularSaldoPendienteTotalCliente(clienteId) {
       let saldo = 0;
       prestamos.forEach(p => {
