@@ -34,17 +34,22 @@ window.onload = function() {
       // OCULTAR LOGIN Y MOSTRAR NAVEGACIÓN
       document.getElementById('pantalla-login').classList.add('hidden');
       
+      // MOSTRAR BARRA INFERIOR EN CELULARES
       const navMobile = document.getElementById('nav-mobile-app');
       if (navMobile) navMobile.classList.remove('hidden');
 
+      // SIDEBAR LATERAL: OCULTO EN CELULAR (hidden), VISIBLE SOLO EN COMPUTADORA (md:flex)
       const sidebar = document.getElementById('sidebar-app');
-      if (sidebar) sidebar.classList.remove('hidden');
+      if (sidebar) {
+        sidebar.classList.add('hidden', 'md:flex');
+        sidebar.classList.remove('md:hidden');
+      }
 
       configurarInterfazPorRol();
       iniciarListenersFirestore();
       escucharConfigSuscripcion();
     } else {
-      // SI NO HAY USUARIO, OCULTAR TODO Y MOSTRAR ÚNICAMENTE LOGIN
+      // SI NO HAY USUARIO, OCULTAR NAVEGACIÓN Y MOSTRAR ÚNICAMENTE LOGIN
       usuarioActual = null;
       document.getElementById('pantalla-login').classList.remove('hidden');
 
@@ -52,7 +57,10 @@ window.onload = function() {
       if (navMobile) navMobile.classList.add('hidden');
 
       const sidebar = document.getElementById('sidebar-app');
-      if (sidebar) sidebar.classList.add('hidden');
+      if (sidebar) {
+        sidebar.classList.add('hidden', 'md:hidden');
+        sidebar.classList.remove('md:flex');
+      }
     }
   });
 };
