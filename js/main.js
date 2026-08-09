@@ -2,6 +2,7 @@
 
 let usuarioActual = null;
 let rolUsuarioActual = 'prestamista'; // Por defecto es prestamista
+let unsubListenerUsuario = null; // Listener en tiempo real de la cuenta actual
 
 window.onload = function() {
   aplicarTema(temaActual);
@@ -12,6 +13,12 @@ window.onload = function() {
   renderizarGridCalendarioVisual();
 
   auth.onAuthStateChanged(async user => {
+    // Si había un listener previo de usuario, lo cancelamos
+    if (unsubListenerUsuario) {
+      unsubListenerUsuario();
+      unsubListenerUsuario = null;
+    }
+
     if (user) {
       usuarioActual = user;
 
@@ -26,9 +33,9 @@ window.onload = function() {
           datosUsuario = userDoc.data();
           rolUsuarioActual = datosUsuario.rol || 'prestamista';
 
-          // Verificación de suspensión de cuenta (solo para prestamistas)
+          // Verificación de suspensión al entrar
           if (datosUsuario.estadoCuenta === 'suspendida' && rolUsuarioActual !== 'admin') {
-            mostrarToast("🚫 Tu cuenta se encuentra suspendida por falta de pago. Contactá al administrador.", "error");
+            mostrarToast("🚫 Tu cuenta se encuentra suspendida por falta de pago.", "error");
             auth.signOut();
             return;
           }
@@ -40,6 +47,19 @@ window.onload = function() {
         if (rolUsuarioActual !== 'admin') {
           evaluarNotificacionSuscripcionDiaria(datosUsuario);
         }
+      }
+
+      // ESCUCHADOR EN TIEMPO REAL DEL ESTADO DEL PRESTAMISTA (EXPULSIÓN INMEDIATA SI LO SUSPENDES)
+      if (rolUsuarioActual !== 'admin') {
+        unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            if (data.estadoCuenta === 'suspendida') {
+              mostrarToast("🚫 Tu cuenta ha sido suspendida por el administrador.", "error");
+              auth.signOut();
+            }
+          }
+        });
       }
 
       // OCULTAR LOGIN Y MOSTRAR LA APLICACIÓN
@@ -89,11 +109,9 @@ function configurarInterfazPorRol() {
   if (rolUsuarioActual === 'admin') {
     if (lblRol) lblRol.innerText = "Panel Administrador Master";
     
-    // MOSTRAR PESTAÑA DE ACCESOS PRESTAMISTAS ÚNICAMENTE AL ADMIN
     if (btnUsrs) { btnUsrs.classList.remove('hidden'); btnUsrs.classList.add('flex'); }
     if (mBtnUsrs) { mBtnUsrs.classList.remove('hidden'); mBtnUsrs.classList.add('flex'); }
     
-    // OCULTAR PESTAÑA DE PAGO DE SUSCRIPCIÓN PARA EL ADMIN
     if (btnSub) { btnSub.classList.add('hidden'); btnSub.classList.remove('flex'); }
     if (mBtnSub) { mBtnSub.classList.add('hidden'); mBtnSub.classList.remove('flex'); }
     
@@ -101,17 +119,14 @@ function configurarInterfazPorRol() {
   } else {
     if (lblRol) lblRol.innerText = "Panel de Prestamista";
     
-    // OCULTAR COMPLETAMENTE LA PESTAÑA DE ACCESOS PARA PRESTAMISTAS
     if (btnUsrs) { btnUsrs.classList.add('hidden'); btnUsrs.classList.remove('flex'); }
     if (mBtnUsrs) { mBtnUsrs.classList.add('hidden'); mBtnUsrs.classList.remove('flex'); }
 
-    // MOSTRAR PESTAÑA DE SUSCRIPCIÓN PARA PRESTAMISTAS
     if (btnSub) { btnSub.classList.remove('hidden'); btnSub.classList.add('flex'); }
     if (mBtnSub) { mBtnSub.classList.remove('hidden'); mBtnSub.classList.add('flex'); }
     
     if (panelSubAdmin) panelSubAdmin.classList.add('hidden');
 
-    // Redirigir a inicio si por algún motivo intenta ver usuarios
     const secUsrs = document.getElementById('sec-usuarios');
     if (secUsrs && !secUsrs.classList.contains('hidden')) {
       mostrarSeccion('sec-registrar');
@@ -261,11 +276,9 @@ function mostrarSeccion(idSeccion) {
 
     const mBtnElem = document.getElementById('m-btn-' + b);
     if (mBtnElem) {
-      // SI NO ES ADMIN Y EL BOTÓN ES USUARIOS -> MANTENER OCULTO
       if (b === 'usuarios' && rolUsuarioActual !== 'admin') {
         mBtnElem.className = "hidden";
       }
-      // SI ES ADMIN Y EL BOTÓN ES SUSCRIPCIÓN -> MANTENER OCULTO
       else if (b === 'suscripcion' && rolUsuarioActual === 'admin') {
         mBtnElem.className = "hidden";
       }

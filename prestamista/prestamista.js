@@ -933,23 +933,50 @@ function enviarComprobanteAlquilerWhatsApp() {
 
 async function cambiarMiContrasena(event) {
   event.preventDefault();
-  const p1 = document.getElementById('cli-nueva-pass').value;
-  const p2 = document.getElementById('cli-confirm-pass').value;
-  if (p1 !== p2) return mostrarToast("Las contraseñas no coinciden", "error");
+  const p1 = document.getElementById('cli-nueva-pass').value.trim();
+  const p2 = document.getElementById('cli-confirm-pass').value.trim();
+
+  if (!p1 || !p2) {
+    mostrarToast("Completá ambos campos de contraseña", "error");
+    return;
+  }
+
+  if (p1 !== p2) {
+    mostrarToast("Las contraseñas no coinciden", "error");
+    return;
+  }
+
+  if (p1.length < 6) {
+    mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    mostrarToast("No hay una sesión activa", "error");
+    return;
+  }
 
   try {
-    await auth.currentUser.updatePassword(p1);
-    
-    if (db && usuarioActual) {
-      await db.collection('usuarios').doc(usuarioActual.uid).update({
+    // 1. Actualizar contraseña real en el servicio de autenticación
+    await user.updatePassword(p1);
+
+    // 2. Actualizar clave legible en Firestore para que la veas en tu panel de Admin
+    if (db) {
+      await db.collection('usuarios').doc(user.uid).update({
         passwordVisual: p1
       });
     }
 
-    mostrarToast("✅ Contraseña actualizada correctamente");
+    mostrarToast("🔑 ¡Contraseña actualizada con éxito!");
     document.getElementById('cli-nueva-pass').value = '';
     document.getElementById('cli-confirm-pass').value = '';
   } catch (error) {
-    mostrarToast("Cerrá sesión y volvé a ingresar antes de cambiar clave", "error");
+    console.error("Error al actualizar contraseña:", error);
+    if (error.code === 'auth/requires-recent-login') {
+      mostrarToast("Por seguridad, cerrá sesión e ingresá nuevamente antes de cambiar la clave.", "error");
+    } else {
+      mostrarToast("Error al cambiar clave: " + error.message, "error");
+    }
   }
 }
