@@ -946,11 +946,21 @@ function renderizarEstadoCuentas() {
     `;
   });
 }
-
 function pagarSuscripcionMercadoPago() {
   if (!configSuscripcion.link) return mostrarToast("Sin link de pago configurado", "error");
-  if (configSuscripcion.link.startsWith('http')) window.open(configSuscripcion.link, '_blank');
-  else { navigator.clipboard.writeText(configSuscripcion.link); mostrarToast(`📋 Alias copiado: ${configSuscripcion.link}`); }
+  
+  let link = configSuscripcion.link.trim();
+  
+  if (link.startsWith('http')) {
+    // Usar location.href fuerza al sistema operativo del celular a abrir la App nativa de Mercado Pago
+    window.location.href = link;
+  } else {
+    // Si pusiste solo un Alias/CBU de texto, lo copia al portapapeles
+    navigator.clipboard.writeText(link);
+    mostrarToast(`📋 Alias copiado: ${link}`);
+  }
+}
+
 }
 
 function enviarComprobanteAlquilerWhatsApp() {
