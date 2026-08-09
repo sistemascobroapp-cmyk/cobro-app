@@ -1,7 +1,7 @@
 // PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN, CONTROL DE SUSPENSIÓN Y ENRUTAMIENTO
 
 let usuarioActual = null;
-let rolUsuarioActual = 'prestamista';
+let rolUsuarioActual = 'prestamista'; // Por defecto NUNCA es admin
 
 window.onload = function() {
   aplicarTema(temaActual);
@@ -20,13 +20,15 @@ window.onload = function() {
         datosUsuario = userDoc.data();
         rolUsuarioActual = datosUsuario.rol || 'prestamista';
 
+        // Verificación de suspensión de cuenta
         if (datosUsuario.estadoCuenta === 'suspendida' && rolUsuarioActual !== 'admin') {
           mostrarToast("🚫 Tu cuenta se encuentra suspendida por falta de pago. Contactá al administrador.", "error");
           auth.signOut();
           return;
         }
       } else {
-        rolUsuarioActual = 'admin';
+        // Si no existe documento de usuario, asigna prestamista por seguridad
+        rolUsuarioActual = 'prestamista';
       }
 
       usuarioActual = user;
@@ -47,6 +49,9 @@ window.onload = function() {
       iniciarListenersFirestore();
       escucharConfigSuscripcion();
 
+      // VERIFICACIÓN AUTOMÁTICA DE PAGO DESDE MERCADO PAGO
+      verificarRetornoAutomaticoMercadoPago();
+
       // VERIFICAR NOTIFICACIÓN DÍAS 5 AL 10 (SÓLO PARA PRESTAMISTAS)
       if (rolUsuarioActual !== 'admin') {
         evaluarNotificacionSuscripcionDiaria(datosUsuario);
@@ -54,6 +59,7 @@ window.onload = function() {
 
     } else {
       usuarioActual = null;
+      rolUsuarioActual = 'prestamista';
       document.getElementById('pantalla-login').classList.remove('hidden');
 
       const navMobile = document.getElementById('nav-mobile-app');
@@ -67,6 +73,30 @@ window.onload = function() {
     }
   });
 };
+
+// DETECTA SI EL PRESTAMISTA VIENE DE PAGAR EN MERCADO PAGO Y LO ACREDITA AUTOMÁTICAMENTE
+async function verificarRetornoAutomaticoMercadoPago() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const status = urlParams.get('status') || urlParams.get('collection_status');
+
+  if (status === 'approved' && usuarioActual && rolUsuarioActual !== 'admin') {
+    const fechaHoy = new Date();
+    const mesAnioKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
+
+    try {
+      await db.collection('usuarios').doc(usuarioActual.uid).update({
+        [`pagosMes.${mesAnioKey}`]: true
+      });
+
+      mostrarToast("🎉 ¡Pago de alquiler acreditado automáticamente! Gracias por tu pago.");
+      
+      // Limpiar los parámetros de la URL para que no vuelva a saltar al recargar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+      console.error("Error al acreditar pago automático:", error);
+    }
+  }
+}
 
 function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
   if (!dataUsuario) return;
@@ -83,11 +113,10 @@ function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
     // Si ya pagó el mes en curso, no le mostramos nada
     if (estaPagoMes) return;
 
-    // Verificar si ya cerró la notificación en el día de hoy
+    // Verificar si ya cerró la notificación hoy
     const yaVistoHoy = localStorage.getItem(`notif_sub_visto_${isoHoy}`);
     if (yaVistoHoy) return;
 
-    // Calcular días faltantes para el día 10
     const diasFaltantes = 10 - diaActual;
     const elemTitulo = document.getElementById('notif-sub-titulo');
     const elemMensaje = document.getElementById('notif-sub-mensaje');
@@ -127,19 +156,27 @@ function configurarInterfazPorRol() {
   const lblRol = document.getElementById('lbl-rol-usuario');
 
   if (rolUsuarioActual === 'admin') {
-    lblRol.innerText = "Panel Administrador Master";
+    if (lblRol) lblRol.innerText = "Panel Administrador Master";
     if (btnUsrs) { btnUsrs.classList.remove('hidden'); btnUsrs.classList.add('flex'); }
     if (btnSub) { btnSub.classList.add('hidden'); btnSub.classList.remove('flex'); }
     if (mBtnUsrs) { mBtnUsrs.classList.remove('hidden'); mBtnUsrs.classList.add('flex'); }
     if (mBtnSub) { mBtnSub.classList.add('hidden'); mBtnSub.classList.remove('flex'); }
     if (panelSubAdmin) panelSubAdmin.classList.remove('hidden');
   } else {
-    lblRol.innerText = "Panel de Prestamista";
+    if (lblRol) lblRol.innerText = "Panel de Prestamista";
+    
+    // OCULTAR Y BLOQUEAR PESTAÑA DE USUARIOS TOTALMENTE PARA PRESTAMISTAS
     if (btnUsrs) { btnUsrs.classList.add('hidden'); btnUsrs.classList.remove('flex'); }
     if (btnSub) { btnSub.classList.remove('hidden'); btnSub.classList.add('flex'); }
     if (mBtnUsrs) { mBtnUsrs.classList.add('hidden'); mBtnUsrs.classList.remove('flex'); }
     if (mBtnSub) { mBtnSub.classList.remove('hidden'); mBtnSub.classList.add('flex'); }
     if (panelSubAdmin) panelSubAdmin.classList.add('hidden');
+
+    // Si por algún motivo estaba en la sección de usuarios, rebotarlo
+    const secUsrs = document.getElementById('sec-usuarios');
+    if (secUsrs && !secUsrs.classList.contains('hidden')) {
+      mostrarSeccion('sec-registrar');
+    }
   }
 }
 
@@ -196,6 +233,12 @@ function cerrarSesionApp() {
 
 function mostrarSeccion(idSeccion) {
   if (!usuarioActual) return;
+
+  // RESTRICCIÓN DE SEGURIDAD: SI NO ES ADMIN Y QUIERE ENTRAR A SEC-USUARIOS, LO REBOTA
+  if (idSeccion === 'sec-usuarios' && rolUsuarioActual !== 'admin') {
+    mostrarToast("⛔ Acceso denegado. Pestaña exclusiva del Administrador Master", "error");
+    idSeccion = 'sec-registrar';
+  }
 
   document.querySelectorAll('.seccion-app').forEach(sec => sec.classList.add('hidden'));
   document.getElementById(idSeccion).classList.remove('hidden');
