@@ -1,8 +1,8 @@
 // PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN, CONTROL DE SUSPENSIÓN Y ENRUTAMIENTO
 
 let usuarioActual = null;
-let rolUsuarioActual = 'prestamista'; // Por defecto es prestamista
-let unsubListenerUsuario = null; // Listener en tiempo real de la cuenta actual
+let rolUsuarioActual = 'prestamista';
+let unsubListenerUsuario = null; // Escuchador en tiempo real de cambios de cuenta
 
 window.onload = function() {
   aplicarTema(temaActual);
@@ -13,7 +13,7 @@ window.onload = function() {
   renderizarGridCalendarioVisual();
 
   auth.onAuthStateChanged(async user => {
-    // Si había un listener previo de usuario, lo cancelamos
+    // Si cambia de usuario, cancelar el listener anterior
     if (unsubListenerUsuario) {
       unsubListenerUsuario();
       unsubListenerUsuario = null;
@@ -25,44 +25,32 @@ window.onload = function() {
       // RECONOCIMIENTO AUTOMÁTICO DE ADMINISTRADOR MASTER POR CORREO
       if (user.email && user.email.toLowerCase() === 'sistemas.cobroapp@gmail.com') {
         rolUsuarioActual = 'admin';
+        ocultarPantallaBloqueo();
       } else {
-        const userDoc = await db.collection('usuarios').doc(user.uid).get();
-        let datosUsuario = null;
+        rolUsuarioActual = 'prestamista';
 
-        if (userDoc.exists) {
-          datosUsuario = userDoc.data();
-          rolUsuarioActual = datosUsuario.rol || 'prestamista';
-
-          // Verificación de suspensión al entrar
-          if (datosUsuario.estadoCuenta === 'suspendida' && rolUsuarioActual !== 'admin') {
-            mostrarToast("🚫 Tu cuenta se encuentra suspendida por falta de pago.", "error");
+        // LISTENER EN TIEMPO REAL SOBRE EL DOCUMENTO DEL PRESTAMISTA
+        unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+          if (!doc.exists) {
+            // SI LA CUENTA FUE ELIMINADA POR EL ADMIN
+            mostrarToast("🚫 Tu cuenta ha sido dada de baja del sistema.", "error");
             auth.signOut();
             return;
           }
-        } else {
-          rolUsuarioActual = 'prestamista';
-        }
 
-        // VERIFICAR NOTIFICACIÓN DÍAS 5 AL 10 (SÓLO PARA PRESTAMISTAS)
-        if (rolUsuarioActual !== 'admin') {
-          evaluarNotificacionSuscripcionDiaria(datosUsuario);
-        }
-      }
+          const data = doc.data();
+          const estado = data.estadoCuenta || 'activa';
 
-      // ESCUCHADOR EN TIEMPO REAL DEL ESTADO DEL PRESTAMISTA (EXPULSIÓN INMEDIATA SI LO SUSPENDES)
-      if (rolUsuarioActual !== 'admin') {
-        unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
-          if (doc.exists) {
-            const data = doc.data();
-            if (data.estadoCuenta === 'suspendida') {
-              mostrarToast("🚫 Tu cuenta ha sido suspendida por el administrador.", "error");
-              auth.signOut();
-            }
+          if (estado === 'suspendida') {
+            mostrarPantallaBloqueo(data);
+          } else {
+            ocultarPantallaBloqueo();
+            evaluarNotificacionSuscripcionDiaria(data);
           }
         });
       }
 
-      // OCULTAR LOGIN Y MOSTRAR LA APLICACIÓN
+      // OCULTAR PANTALLA DE LOGIN
       document.getElementById('pantalla-login').classList.add('hidden');
       
       const navMobile = document.getElementById('nav-mobile-app');
@@ -84,6 +72,8 @@ window.onload = function() {
     } else {
       usuarioActual = null;
       rolUsuarioActual = 'prestamista';
+      ocultarPantallaBloqueo();
+
       document.getElementById('pantalla-login').classList.remove('hidden');
 
       const navMobile = document.getElementById('nav-mobile-app');
@@ -97,6 +87,34 @@ window.onload = function() {
     }
   });
 };
+
+// MOSTRAR PANTALLA INAMOVIBLE DE BLOQUEO POR SUSPENSIÓN
+function mostrarPantallaBloqueo(datosUsuario) {
+  const modalBloqueo = document.getElementById('pantalla-bloqueo-suspension');
+  if (!modalBloqueo) return;
+
+  const elemMonto = document.getElementById('bloqueo-monto');
+  const elemAlias = document.getElementById('bloqueo-alias-cbu');
+
+  if (elemMonto) elemMonto.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
+  if (elemAlias) elemAlias.innerText = configSuscripcion.link || 'Sin CBU/Alias configurado';
+
+  modalBloqueo.classList.remove('hidden');
+}
+
+// OCULTAR PANTALLA DE BLOQUEO CUANDO EL ADMIN ACTIVA / PAGA LA CUENTA
+function ocultarPantallaBloqueo() {
+  const modalBloqueo = document.getElementById('pantalla-bloqueo-suspension');
+  if (modalBloqueo) modalBloqueo.classList.add('hidden');
+}
+
+function copiarAliasBloqueo() {
+  const alias = configSuscripcion.link || '';
+  if (!alias) return mostrarToast("Sin datos para copiar", "error");
+
+  navigator.clipboard.writeText(alias);
+  mostrarToast(`📋 Copiado: ${alias}`);
+}
 
 function configurarInterfazPorRol() {
   const btnUsrs = document.getElementById('btn-sec-usuarios');
@@ -144,7 +162,8 @@ async function verificarRetornoAutomaticoMercadoPago() {
 
     try {
       await db.collection('usuarios').doc(usuarioActual.uid).update({
-        [`pagosMes.${mesAnioKey}`]: true
+        [`pagosMes.${mesAnioKey}`]: true,
+        estadoCuenta: 'activa'
       });
 
       mostrarToast("🎉 ¡Pago de alquiler acreditado automáticamente!");
