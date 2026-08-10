@@ -6,50 +6,63 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
-// ==========================================
-// 1. INICIALIZAR FIREBASE ADMIN Y FIRESTORE
-// ==========================================
-let db;
+// Variable global de base de datos
+let db = null;
 
-try {
-  let rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+// Función para conectar a Firebase de forma segura
+function conectarFirebase() {
+  if (db) return db;
 
-  if (!rawServiceAccount) {
-    throw new Error("La variable FIREBASE_SERVICE_ACCOUNT no existe en Render.");
+  try {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (!rawServiceAccount) {
+      console.error("❌ FALTA VARIABLE: FIREBASE_SERVICE_ACCOUNT no está configurada en Render.");
+      return null;
+    }
+
+    let serviceAccount = typeof rawServiceAccount === 'string' 
+      ? JSON.parse(rawServiceAccount) 
+      : rawServiceAccount;
+
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+
+    db = admin.firestore();
+    console.log("🔥 Conectado a Firestore con éxito");
+    return db;
+  } catch (error) {
+    console.error("❌ Error de conexión a Firebase:", error.message);
+    return null;
   }
-
-  const serviceAccount = typeof rawServiceAccount === 'string' 
-    ? JSON.parse(rawServiceAccount) 
-    : rawServiceAccount;
-
-  if (serviceAccount.private_key) {
-    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  }
-
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  }
-
-  db = admin.firestore();
-  console.log("🔥 Firebase Admin y Firestore inicializados correctamente");
-} catch (error) {
-  console.error("❌ Error crítico al inicializar Firebase Admin:", error.message);
 }
 
+// Intentar conectar al arrancar el servidor
+conectarFirebase();
+
 // ==========================================
-// 2. RUTA 1: CREAR LINK DE PAGO MERCADO PAGO
+// 1. RUTA: CREAR LINK DE PAGO MERCADO PAGO
 // ==========================================
 app.post('/crear-preferencia', async (req, res) => {
   try {
-    if (!db) {
-      return res.status(500).json({ error: "La base de datos (db) no está inicializada en el servidor." });
+    const firestore = conectarFirebase();
+
+    if (!firestore) {
+      return res.status(500).json({ 
+        error: "Error de credenciales en el servidor. Revisa la variable FIREBASE_SERVICE_ACCOUNT en Render." 
+      });
     }
 
     const { prestamoId, cuotaId, usuarioId, monto, clienteNombre, numeroCuota } = req.body;
 
-    const userDoc = await db.collection('usuarios').doc(usuarioId).get();
+    const userDoc = await firestore.collection('usuarios').doc(usuarioId).get();
     if (!userDoc.exists) return res.status(404).json({ error: "Usuario prestamista no encontrado" });
 
     const userData = userDoc.data();
@@ -60,6 +73,11 @@ app.post('/crear-preferencia', async (req, res) => {
     }
 
     const serverUrl = process.env.SERVER_URL || `https://${req.get('host')}`;
+    
+    // Obtener la URL del frontend del cliente y redirigir a pago-exitoso.html
+    const rawFrontendUrl = req.headers.origin || req.headers.referer || "https://google.com";
+    const baseUrl = rawFrontendUrl.replace(/\/index\.html$/, '').replace(/\/$/, '');
+    const successUrl = `${baseUrl}/pago-exitoso.html`;
 
     const preferenceData = {
       items: [{
@@ -70,6 +88,11 @@ app.post('/crear-preferencia', async (req, res) => {
       }],
       external_reference: `${prestamoId}|${cuotaId}`,
       notification_url: `${serverUrl}/webhook-mp?uid=${usuarioId}`,
+      back_urls: {
+        success: successUrl,
+        failure: successUrl,
+        pending: successUrl
+      },
       auto_return: "approved"
     };
 
@@ -97,17 +120,18 @@ app.post('/crear-preferencia', async (req, res) => {
 });
 
 // ==========================================
-// 3. RUTA 2: WEBHOOK DE MERCADO PAGO (PONE CUOTA EN VERDE)
+// 2. RUTA: WEBHOOK DE MERCADO PAGO (PONE CUOTA EN VERDE)
 // ==========================================
 app.all('/webhook-mp', async (req, res) => {
   try {
-    if (!db) return res.status(200).send("OK");
+    const firestore = conectarFirebase();
+    if (!firestore) return res.status(200).send("OK");
 
     const usuarioId = req.query.uid;
     const paymentId = req.query["data.id"] || req.body?.data?.id || req.query.id;
 
     if (paymentId && usuarioId) {
-      const userDoc = await db.collection('usuarios').doc(usuarioId).get();
+      const userDoc = await firestore.collection('usuarios').doc(usuarioId).get();
       const accessToken = userDoc.data()?.configMercadoPago?.accessToken;
 
       if (accessToken) {
@@ -119,7 +143,7 @@ app.all('/webhook-mp', async (req, res) => {
 
         if (paymentData.status === "approved" && paymentData.external_reference) {
           const [prestamoId, cuotaId] = paymentData.external_reference.split("|");
-          const prestamoRef = db.collection("prestamos").doc(prestamoId);
+          const prestamoRef = firestore.collection("prestamos").doc(prestamoId);
           const prestamoDoc = await prestamoRef.get();
 
           if (prestamoDoc.exists) {
