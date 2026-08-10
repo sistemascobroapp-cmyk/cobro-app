@@ -17,6 +17,11 @@ function obtenerNombreMesActual() {
   return `${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// ALIAS PARA COMPATIBILIDAD CON MAIN.JS
+function cargarListaPrestamistasAdmin() {
+  escucharPrestamistasEnTiempoReal();
+}
+
 // CARGA INICIAL DEL PANEL ADMIN
 async function cargarPanelAdmin() {
   if (!window.usuarioActual) return;
@@ -80,13 +85,13 @@ function escucharPrestamistasEnTiempoReal() {
   desuscribirListenerAdmin = db.collection('usuarios').onSnapshot(snapshot => {
     let container = document.getElementById('lista-prestamistas-admin');
     
-    // Si la etiqueta contenedor no existe en el HTML, la crea automáticamente debajo del formulario
+    // Si el contenedor no existe en el HTML, lo busca o genera automáticamente
     if (!container) {
-      const secHabilitar = document.getElementById('sec-habilitar-accesos') || document.querySelector('#sec-habilitar-accesos .max-w-xl') || document.forms['form-crear-usuario']?.parentElement;
+      const secHabilitar = document.getElementById('sec-usuarios') || document.querySelector('#sec-usuarios .tarjeta-ui');
       if (secHabilitar) {
         container = document.createElement('div');
         container.id = 'lista-prestamistas-admin';
-        container.className = 'mt-6 space-y-3';
+        container.className = 'mt-6 space-y-3 pt-4 border-t border-slate-800';
         secHabilitar.appendChild(container);
       } else {
         return;
@@ -104,7 +109,7 @@ function escucharPrestamistasEnTiempoReal() {
     });
 
     if (prestamistas.length === 0) {
-      container.innerHTML = '<p class="text-xs text-slate-500 italic p-3 text-center bg-[#1E293B]/40 rounded-xl border border-slate-800">No hay cuentas de prestamistas registradas aún.</p>';
+      container.innerHTML = '<p class="text-xs text-slate-500 italic p-4 text-center bg-[#1E293B]/40 rounded-xl border border-slate-800">No hay cuentas de prestamistas registradas aún.</p>';
       return;
     }
 
@@ -112,55 +117,55 @@ function escucharPrestamistasEnTiempoReal() {
     const nombreMes = obtenerNombreMesActual();
 
     let html = `
-      <div class="pt-4 border-t border-slate-800">
-        <h4 class="text-xs font-extrabold text-slate-300 uppercase tracking-wider mb-3 flex justify-between items-center">
-          <span>👥 Cuentas de Prestamistas Registradas</span>
-          <span class="text-[10px] text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-1 rounded-full border border-fuchsia-500/20">Mes: ${nombreMes}</span>
+      <div class="pt-2">
+        <h4 class="text-xs font-extrabold text-slate-300 uppercase tracking-wider mb-3 flex justify-between items-center flex-wrap gap-2">
+          <span>👥 Cuentas de Prestamistas Habilitadas (${prestamistas.length})</span>
+          <span class="text-[10px] text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-1 rounded-full border border-fuchsia-500/20">Suscripción Mes: ${nombreMes}</span>
         </h4>
         <div class="space-y-3">
     `;
 
     prestamistas.forEach(u => {
       const estadoManual = u.estadoCuenta || u.estadoSuscripcion || 'activo';
-      const estaSuspendidoManual = estadoManual === 'suspendido' || estadoManual === 'inactivo';
+      const estaSuspendidoManual = estadoManual === 'suspendido' || estadoManual === 'inactivo' || estadoManual === 'suspendida';
 
-      // REINICIO AUTOMÁTICO DE MES: Si el mes actual no coincide con ultimoMesPagado, pasa a pendiente
-      const pagadoEsteMes = u.ultimoMesPagado === mesActualISO;
+      // VERIFICACIÓN DE PAGO DE SUSCRIPCIÓN DEL MES EN CURSO
+      const pagadoEsteMes = u.ultimoMesPagado === mesActualISO || (u.pagosMes && u.pagosMes[mesActualISO] === true);
 
       let badgeSuscripcion = '';
       if (estaSuspendidoManual) {
         badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">🔴 Suspendida</span>';
       } else if (pagadoEsteMes) {
-        badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Pagado (' + nombreMes + ')</span>';
+        badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Al Día (' + nombreMes + ')</span>';
       } else {
-        badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente Pago Mes</span>';
+        badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente de Pago</span>';
       }
 
       const passMostrable = u.passwordVisual || u.password || '••••••';
 
       html += `
-        <div class="p-4 bg-[#1E293B] border border-slate-700/80 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs shadow-lg">
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
+        <div class="p-4 bg-[#1E293B] border border-slate-700/80 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs shadow-lg">
+          <div class="space-y-1.5 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
               <h5 class="font-extrabold text-white text-sm">${u.nombre || 'Prestamista'}</h5>
               ${badgeSuscripcion}
             </div>
-            <p class="text-slate-300">📧 ${u.email || 'Sin correo'}</p>
+            <p class="text-slate-300 font-medium">📧 Correo: <strong class="text-white">${u.email || 'Sin correo'}</strong></p>
             <p class="text-slate-400">🔑 Clave actual: <strong class="text-fuchsia-400 font-mono text-xs bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${passMostrable}</strong></p>
-            <p class="text-[10px] text-slate-500">Último mes abonado: <strong class="text-slate-300">${u.ultimoMesPagado || 'Sin pagos'}</strong></p>
+            <p class="text-[10px] text-slate-500">Último período abonado: <strong class="text-slate-300">${u.ultimoMesPagado || 'Sin registros'}</strong></p>
           </div>
 
-          <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-            <button onclick="marcarPagoMesPrestamista('${u.id}', '${u.nombre || u.email}')" class="px-3 py-1.5 rounded-xl font-extrabold text-xs ${pagadoEsteMes ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg'} transition flex items-center gap-1">
-              💳 ${pagadoEsteMes ? 'Re-Acreditar Pago' : 'Marcar Pago Mes'}
+          <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800">
+            <button onclick="marcarPagoMesPrestamista('${u.id}', '${u.nombre || u.email}')" class="px-3 py-2 rounded-xl font-extrabold text-xs ${pagadoEsteMes ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg'} transition flex items-center gap-1.5">
+              💳 ${pagadoEsteMes ? 'Re-Acreditar Pago' : 'Marcar Cuota Pagada'}
             </button>
 
-            <button onclick="toggleEstadoPrestamista('${u.id}', '${estadoManual}')" class="px-2.5 py-1.5 rounded-xl font-bold text-xs ${estaSuspendidoManual ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30'} transition">
+            <button onclick="toggleEstadoPrestamista('${u.id}', '${estadoManual}')" class="px-3 py-2 rounded-xl font-bold text-xs ${estaSuspendidoManual ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30'} transition flex items-center gap-1">
               ${estaSuspendidoManual ? '▶️ Activar' : '⏸️ Suspender'}
             </button>
 
-            <button onclick="eliminarUsuarioPrestamista('${u.id}', '${u.nombre || u.email}')" class="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition">
-              🗑️ Borrar
+            <button onclick="eliminarUsuarioPrestamista('${u.id}', '${u.nombre || u.email}')" class="px-3 py-2 rounded-xl font-bold text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition flex items-center gap-1">
+              🗑️ Eliminar
             </button>
           </div>
         </div>
@@ -179,18 +184,19 @@ async function marcarPagoMesPrestamista(id, nombre) {
   const mesActualISO = obtenerMesActualISO();
   const nombreMes = obtenerNombreMesActual();
 
-  if (!confirm(`¿Confirmás que "${nombre}" pagó la suscripción de ${nombreMes}?`)) return;
+  if (!confirm(`¿Confirmás registrar el pago de cuota mensual de ${nombreMes} para "${nombre}"?`)) return;
 
   try {
     await db.collection('usuarios').doc(id).update({
       ultimoMesPagado: mesActualISO,
+      [`pagosMes.${mesActualISO}`]: true,
       estadoCuenta: 'activo',
       estadoSuscripcion: 'activo',
       fechaUltimoPago: new Date().toISOString()
     });
 
     if (typeof mostrarToast === 'function') {
-      mostrarToast(`🎉 Pago de ${nombreMes} acreditado para ${nombre}`);
+      mostrarToast(`🎉 Pago de cuota (${nombreMes}) acreditado para ${nombre}`);
     }
   } catch (error) {
     console.error("Error al acreditar pago:", error);
@@ -200,7 +206,7 @@ async function marcarPagoMesPrestamista(id, nombre) {
 
 // SUSPENDER O ACTIVAR LA CUENTA MANUALMENTE
 async function toggleEstadoPrestamista(id, estadoActual) {
-  const estaSuspendido = estadoActual === 'suspendido' || estadoActual === 'inactivo';
+  const estaSuspendido = estadoActual === 'suspendido' || estadoActual === 'inactivo' || estadoActual === 'suspendida';
   const nuevoEstado = estaSuspendido ? 'activo' : 'suspendido';
 
   try {
@@ -210,7 +216,7 @@ async function toggleEstadoPrestamista(id, estadoActual) {
     });
 
     if (typeof mostrarToast === 'function') {
-      mostrarToast(nuevoEstado === 'suspendido' ? "🔴 Cuenta suspendida" : "🟢 Cuenta activada correctamente");
+      mostrarToast(nuevoEstado === 'suspendido' ? "🔴 Cuenta suspendida correctamente" : "🟢 Cuenta activada correctamente");
     }
   } catch (error) {
     console.error("Error al cambiar estado:", error);
@@ -218,13 +224,27 @@ async function toggleEstadoPrestamista(id, estadoActual) {
   }
 }
 
-// ELIMINAR CUENTA DE PRESTAMISTA PERMANENTEMENTE
+// ELIMINAR CUENTA DE PRESTAMISTA PERMANENTEMENTE (JUNTO CON SUS CLIENTES Y PRÉSTAMOS)
 async function eliminarUsuarioPrestamista(id, nombre) {
-  if (!confirm(`¿Estás seguro de eliminar permanentemente la cuenta de "${nombre}"?`)) return;
+  if (!confirm(`⚠️ ATENCIÓN: ¿Estás seguro de eliminar permanentemente la cuenta de "${nombre}"?\n\nEsta acción eliminará el usuario, TODOS sus clientes y TODOS sus préstamos registrados.`)) return;
 
   try {
+    // 1. Eliminar préstamos asociados al prestamista
+    const snapPrestamos = await db.collection('prestamos').where('usuarioId', '==', id).get();
+    const batch1 = db.batch();
+    snapPrestamos.forEach(doc => batch1.delete(doc.ref));
+    await batch1.commit();
+
+    // 2. Eliminar clientes asociados al prestamista
+    const snapClientes = await db.collection('clientes').where('usuarioId', '==', id).get();
+    const batch2 = db.batch();
+    snapClientes.forEach(doc => batch2.delete(doc.ref));
+    await batch2.commit();
+
+    // 3. Eliminar el documento de usuario
     await db.collection('usuarios').doc(id).delete();
-    if (typeof mostrarToast === 'function') mostrarToast("🗑️ Cuenta eliminada correctamente");
+
+    if (typeof mostrarToast === 'function') mostrarToast("🗑️ Cuenta y todos sus datos eliminados correctamente");
   } catch (error) {
     console.error("Error al eliminar usuario:", error);
     if (typeof mostrarToast === 'function') mostrarToast("Error al eliminar la cuenta", "error");
@@ -260,6 +280,7 @@ async function crearUsuarioPrestamista(event) {
       estadoCuenta: 'activo',
       estadoSuscripcion: 'activo',
       ultimoMesPagado: mesActualISO,
+      [`pagosMes.${mesActualISO}`]: true,
       fechaCreacion: new Date().toISOString()
     });
 

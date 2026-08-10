@@ -1,9 +1,0 @@
-const cuota = {
-  id: "cuota_101_1",
-  prestamoId: "pres_101",
-  numeroCuota: 1,
-  montoCuota: 13000,
-  fechaVencimiento: "2026-08-08",
-  estado: "vencido", // Estados posibles: "pendiente", "pagado", "vencido"
-  montoPagado: 0
-};
