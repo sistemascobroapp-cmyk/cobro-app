@@ -1685,7 +1685,7 @@ function compartirComprobanteImagen() {
 // 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO Y PERSISTENCIA FIJA
 // ==========================================
 
-// Actualiza el texto visual del interruptor al hacer clic en la llave
+// Actualiza el texto visual del interruptor
 function actualizarEstadoToggleMP() {
   const chkAuto = document.getElementById('chk-mp-auto-activo');
   const lblEstado = document.getElementById('lbl-mp-auto-estado');
@@ -1695,7 +1695,11 @@ function actualizarEstadoToggleMP() {
 }
 
 async function guardarConfigMercadoPago() {
-  if (!window.usuarioActual) return mostrarToast("Espera un momento mientras carga tu usuario...", "error");
+  const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth().currentUser);
+  if (!usuario) {
+    if (typeof mostrarToast === 'function') mostrarToast("Espera un segundo mientras carga tu usuario...", "error");
+    return;
+  }
 
   const tokenInput = document.getElementById('cfg-mp-access-token');
   const chkAuto = document.getElementById('chk-mp-auto-activo');
@@ -1706,61 +1710,73 @@ async function guardarConfigMercadoPago() {
   actualizarEstadoToggleMP();
 
   try {
+    const userRef = db.collection('usuarios').doc(usuario.uid);
+    const userDoc = await userRef.get();
+    const datosActuales = userDoc.exists ? (userDoc.data().configMercadoPago || {}) : {};
+
+    // Mantiene el token anterior si el campo actual está vacío al tocar la palanca
     const configMP = {
-      accessToken: mpAccessToken,
+      accessToken: mpAccessToken || datosActuales.accessToken || '',
       activo: cobroAutomativoActivo,
       fechaActualizacion: new Date().toISOString()
     };
 
-    await db.collection('usuarios').doc(window.usuarioActual.uid).set({
-      configMercadoPago: configMP
-    }, { merge: true });
+    await userRef.set({ configMercadoPago: configMP }, { merge: true });
 
-    // Actualizar estado en memoria local inmediatamente
     if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
     window.datosUsuarioActual.configMercadoPago = configMP;
 
-    mostrarToast("🤖 Configuración de Mercado Pago guardada correctamente");
+    if (typeof mostrarToast === 'function') {
+      mostrarToast("🤖 Configuración de Mercado Pago guardada");
+    }
 
-    // Actualizar la vista del planificador para mostrar/ocultar el botón de WhatsApp
     if (typeof renderizarPlanificadorSemanal === 'function') {
       renderizarPlanificadorSemanal();
     }
   } catch (error) {
     console.error("Error al guardar token MP:", error);
-    mostrarToast("Error al guardar token de Mercado Pago", "error");
+    if (typeof mostrarToast === 'function') mostrarToast("Error al guardar configuración", "error");
   }
 }
 
 async function cargarConfigMercadoPagoUI() {
-  // Si Firebase aún está iniciando sesión al refrescar, reintentamos en 300ms
-  if (!window.usuarioActual) {
-    setTimeout(cargarConfigMercadoPagoUI, 300);
+  const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth().currentUser);
+  
+  if (!usuario) {
+    // Si Firebase aún no reconoció al usuario al refrescar, reintenta en 400ms
+    setTimeout(cargarConfigMercadoPagoUI, 400);
     return;
   }
 
   try {
-    const doc = await db.collection('usuarios').doc(window.usuarioActual.uid).get();
+    const doc = await db.collection('usuarios').doc(usuario.uid).get();
     if (doc.exists) {
       const data = doc.data();
       const cfgMP = data.configMercadoPago || {};
 
-      // Guardar en variable global de memoria
       if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
       window.datosUsuarioActual.configMercadoPago = cfgMP;
 
       const inputToken = document.getElementById('cfg-mp-access-token');
       const chkAuto = document.getElementById('chk-mp-auto-activo');
+      const lblEstado = document.getElementById('lbl-mp-auto-estado');
 
-      if (inputToken) inputToken.value = cfgMP.accessToken || '';
-      
-      if (chkAuto) {
-        chkAuto.checked = !!cfgMP.activo; // Fija el interruptor encendido si en Firestore es true
+      // 1. Cargar el Token guardado en el casillero de texto
+      if (inputToken && cfgMP.accessToken) {
+        inputToken.value = cfgMP.accessToken;
       }
 
-      actualizarEstadoToggleMP(); // Pone el texto visual en "Activado 🟢" o "Desactivado 🔴"
+      // 2. Encender o apagar la palanca según lo guardado en Firestore
+      const estaActivo = cfgMP.activo === true || cfgMP.activo === 'true';
 
-      // Refrescar planificador semanal con el nuevo estado cargado
+      if (chkAuto) {
+        chkAuto.checked = estaActivo;
+      }
+
+      if (lblEstado) {
+        lblEstado.innerText = estaActivo ? 'Activado 🟢' : 'Desactivado 🔴';
+      }
+
       if (typeof renderizarPlanificadorSemanal === 'function') {
         renderizarPlanificadorSemanal();
       }
@@ -1768,6 +1784,16 @@ async function cargarConfigMercadoPagoUI() {
   } catch (e) {
     console.error("Error al cargar config MP:", e);
   }
+}
+
+// Ejecutar automáticamente apenas Firebase confirme la sesión activa al recargar la página
+if (typeof firebase !== 'undefined' && firebase.auth) {
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      window.usuarioActual = user;
+      cargarConfigMercadoPagoUI();
+    }
+  });
 }
 
 // ==========================================
