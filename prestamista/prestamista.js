@@ -1610,29 +1610,3 @@ async function cambiarMiContrasena(event) {
     mostrarToast("Error al cambiar contraseña", "error");
   }
 }
-
-function pagarSuscripcionMercadoPago() {
-  if (typeof window.pagarSuscripcionMercadoPago === 'function') {
-    window.pagarSuscripcionMercadoPago();
-    return;
-  }
-  if (!window.configSuscripcion || !window.configSuscripcion.link) {
-    return mostrarToast("Link de Mercado Pago no disponible.", "error");
-  }
-  let link = window.configSuscripcion.link.trim();
-  if (!link.startsWith('http')) link = 'https://' + link;
-  window.open(link, '_blank');
-}
-
-function enviarComprobanteAlquilerWhatsApp() {
-  if (typeof window.contactarAdministradorWhatsApp === 'function') {
-    window.contactarAdministradorWhatsApp();
-    return;
-  }
-  if (!window.configSuscripcion || !window.configSuscripcion.whatsapp) {
-    return mostrarToast("Número de WhatsApp no configurado.", "error");
-  }
-  const numWsp = window.configSuscripcion.whatsapp.replace(/[^0-9]/g, '');
-  const mensaje = encodeURIComponent(`Hola! Aboné la suscripción mensual de CobroApp (${window.usuarioActual?.email || ''}). Adjunto comprobante.`);
-  window.open(`https://wa.me/${numWsp}?text=${mensaje}`, '_blank');
-}

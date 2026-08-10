@@ -187,32 +187,61 @@ function aplicarTema(tema) {
   }
 }
 
-// PAGAR SUSCRIPCIÓN EN MERCADO PAGO
-function pagarSuscripcionMercadoPago() {
-  const link = window.configSuscripcion && window.configSuscripcion.link ? window.configSuscripcion.link.trim() : '';
-  if (!link) {
-    if (typeof mostrarToast === 'function') mostrarToast("El administrador aún no configuró el enlace de pago.", "error");
-    else alert("El administrador aún no configuró el enlace de pago.");
-    return;
+// PAGAR SUSCRIPCIÓN EN MERCADO PAGO (CON RESPALDO DIRECTO DE FIRESTORE)
+async function pagarSuscripcionMercadoPago() {
+  try {
+    let link = window.configSuscripcion ? (window.configSuscripcion.link || window.configSuscripcion.linkPago || window.configSuscripcion.alias) : '';
+
+    if ((!link || !link.trim()) && typeof db !== 'undefined' && db) {
+      const doc = await db.collection('configuracion').doc('suscripcion').get();
+      if (doc.exists) {
+        window.configSuscripcion = doc.data();
+        link = doc.data().link || doc.data().linkPago || doc.data().alias;
+      }
+    }
+
+    if (!link || !link.trim()) {
+      if (typeof mostrarToast === 'function') mostrarToast("El administrador aún no configuró el enlace de pago.", "error");
+      else alert("El administrador aún no configuró el enlace de pago.");
+      return;
+    }
+
+    let url = link.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    window.open(url, '_blank');
+  } catch (e) {
+    console.error("Error abrir MP:", e);
+    if (typeof mostrarToast === 'function') mostrarToast("Error al abrir el enlace de Mercado Pago.", "error");
   }
-  let url = link;
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url;
-  }
-  window.open(url, '_blank');
 }
 
-// CONTACTAR ADMINISTRADOR POR WHATSAPP
-function contactarAdministradorWhatsApp() {
-  const wsp = window.configSuscripcion && window.configSuscripcion.whatsapp ? window.configSuscripcion.whatsapp.trim() : '';
-  if (!wsp) {
-    if (typeof mostrarToast === 'function') mostrarToast("El administrador aún no configuró el número de WhatsApp.", "error");
-    else alert("El administrador aún no configuró el número de WhatsApp.");
-    return;
+// CONTACTAR ADMINISTRADOR POR WHATSAPP (CON RESPALDO DIRECTO DE FIRESTORE)
+async function contactarAdministradorWhatsApp() {
+  try {
+    let wsp = window.configSuscripcion ? window.configSuscripcion.whatsapp : '';
+
+    if ((!wsp || !wsp.trim()) && typeof db !== 'undefined' && db) {
+      const doc = await db.collection('configuracion').doc('suscripcion').get();
+      if (doc.exists) {
+        window.configSuscripcion = doc.data();
+        wsp = doc.data().whatsapp;
+      }
+    }
+
+    if (!wsp || !wsp.trim()) {
+      if (typeof mostrarToast === 'function') mostrarToast("El administrador aún no configuró el número de WhatsApp.", "error");
+      else alert("El administrador aún no configuró el número de WhatsApp.");
+      return;
+    }
+
+    const numClean = wsp.replace(/\D/g, '');
+    const mensaje = encodeURIComponent("¡Hola! Te contacto desde CobroApp para realizar una consulta / enviar comprobante sobre mi alquiler de la aplicación.");
+    window.open(`https://wa.me/${numClean}?text=${mensaje}`, '_blank');
+  } catch (e) {
+    console.error("Error abrir WhatsApp:", e);
   }
-  const numClean = wsp.replace(/\D/g, '');
-  const mensaje = encodeURIComponent("¡Hola! Te contacto desde CobroApp para realizar una consulta / enviar comprobante sobre mi alquiler de la aplicación.");
-  window.open(`https://wa.me/${numClean}?text=${mensaje}`, '_blank');
 }
 
 function enviarComprobanteAlquilerWhatsApp() {
