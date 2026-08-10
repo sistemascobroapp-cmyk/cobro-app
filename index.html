@@ -78,10 +78,9 @@
           <div class="flex items-center gap-3"><span>⚠️</span> Estado de Cuentas</div>
           <span id="badge-alertas-menu" class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold border border-red-500/30">0</span>
         </button>
-        <button id="btn-sec-intereses" onclick="mostrarSeccion('sec-intereses')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center gap-3"><span>💳</span> Config. Mercado Pago</button>
+        <button id="btn-sec-intereses" onclick="mostrarSeccion('sec-intereses')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center gap-3"><span>⚙️</span> Config. de Intereses</button>
         <button id="btn-sec-clientes" onclick="mostrarSeccion('sec-clientes')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center gap-3"><span>👥</span> Registro de Clientes</button>
         <button id="btn-sec-usuarios" onclick="mostrarSeccion('sec-usuarios')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-fuchsia-400 hover:bg-slate-800/60 transition items-center gap-3 border border-fuchsia-500/30 hidden"><span>🔐</span> Accesos Prestamistas</button>
-        <button id="btn-sec-suscripcion" onclick="mostrarSeccion('sec-suscripcion')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-indigo-400 hover:bg-slate-800/60 transition items-center gap-3 border border-indigo-500/30 hidden"><span>💳</span> Mi Suscripción & Clave</button>
       </nav>
     </div>
 
@@ -268,9 +267,11 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 5: CONFIGURACIÓN DE MERCADO PAGO Y ALQUILER (ADMIN) -->
+      <!-- SECCIÓN 5: CONFIGURACIÓN DE INTERESES & MERCADO PAGO -->
       <section id="sec-intereses" class="seccion-app space-y-6 hidden">
-        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+        
+        <!-- PANEL PARA EL ADMINISTRADOR (SOLO ADMIN) -->
+        <div id="panel-cfg-admin-mp" class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 hidden">
           <div class="border-b border-slate-800 pb-3">
             <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>💳</span> Configuración de Mercado Pago & Suscripción</h3>
             <p class="text-xs text-slate-400 mt-1">Ingresá los datos de tu Mercado Pago para que los prestamistas te abonen el alquiler mensual de la aplicación.</p>
@@ -295,6 +296,75 @@
             <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition">💾 Guardar Datos de Cobro</button>
           </form>
         </div>
+
+        <!-- PANEL PARA EL PRESTAMISTA (SOLO PRESTAMISTA) -->
+        <div id="panel-cfg-prestamista-tasas" class="space-y-6 hidden">
+          
+          <!-- FORMULARIO DE TASAS DE INTERÉS DE PRESTAMISTA -->
+          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div class="border-b border-slate-800 pb-3">
+              <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>⚙️</span> Configuración de Tasas e Intereses</h3>
+              <p class="text-xs text-slate-400 mt-1">Establecé los porcentajes de interés predeterminados para tus préstamos y mora/retrasos.</p>
+            </div>
+
+            <form onsubmit="guardarConfigInteresesPrestamista(event)" class="space-y-5 max-w-lg">
+              <div class="space-y-3">
+                <h4 class="text-xs font-extrabold uppercase tracking-wider text-fuchsia-400">Tasas de Interés Estándar:</h4>
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">Diario (%)</label>
+                    <input type="number" id="cfg-int-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">Semanal (%)</label>
+                    <input type="number" id="cfg-int-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">Mensual (%)</label>
+                    <input type="number" id="cfg-int-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white">
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-slate-800 pt-4 space-y-3">
+                <h4 class="text-xs font-extrabold uppercase tracking-wider text-red-400">🚨 Recargos por Retraso / Mora (Opcionales):</h4>
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase mb-1 text-red-300">Diario (%)</label>
+                    <input type="number" id="cfg-ret-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase mb-1 text-red-300">Semanal (%)</label>
+                    <input type="number" id="cfg-ret-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase mb-1 text-red-300">Mensual (%)</label>
+                    <input type="number" id="cfg-ret-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white">
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition">💾 Guardar Tasas de Interés</button>
+            </form>
+          </div>
+
+          <!-- ESTADO DE ALQUILER DE LA APP (UBICADO JUSTO ABAJO DE LAS TASAS) -->
+          <div class="tarjeta-ui bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] border border-indigo-500/50 p-6 rounded-2xl shadow-2xl space-y-4">
+            <div class="border-b border-indigo-500/30 pb-3">
+              <h3 class="text-lg font-bold text-indigo-300 flex items-center gap-2"><span>💳</span> Estado de Alquiler de la Aplicación</h3>
+              <p class="text-xs text-indigo-200/70 mt-1">Suscripción mensual de uso de CobroApp.</p>
+            </div>
+            
+            <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400 flex items-center gap-3 flex-wrap">$0 / mes</p>
+            
+            <div class="space-y-2 pt-2 max-w-md">
+              <button id="btn-pagar-sub-mp" onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 cursor-pointer transition">💳 Pagar Alquiler por Mercado Pago</button>
+              <button onclick="contactarAdministradorWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2 transition">📲 Contactar a Administrador</button>
+            </div>
+          </div>
+
+        </div>
+
       </section>
 
       <!-- SECCIÓN 6: REGISTRO DE CLIENTES -->
@@ -322,18 +392,6 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 8: SUSCRIPCIÓN -->
-      <section id="sec-suscripcion" class="seccion-app space-y-6 hidden">
-        <div class="tarjeta-ui bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] border border-indigo-500/50 p-6 rounded-2xl shadow-2xl space-y-4 max-w-lg">
-          <h3 class="text-lg font-bold text-indigo-300">💳 Estado de Alquiler de la App</h3>
-          <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400 flex items-center gap-3 flex-wrap">$0 / mes</p>
-          <div class="space-y-2 pt-2">
-            <button id="btn-pagar-sub-mp" onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg">💳 Pagar Alquiler por Mercado Pago</button>
-            <button onclick="enviarComprobanteAlquilerWhatsApp()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow">📲 Enviar Comprobante por WhatsApp</button>
-          </div>
-        </div>
-      </section>
-
     </main>
   </div>
 
@@ -344,7 +402,7 @@
     <button onclick="mostrarSeccion('sec-resumen')" id="m-btn-resumen" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📊</span><span>Resumen</span></button>
     <button onclick="mostrarSeccion('sec-estado')" id="m-btn-estado" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚠️</span><span>Estado</span></button>
     <button onclick="mostrarSeccion('sec-clientes')" id="m-btn-clientes" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">👥</span><span>Clientes</span></button>
-    <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">💳</span><span>Cobros MP</span></button>
+    <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Tasas</span></button>
   </nav>
 
   <!-- MODAL PARA SELECCIONAR O CREAR CLIENTE -->
@@ -378,37 +436,6 @@
         <button type="button" onclick="cerrarModalVincularClienteSimulacion()" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
         <button type="button" onclick="confirmarVinculacionClienteSimulacion()" class="w-2/3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl text-xs shadow-lg">✨ Confirmar & Otorgar</button>
       </div>
-    </div>
-  </div>
-
-  <!-- MODAL DE CONFIGURACIÓN DE TASAS E INTERESES -->
-  <div id="modal-config-intereses" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-    <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-5 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>⚙️</span> Configurar Intereses y Retrasos</h3>
-        <button onclick="cerrarModalConfigIntereses()" class="text-slate-400 hover:text-white font-bold">✕</button>
-      </div>
-
-      <form onsubmit="guardarInteresesConfigDesdeModal(event)" class="space-y-4">
-        <div class="space-y-3">
-          <h4 class="text-xs font-bold uppercase text-fuchsia-400">Tasas de Interés Estándar:</h4>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Diario (%)</label><input type="number" id="modal-cfg-int-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Semanal (%)</label><input type="number" id="modal-cfg-int-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Mensual (%)</label><input type="number" id="modal-cfg-int-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-        </div>
-
-        <div class="border-t border-slate-800 pt-3 space-y-3">
-          <h4 class="text-xs font-bold uppercase text-red-400">🚨 Tasas por Retraso / Mora (Opcionales):</h4>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Diario (%)</label><input type="number" id="modal-cfg-retraso-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Semanal (%)</label><input type="number" id="modal-cfg-retraso-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Mensual (%)</label><input type="number" id="modal-cfg-retraso-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-        </div>
-
-        <div class="flex gap-3 pt-2">
-          <button type="button" onclick="cerrarModalConfigIntereses()" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
-          <button type="submit" class="w-2/3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl text-xs shadow-lg">💾 Guardar Ajustes</button>
-        </div>
-      </form>
     </div>
   </div>
 
@@ -639,7 +666,7 @@
       </div>
       <div class="space-y-2 pt-2">
         <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg">💳 Ir a Mercado Pago</button>
-        <button onclick="enviarComprobanteAlquilerWhatsApp()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow text-xs">📲 Enviar Comprobante por WhatsApp</button>
+        <button onclick="contactarAdministradorWhatsApp()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl shadow text-xs">📲 Contactar a Administrador</button>
         <button onclick="cerrarSesionApp()" class="w-full bg-slate-800 text-slate-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700">🚪 Cerrar Sesión</button>
       </div>
     </div>

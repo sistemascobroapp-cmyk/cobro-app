@@ -74,18 +74,62 @@ function adaptarInterfazSegunRol() {
 // 1. CONFIGURACIÓN DE INTERESES Y TASAS ⚙️
 // ==========================================
 
+async function guardarConfigInteresesPrestamista(event) {
+  if (event && event.preventDefault) event.preventDefault();
+
+  const intDiario = parseFloat(document.getElementById('cfg-int-diario')?.value) || 0;
+  const intSemanal = parseFloat(document.getElementById('cfg-int-semanal')?.value) || 0;
+  const intMensual = parseFloat(document.getElementById('cfg-int-mensual')?.value) || 0;
+
+  const retDiario = parseFloat(document.getElementById('cfg-ret-diario')?.value) || 0;
+  const retSemanal = parseFloat(document.getElementById('cfg-ret-semanal')?.value) || 0;
+  const retMensual = parseFloat(document.getElementById('cfg-ret-mensual')?.value) || 0;
+
+  if (!window.usuarioActual) return;
+
+  try {
+    await db.collection('usuarios').doc(window.usuarioActual.uid).set({
+      tasasConfig: {
+        intDiario, intSemanal, intMensual,
+        retDiario, retSemanal, retMensual
+      },
+      configIntereses: {
+        intDiario, intSemanal, intMensual,
+        retrasoDiario: retDiario, retrasoSemanal: retSemanal, retrasoMensual: retMensual
+      }
+    }, { merge: true });
+
+    if (window.datosUsuarioActual) {
+      window.datosUsuarioActual.tasasConfig = { intDiario, intSemanal, intMensual, retDiario, retSemanal, retMensual };
+      window.datosUsuarioActual.configIntereses = { intDiario, intSemanal, intMensual, retrasoDiario: retDiario, retrasoSemanal: retSemanal, retrasoMensual: retMensual };
+    }
+
+    if (typeof mostrarToast === 'function') {
+      mostrarToast("⚙️ Tasas e intereses guardados con éxito");
+    }
+  } catch (error) {
+    console.error("Error al guardar tasas:", error);
+    if (typeof mostrarToast === 'function') mostrarToast("Error al guardar tasas", "error");
+  }
+}
+
 async function cargarCamposConfigIntereses() {
   if (!window.usuarioActual) return;
   try {
     const doc = await db.collection('usuarios').doc(window.usuarioActual.uid).get();
-    if (doc.exists && doc.data().configIntereses) {
-      const cfg = doc.data().configIntereses;
-      ['cfg-int-diario', 'modal-cfg-int-diario'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.intDiario ?? 0; });
-      ['cfg-int-semanal', 'modal-cfg-int-semanal'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.intSemanal ?? 0; });
-      ['cfg-int-mensual', 'modal-cfg-int-mensual'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.intMensual ?? 0; });
-      ['cfg-retraso-diario', 'modal-cfg-retraso-diario'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.retrasoDiario ?? 0; });
-      ['cfg-retraso-semanal', 'modal-cfg-retraso-semanal'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.retrasoSemanal ?? 0; });
-      ['cfg-retraso-mensual', 'modal-cfg-retraso-mensual'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.retrasoMensual ?? 0; });
+    if (doc.exists) {
+      const data = doc.data();
+      const cfg = data.tasasConfig || data.configIntereses || {};
+
+      const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+
+      setVal('cfg-int-diario', cfg.intDiario ?? 1);
+      setVal('cfg-int-semanal', cfg.intSemanal ?? 5);
+      setVal('cfg-int-mensual', cfg.intMensual ?? 20);
+
+      setVal('cfg-ret-diario', cfg.retDiario ?? cfg.retrasoDiario ?? 0.5);
+      setVal('cfg-ret-semanal', cfg.retSemanal ?? cfg.retrasoSemanal ?? 2);
+      setVal('cfg-ret-mensual', cfg.retMensual ?? cfg.retrasoMensual ?? 5);
     }
   } catch (error) {
     console.error("Error al cargar configuración de intereses:", error);
@@ -93,25 +137,7 @@ async function cargarCamposConfigIntereses() {
 }
 
 async function guardarInteresesConfig(event) {
-  if (event && event.preventDefault) event.preventDefault();
-  if (!window.usuarioActual) return;
-
-  const configIntereses = {
-    intDiario: parseFloat(document.getElementById('cfg-int-diario')?.value) || 0,
-    intSemanal: parseFloat(document.getElementById('cfg-int-semanal')?.value) || 0,
-    intMensual: parseFloat(document.getElementById('cfg-int-mensual')?.value) || 0,
-    retrasoDiario: parseFloat(document.getElementById('cfg-retraso-diario')?.value) || 0,
-    retrasoSemanal: parseFloat(document.getElementById('cfg-retraso-semanal')?.value) || 0,
-    retrasoMensual: parseFloat(document.getElementById('cfg-retraso-mensual')?.value) || 0
-  };
-
-  try {
-    await db.collection('usuarios').doc(window.usuarioActual.uid).set({ configIntereses }, { merge: true });
-    mostrarToast("⚙️ Ajustes de tasas e intereses guardados correctamente");
-    cargarCamposConfigIntereses();
-  } catch (error) {
-    mostrarToast("Error al guardar la configuración de intereses", "error");
-  }
+  await guardarConfigInteresesPrestamista(event);
 }
 
 function abrirModalConfigIntereses() {
@@ -126,27 +152,8 @@ function cerrarModalConfigIntereses() {
 }
 
 async function guardarInteresesConfigDesdeModal(event) {
-  if (event && event.preventDefault) event.preventDefault();
-  if (!window.usuarioActual) return;
-
-  const configIntereses = {
-    intDiario: parseFloat(document.getElementById('modal-cfg-int-diario')?.value) || 0,
-    intSemanal: parseFloat(document.getElementById('modal-cfg-int-semanal')?.value) || 0,
-    intMensual: parseFloat(document.getElementById('modal-cfg-int-mensual')?.value) || 0,
-    retrasoDiario: parseFloat(document.getElementById('modal-cfg-retraso-diario')?.value) || 0,
-    retrasoSemanal: parseFloat(document.getElementById('modal-cfg-retraso-semanal')?.value) || 0,
-    retrasoMensual: parseFloat(document.getElementById('modal-cfg-retraso-mensual')?.value) || 0
-  };
-
-  try {
-    await db.collection('usuarios').doc(window.usuarioActual.uid).set({ configIntereses }, { merge: true });
-    mostrarToast("⚙️ Tasas e intereses guardados con éxito");
-    cerrarModalConfigIntereses();
-    cargarCamposConfigIntereses();
-    alCambiarFrecuencia();
-  } catch (error) {
-    mostrarToast("Error al guardar configuración", "error");
-  }
+  await guardarConfigInteresesPrestamista(event);
+  cerrarModalConfigIntereses();
 }
 
 // ==========================================
@@ -154,10 +161,10 @@ async function guardarInteresesConfigDesdeModal(event) {
 // ==========================================
 function calcularPorcentajeRecargoEscalonado(diasAtraso) {
   if (diasAtraso <= 0) return 0;
-  const cfg = window.datosUsuarioActual?.configIntereses || {};
-  const retDiario = parseFloat(cfg.retrasoDiario) || 0;
-  const retSemanal = parseFloat(cfg.retrasoSemanal) || 0;
-  const retMensual = parseFloat(cfg.retrasoMensual) || 0;
+  const cfg = window.datosUsuarioActual?.tasasConfig || window.datosUsuarioActual?.configIntereses || {};
+  const retDiario = parseFloat(cfg.retDiario ?? cfg.retrasoDiario) || 0;
+  const retSemanal = parseFloat(cfg.retSemanal ?? cfg.retrasoSemanal) || 0;
+  const retMensual = parseFloat(cfg.retMensual ?? cfg.retrasoMensual) || 0;
 
   const meses = Math.floor(diasAtraso / 30);
   const remMes = diasAtraso % 30;
@@ -365,15 +372,17 @@ function cerrarModalInfoCliente() {
 function alCambiarFrecuencia() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
   const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
-  if (esAdmin) return; // En Admin no se aplican intereses por frecuencia
+  if (esAdmin) return;
 
-  const frec = document.getElementById('frecuencia-prestamo')?.value;
+  const frec = document.getElementById('frecuencia-prestamo')?.value || 'mensual';
   const inputInt = document.getElementById('interes-prestamo');
   if (!inputInt) return;
 
-  if (frec === 'diario') inputInt.value = document.getElementById('cfg-int-diario')?.value || 10;
-  if (frec === 'semanal') inputInt.value = document.getElementById('cfg-int-semanal')?.value || 20;
-  if (frec === 'mensual') inputInt.value = document.getElementById('cfg-int-mensual')?.value || 30;
+  const tasas = window.datosUsuarioActual?.tasasConfig || window.datosUsuarioActual?.configIntereses || {};
+
+  if (frec === 'diario') inputInt.value = tasas.intDiario ?? 1;
+  else if (frec === 'semanal') inputInt.value = tasas.intSemanal ?? 5;
+  else inputInt.value = tasas.intMensual ?? 20;
 }
 
 function convertirMontoEnLetras(val) {
@@ -438,7 +447,7 @@ function generarSimulacion(event) {
       const diaOriginal = fechaCursor.getDate();
       fechaCursor.setMonth(fechaCursor.getMonth() + 1);
       if (fechaCursor.getDate() !== diaOriginal) {
-        fechaCursor.setDate(0); // Evita desbordamiento de fin de mes
+        fechaCursor.setDate(0);
       }
     }
   }
@@ -1603,6 +1612,10 @@ async function cambiarMiContrasena(event) {
 }
 
 function pagarSuscripcionMercadoPago() {
+  if (typeof window.pagarSuscripcionMercadoPago === 'function') {
+    window.pagarSuscripcionMercadoPago();
+    return;
+  }
   if (!window.configSuscripcion || !window.configSuscripcion.link) {
     return mostrarToast("Link de Mercado Pago no disponible.", "error");
   }
@@ -1612,6 +1625,10 @@ function pagarSuscripcionMercadoPago() {
 }
 
 function enviarComprobanteAlquilerWhatsApp() {
+  if (typeof window.contactarAdministradorWhatsApp === 'function') {
+    window.contactarAdministradorWhatsApp();
+    return;
+  }
   if (!window.configSuscripcion || !window.configSuscripcion.whatsapp) {
     return mostrarToast("Número de WhatsApp no configurado.", "error");
   }

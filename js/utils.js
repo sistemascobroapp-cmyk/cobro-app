@@ -1,33 +1,18 @@
-// FUNCIONES DE UTILIDAD: TOASTS, NÚMEROS A LETRAS, TEMAS Y FECHA LOCAL
+// FUNCIONES DE UTILIDAD GENERAL, TOASTS, FECHAS Y ENLACES
 
-function obtenerFechaLocalISO(d) {
-  let fecha = d;
-  if (!fecha) {
-    fecha = new Date();
-  } else if (typeof fecha === 'string') {
-    // Si ya viene en formato YYYY-MM-DD, lo devuelve directamente
-    if (/^\d{4}-\d{2}-\d{2}/.test(fecha)) {
-      return fecha.split('T')[0];
-    }
-    fecha = new Date(fecha);
-  }
-
-  const year = fecha.getFullYear();
-  const month = String(fecha.getMonth() + 1).padStart(2, '0');
-  const day = String(fecha.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function mostrarToast(mensaje, tipo = "exito") {
+function mostrarToast(mensaje, tipo = 'exito') {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
   const toast = document.createElement('div');
-  const bgColor = tipo === "error" ? "bg-red-600/90 border-red-500" : "bg-emerald-600/90 border-emerald-500";
+  const esError = tipo === 'error';
+  toast.className = `px-4 py-3 rounded-xl text-xs font-extrabold shadow-2xl flex items-center gap-2 border pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 ${
+    esError 
+      ? 'bg-red-950/90 text-red-200 border-red-500/50 shadow-red-950/50' 
+      : 'bg-emerald-950/90 text-emerald-200 border-emerald-500/50 shadow-emerald-950/50'
+  }`;
   
-  toast.className = `px-4 py-3 rounded-2xl text-white text-xs font-bold border shadow-xl backdrop-blur-md flex items-center gap-2 transition-all transform duration-300 translate-y-2 opacity-0 pointer-events-auto ${bgColor}`;
-  toast.innerHTML = `<span>${tipo === "error" ? "🚫" : "✅"}</span> <span>${mensaje}</span>`;
-
+  toast.innerHTML = `<span>${esError ? '🚨' : '✅'}</span><span>${mensaje}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -35,38 +20,37 @@ function mostrarToast(mensaje, tipo = "exito") {
   }, 10);
 
   setTimeout(() => {
-    toast.classList.add('opacity-0', '-translate-y-2');
+    toast.classList.add('opacity-0', 'translate-y-2');
     setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
 
-function aplicarTema(tema) {
-  const cuerpo = document.getElementById('cuerpo-app');
-  const btnTema = document.getElementById('btn-tema');
-  if (!cuerpo) return;
+function obtenerFechaLocalISO(fecha = new Date()) {
+  const d = new Date(fecha);
+  const offset = d.getTimezoneOffset();
+  const fechaLocal = new Date(d.getTime() - (offset * 60 * 1000));
+  return fechaLocal.toISOString().split('T')[0];
+}
 
-  if (tema === 'claro') {
-    cuerpo.classList.add('light-mode');
-    if (btnTema) btnTema.innerHTML = '🌙 Modo Oscuro';
-  } else {
-    cuerpo.classList.remove('light-mode');
-    if (btnTema) btnTema.innerHTML = '☀️ Modo Claro';
+function formatearFechaEspanol(isoFechaStr) {
+  if (!isoFechaStr) return '-';
+  const partes = isoFechaStr.split('-');
+  if (partes.length !== 3) return isoFechaStr;
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+
+function convertirMontoEnLetras(num) {
+  const elem = document.getElementById('monto-en-letras');
+  if (!elem) return;
+
+  const valor = parseFloat(num);
+  if (isNaN(valor) || valor <= 0) {
+    elem.innerText = '';
+    return;
   }
-  localStorage.setItem('tema_app', tema);
-  window.temaActual = tema;
-}
 
-function alternarTema() {
-  const nuevoTema = window.temaActual === 'claro' ? 'oscuro' : 'claro';
-  aplicarTema(nuevoTema);
-}
-
-function numeroALetras(num) {
-  num = Math.floor(num);
-  if (isNaN(num) || num <= 0) return '';
-
-  const Unidades = num => {
-    switch (num) {
+  function Unidades(num){
+    switch(num){
       case 1: return 'UN';
       case 2: return 'DOS';
       case 3: return 'TRES';
@@ -76,18 +60,16 @@ function numeroALetras(num) {
       case 7: return 'SIETE';
       case 8: return 'OCHO';
       case 9: return 'NUEVE';
-      default: return '';
     }
-  };
+    return '';
+  }
 
-  const DecenasY = (strSin, numUnidades) => numUnidades > 0 ? strSin + ' Y ' + Unidades(numUnidades) : strSin;
-
-  const Decenas = num => {
-    const decena = Math.floor(num / 10);
+  function Decenas(num){
+    const decena = Math.floor(num/10);
     const unidad = num - (decena * 10);
-    switch (decena) {
+    switch(decena){
       case 1:
-        switch (unidad) {
+        switch(unidad){
           case 0: return 'DIEZ';
           case 1: return 'ONCE';
           case 2: return 'DOCE';
@@ -97,7 +79,7 @@ function numeroALetras(num) {
           default: return 'DIECI' + Unidades(unidad);
         }
       case 2:
-        switch (unidad) {
+        switch(unidad){
           case 0: return 'VEINTE';
           default: return 'VEINTI' + Unidades(unidad);
         }
@@ -110,12 +92,17 @@ function numeroALetras(num) {
       case 9: return DecenasY('NOVENTA', unidad);
       case 0: return Unidades(unidad);
     }
-  };
+  }
 
-  const Centenas = num => {
+  function DecenasY(strSin, numUnidades) {
+    if (numUnidades > 0) return strSin + ' Y ' + Unidades(numUnidades);
+    return strSin;
+  }
+
+  function Centenas(num) {
     const centenas = Math.floor(num / 100);
     const decenas = num - (centenas * 100);
-    switch (centenas) {
+    switch(centenas) {
       case 1:
         if (decenas > 0) return 'CIENTO ' + Decenas(decenas);
         return 'CIEN';
@@ -125,13 +112,13 @@ function numeroALetras(num) {
       case 5: return 'QUINIENTOS ' + Decenas(decenas);
       case 6: return 'SEISCIENTOS ' + Decenas(decenas);
       case 7: return 'SETECIENTOS ' + Decenas(decenas);
-      case 8: return 'OCHOCIENTOS ' + Decenas(decenas);
+      case 8: return 'OCHOIENTOS ' + Decenas(decenas);
       case 9: return 'NOVECIENTOS ' + Decenas(decenas);
     }
     return Decenas(decenas);
-  };
+  }
 
-  const Seccion = (num, divisor, strSingular, strPlural) => {
+  function Seccion(num, divisor, strSingular, strPlural) {
     const cientos = Math.floor(num / divisor);
     const resto = num - (cientos * divisor);
     let letras = '';
@@ -139,29 +126,95 @@ function numeroALetras(num) {
       if (cientos > 1) letras = Centenas(cientos) + ' ' + strPlural;
       else letras = strSingular;
     }
-    if (resto > 0) letras += ' ';
+    if (resto > 0) letras += '';
     return letras;
-  };
+  }
 
-  const Miles = num => {
+  function Miles(num) {
     const divisor = 1000;
     const cientos = Math.floor(num / divisor);
     const resto = num - (cientos * divisor);
     const strMiles = Seccion(num, divisor, 'UN MIL', 'MIL');
     const strCentenas = Centenas(resto);
-    if (strMiles === '') return strCentenas;
-    return strMiles + ' ' + strCentenas;
-  };
 
-  const Millones = num => {
+    if(strMiles === '') return strCentenas;
+    return strMiles + ' ' + strCentenas;
+  }
+
+  function Millones(num) {
     const divisor = 1000000;
     const cientos = Math.floor(num / divisor);
     const resto = num - (cientos * divisor);
     const strMillones = Seccion(num, divisor, 'UN MILLON DE', 'MILLONES DE');
     const strMiles = Miles(resto);
-    if (strMillones === '') return strMiles;
-    return strMillones + ' ' + strMiles;
-  };
 
-  return (Millones(num) + ' PESOS').trim();
+    if(strMillones === '') return strMiles;
+    return strMillones + ' ' + strMiles;
+  }
+
+  const enteramente = Math.floor(valor);
+  const texto = Millones(enteramente).trim();
+  elem.innerText = `(${texto} PESOS)`;
+}
+
+function alternarTema() {
+  const body = document.getElementById('cuerpo-app');
+  const btn = document.getElementById('btn-tema');
+
+  if (window.temaActual === 'oscuro') {
+    window.temaActual = 'claro';
+    body.classList.add('light-mode');
+    if (btn) btn.innerHTML = '🌙 Modo Oscuro';
+  } else {
+    window.temaActual = 'oscuro';
+    body.classList.remove('light-mode');
+    if (btn) btn.innerHTML = '☀️ Modo Claro';
+  }
+
+  localStorage.setItem('tema_app', window.temaActual);
+}
+
+function aplicarTema(tema) {
+  const body = document.getElementById('cuerpo-app');
+  const btn = document.getElementById('btn-tema');
+
+  if (tema === 'claro') {
+    body.classList.add('light-mode');
+    if (btn) btn.innerHTML = '🌙 Modo Oscuro';
+  } else {
+    body.classList.remove('light-mode');
+    if (btn) btn.innerHTML = '☀️ Modo Claro';
+  }
+}
+
+// PAGAR SUSCRIPCIÓN EN MERCADO PAGO
+function pagarSuscripcionMercadoPago() {
+  const link = window.configSuscripcion && window.configSuscripcion.link ? window.configSuscripcion.link.trim() : '';
+  if (!link) {
+    if (typeof mostrarToast === 'function') mostrarToast("El administrador aún no configuró el enlace de pago.", "error");
+    else alert("El administrador aún no configuró el enlace de pago.");
+    return;
+  }
+  let url = link;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  window.open(url, '_blank');
+}
+
+// CONTACTAR ADMINISTRADOR POR WHATSAPP
+function contactarAdministradorWhatsApp() {
+  const wsp = window.configSuscripcion && window.configSuscripcion.whatsapp ? window.configSuscripcion.whatsapp.trim() : '';
+  if (!wsp) {
+    if (typeof mostrarToast === 'function') mostrarToast("El administrador aún no configuró el número de WhatsApp.", "error");
+    else alert("El administrador aún no configuró el número de WhatsApp.");
+    return;
+  }
+  const numClean = wsp.replace(/\D/g, '');
+  const mensaje = encodeURIComponent("¡Hola! Te contacto desde CobroApp para realizar una consulta / enviar comprobante sobre mi alquiler de la aplicación.");
+  window.open(`https://wa.me/${numClean}?text=${mensaje}`, '_blank');
+}
+
+function enviarComprobanteAlquilerWhatsApp() {
+  contactarAdministradorWhatsApp();
 }

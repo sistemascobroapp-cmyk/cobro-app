@@ -230,6 +230,9 @@ function configurarInterfazPorRol() {
   const btnIntereses = document.getElementById('btn-sec-intereses');
   const mBtnIntereses = document.getElementById('m-btn-intereses');
 
+  const panelAdminMp = document.getElementById('panel-cfg-admin-mp');
+  const panelPrestamistaTasas = document.getElementById('panel-cfg-prestamista-tasas');
+
   if (window.rolUsuarioActual === 'admin') {
     if (lblRol) lblRol.innerText = "Panel Administrador Master";
     if (btnUsrs) { btnUsrs.classList.remove('hidden'); btnUsrs.classList.add('flex'); }
@@ -243,20 +246,28 @@ function configurarInterfazPorRol() {
       if (spanTxt) spanTxt.innerText = 'Cobros MP';
     }
 
+    if (panelAdminMp) panelAdminMp.classList.remove('hidden');
+    if (panelPrestamistaTasas) panelPrestamistaTasas.classList.add('hidden');
+
     if (typeof adaptarInterfazAdmin === 'function') adaptarInterfazAdmin();
     if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
   } else {
     if (lblRol) lblRol.innerText = "Panel de Prestamista";
     if (btnUsrs) { btnUsrs.classList.add('hidden'); btnUsrs.classList.remove('flex'); }
     if (mBtnUsrs) { mBtnUsrs.classList.add('hidden'); mBtnUsrs.classList.remove('flex'); }
-    if (btnSub) { btnSub.classList.remove('hidden'); btnSub.classList.add('flex'); }
-    if (mBtnSub) { mBtnSub.classList.remove('hidden'); mBtnSub.classList.add('flex'); }
+    if (btnSub) { btnSub.classList.add('hidden'); btnSub.classList.remove('flex'); }
+    if (mBtnSub) { mBtnSub.classList.add('hidden'); mBtnSub.classList.remove('flex'); }
 
     if (btnIntereses) btnIntereses.innerHTML = '<span>⚙️</span> Config. de Intereses';
     if (mBtnIntereses) {
       const spanTxt = mBtnIntereses.querySelector('span:last-child');
-      if (spanTxt) spanTxt.innerText = 'Tasas';
+      if (spanTxt) spanTxt.innerText = 'Tasas & Alquiler';
     }
+
+    if (panelAdminMp) panelAdminMp.classList.add('hidden');
+    if (panelPrestamistaTasas) panelPrestamistaTasas.classList.remove('hidden');
+
+    if (typeof cargarCamposConfigIntereses === 'function') cargarCamposConfigIntereses();
 
     const secUsrs = document.getElementById('sec-usuarios');
     if (secUsrs && !secUsrs.classList.contains('hidden')) {
@@ -329,7 +340,7 @@ function cerrarNotificacionSuscripcionVisual() {
 
 function irAPagarSuscripcionDesdeNotif() {
   cerrarNotificacionSuscripcionVisual();
-  mostrarSeccion('sec-suscripcion');
+  mostrarSeccion('sec-intereses');
 }
 
 function iniciarListenersFirestore() {
@@ -394,7 +405,7 @@ function mostrarSeccion(idSeccion) {
       if (b === 'usuarios' && window.rolUsuarioActual !== 'admin') {
         mBtnElem.className = "hidden";
       }
-      else if (b === 'suscripcion' && window.rolUsuarioActual === 'admin') {
+      else if (b === 'suscripcion') {
         mBtnElem.className = "hidden";
       }
       else if ('sec-' + b === idSeccion) {
@@ -412,7 +423,7 @@ function mostrarSeccion(idSeccion) {
     'sec-por-cobrar': '📅 Préstamos a Cobrar & Calendario',
     'sec-resumen': '📊 Resumen de Préstamos & Ganancias',
     'sec-estado': '⚠️ Estado de Cuentas & Recargos',
-    'sec-intereses': esAdmin ? '💳 Configuración de Mercado Pago' : '⚙️ Configuración de Intereses',
+    'sec-intereses': esAdmin ? '💳 Configuración de Mercado Pago' : '⚙️ Configuración de Intereses & Alquiler',
     'sec-clientes': '👥 Registro de Clientes / Deudores',
     'sec-usuarios': '🔐 Habilitar Accesos Prestamistas',
     'sec-suscripcion': '💳 Mi Suscripción & Clave'
@@ -430,8 +441,12 @@ function mostrarSeccion(idSeccion) {
     escucharPrestamistasEnTiempoReal();
   }
 
-  if (idSeccion === 'sec-intereses' && esAdmin && typeof cargarConfigSuscripcionEnInputs === 'function') {
-    cargarConfigSuscripcionEnInputs();
+  if (idSeccion === 'sec-intereses') {
+    if (esAdmin && typeof cargarConfigSuscripcionEnInputs === 'function') {
+      cargarConfigSuscripcionEnInputs();
+    } else if (!esAdmin && typeof cargarCamposConfigIntereses === 'function') {
+      cargarCamposConfigIntereses();
+    }
   }
 
   window.scrollTo(0, 0);
