@@ -147,7 +147,6 @@ async function cargarCamposConfigIntereses() {
       setVal('cfg-ret-semanal', cfg.retSemanal ?? cfg.retrasoSemanal ?? 2);
       setVal('cfg-ret-mensual', cfg.retMensual ?? cfg.retrasoMensual ?? 5);
 
-      // Cargar correo actual del usuario
       setVal('cfg-mi-email', window.usuarioActual.email || data.email || '');
     }
   } catch (error) {
@@ -155,7 +154,6 @@ async function cargarCamposConfigIntereses() {
   }
 }
 
-// ACTUALIZACIÓN DE CORREO Y CONTRASEÑA EN TIEMPO REAL
 async function actualizarCredencialesUsuario() {
   if (!window.usuarioActual) return mostrarToast("No hay usuario autenticado", "error");
 
@@ -170,7 +168,6 @@ async function actualizarCredencialesUsuario() {
     const updatesFirestore = {};
     const cambiosRealizados = [];
 
-    // 1. Cambiar Correo si fue modificado
     if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
       const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!regexEmail.test(nuevoEmail)) {
@@ -183,7 +180,6 @@ async function actualizarCredencialesUsuario() {
       cambiosRealizados.push("Correo");
     }
 
-    // 2. Cambiar Contraseña si se ingresó alguna
     if (nuevaPass) {
       if (nuevaPass.length < 6) {
         return mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
@@ -198,7 +194,6 @@ async function actualizarCredencialesUsuario() {
       return mostrarToast("No se detectaron cambios en las credenciales", "error");
     }
 
-    // 3. Sincronizar en Firestore para que el ADMIN lo vea en tiempo real
     await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
 
     mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizado(s) correctamente`);
@@ -238,7 +233,6 @@ async function guardarInteresesConfigDesdeModal(event) {
   cerrarModalConfigIntereses();
 }
 
-// LÓGICA DE RECARGO DE MORA ESCALONADO
 function calcularPorcentajeRecargoEscalonado(diasAtraso) {
   if (diasAtraso <= 0) return 0;
   const cfg = window.datosUsuarioActual?.tasasConfig || window.datosUsuarioActual?.configIntereses || {};
@@ -853,6 +847,7 @@ function renderizarPlanificadorSemanal() {
 
       const cli = (window.clientes || []).find(c => c.id === p.clienteId);
       const nombreCliente = cli ? cli.nombre : 'Cliente Desconocido';
+      const telefonoCliente = cli ? cli.telefono : '';
 
       const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
         const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
@@ -913,9 +908,12 @@ function renderizarPlanificadorSemanal() {
               </div>
 
               ${!estaPagado ? `
-                <div class="flex gap-2 pt-1">
-                  <button onclick="abrirModalPago('${p.id}', '${c.id}')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition">
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                  <button onclick="abrirModalPago('${p.id}', '${c.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
                     💵 Registrar Pago
+                  </button>
+                  <button onclick="enviarLinkPagoWhatsApp('${p.id}', '${c.id}', ${c.montoCuota}, '${nombreCliente}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
+                    📱 Link WhatsApp
                   </button>
                 </div>
               ` : ''}
@@ -1709,5 +1707,75 @@ async function cargarConfigMercadoPagoUI() {
     }
   } catch (e) {
     console.error("Error al cargar config MP:", e);
+  }
+}
+
+// ==========================================
+// 12. INTEGRACIÓN MERCADO PAGO + WHATSAPP AUTOMÁTICO
+// ==========================================
+
+const RENDER_BACKEND_URL = "https://cobroapp-backend.onrender.com";
+
+async function generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota) {
+  try {
+    if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando enlace de Mercado Pago...");
+
+    const response = await fetch(`${RENDER_BACKEND_URL}/crear-preferencia`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prestamoId,
+        cuotaId,
+        usuarioId: window.usuarioActual.uid,
+        monto,
+        clienteNombre,
+        numeroCuota
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.init_point) {
+      return data.init_point;
+    } else {
+      mostrarToast(data.error || "No se pudo generar el enlace. Verifica tu Token de MP.", "error");
+      return null;
+    }
+  } catch (e) {
+    console.error("Error al generar link MP:", e);
+    mostrarToast("Error de conexión con el servidor de pagos", "error");
+    return null;
+  }
+}
+
+async function enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono) {
+  const linkMP = await generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota);
+  if (!linkMP) return;
+
+  const mensaje = `Hola ${clienteNombre}! 👋 Le envío el enlace de pago seguro para la *Cuota #${numeroCuota}* por un monto de *$${Math.round(monto).toLocaleString('es-AR')}*:\n\n👉 ${linkMP}\n\nUna vez realizado el pago, su cuota se acreditará automáticamente en el sistema. ¡Muchas gracias!`;
+
+  let telLimpio = (clienteTelefono || '').replace(/\D/g, '');
+  if (telLimpio && !telLimpio.startsWith('54')) {
+    telLimpio = '54' + telLimpio;
+  }
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  mostrarToast("📲 Enlace enviado a WhatsApp");
+}
+
+async function copiarLinkPagoMP(prestamoId, cuotaId, monto, clienteNombre, numeroCuota) {
+  const linkMP = await generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota);
+  if (!linkMP) return;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(linkMP).then(() => {
+      mostrarToast("📋 Link de Mercado Pago copiado al portapapeles");
+    });
+  } else {
+    prompt("Copiá el enlace de pago:", linkMP);
   }
 }
