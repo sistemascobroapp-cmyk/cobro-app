@@ -376,7 +376,7 @@ function generarSimulacion(event) {
   let fechaRegistroAdmin = null;
 
   if (esAdmin) {
-    interesPorPeriodo = 0; // Admin no cobra intereses
+    interesPorPeriodo = 0; // Sin intereses para Admin
     fechaRegistroAdmin = document.getElementById('interes-prestamo')?.value || obtenerFechaLocalISO();
   } else {
     interesPorPeriodo = parseFloat(document.getElementById('interes-prestamo')?.value) || 0;
@@ -387,7 +387,7 @@ function generarSimulacion(event) {
   const fechaInicioStr = document.getElementById('fecha-inicio').value;
 
   if (monto <= 0 || cuotas <= 0 || !fechaInicioStr) {
-    return mostrarToast("Completá todos los campos requeridos para simular", "error");
+    return mostrarToast("Completá todos los campos requeridos", "error");
   }
 
   const porcentajeTotalInteres = interesPorPeriodo * cuotas;
@@ -434,7 +434,7 @@ function generarSimulacion(event) {
   };
 
   document.getElementById('sim-total').innerText = '$' + montoTotal.toLocaleString('es-AR');
-  document.getElementById('sim-ganancia').innerText = '+$' + ganancia.toLocaleString('es-AR') + ` (${porcentajeTotalInteres}%)`;
+  document.getElementById('sim-ganancia').innerText = esAdmin ? '$0' : '+$' + ganancia.toLocaleString('es-AR') + ` (${porcentajeTotalInteres}%)`;
   document.getElementById('sim-cuota').innerText = '$' + valorCuota.toLocaleString('es-AR');
   document.getElementById('sim-plan').innerText = `${cuotas} cuota(s) ${frecuencia}s`;
 
@@ -468,7 +468,7 @@ function generarSimulacion(event) {
   }
 
   document.getElementById('vista-simulacion').classList.remove('hidden');
-  mostrarToast(esAdmin ? "Registro de pago calculado" : "Simulación realizada con éxito");
+  mostrarToast(esAdmin ? "Registro de pago generado" : "Simulación realizada con éxito");
 }
 
 function guardarPrestamoOficial() {

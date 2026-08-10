@@ -1,169 +1,119 @@
-// LÓGICA EXCLUSIVA DEL ADMINISTRADOR MASTER (CREAR PRESTAMISTAS, GESTIÓN Y SUSCRIPCIÓN)
+// LÓGICA EXCLUSIVA PARA EL PERFIL ADMINISTRADOR (REGISTRO DE PAGOS Y GESTIÓN)
+
+async function cargarPanelAdmin() {
+  if (!window.usuarioActual) return;
+
+  try {
+    const docUser = await db.collection('usuarios').doc(window.usuarioActual.uid).get();
+    const esAdmin = docUser.exists && docUser.data().rol === 'admin';
+    window.esAdmin = esAdmin;
+
+    const btnSecUsuarios = document.getElementById('btn-sec-usuarios');
+    if (btnSecUsuarios) {
+      if (esAdmin) btnSecUsuarios.classList.remove('hidden');
+      else btnSecUsuarios.classList.add('hidden');
+    }
+
+    if (esAdmin) {
+      cargarListaPrestamistasAdmin();
+      adaptarInterfazAdmin();
+    }
+  } catch (error) {
+    console.error("Error al cargar panel de admin:", error);
+  }
+}
+
+// ADAPTA LA INTERFAZ PARA MOSTRAR "REGISTRO DE PAGO" SOLO AL ADMIN
+function adaptarInterfazAdmin() {
+  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
+  if (!esAdmin) return;
+
+  const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
+  const mBtnRegistrar = document.getElementById('m-btn-registrar');
+  const tituloSec = document.getElementById('titulo-sec-registrar');
+  const lblMonto = document.getElementById('lbl-monto-prestamo');
+  const lblInteres = document.getElementById('lbl-interes-prestamo');
+  const inputInteres = document.getElementById('interes-prestamo');
+
+  if (btnMenuRegistrar) btnMenuRegistrar.innerHTML = '<span>💳</span> Registro de Pago';
+  if (mBtnRegistrar) {
+    const spanTxt = mBtnRegistrar.querySelector('span:last-child');
+    if (spanTxt) spanTxt.innerText = 'Registro Pago';
+  }
+  if (tituloSec) tituloSec.innerText = 'Registro de Pago';
+  if (lblMonto) lblMonto.innerText = 'Monto a Pagar ($) *';
+  if (lblInteres) lblInteres.innerText = 'Fecha en la que se registra *';
+
+  if (inputInteres) {
+    inputInteres.type = 'date';
+    inputInteres.value = obtenerFechaLocalISO();
+    inputInteres.removeAttribute('min');
+    inputInteres.removeAttribute('step');
+  }
+}
 
 async function crearUsuarioPrestamista(event) {
   event.preventDefault();
+  if (!window.esAdmin) return mostrarToast("No tenés permisos de administrador", "error");
+
   const nombre = document.getElementById('usr-nombre-prestamista').value.trim();
   const email = document.getElementById('usr-email').value.trim();
   const pass = document.getElementById('usr-pass').value.trim();
 
+  if (!nombre || !email || !pass) {
+    return mostrarToast("Completá todos los campos requeridos", "error");
+  }
+
   try {
-    const appSecundaria = firebase.initializeApp(firebaseConfig, "secundario");
-    const res = await appSecundaria.auth().createUserWithEmailAndPassword(email, pass);
-    
-    await db.collection('usuarios').doc(res.user.uid).set({
-      nombre: nombre,
-      email: email,
+    // Se guarda la cuenta en la colección de usuarios para acceso
+    const nuevoUserRef = db.collection('usuarios').doc();
+    await nuevoUserRef.set({
+      nombre,
+      email,
       passwordVisual: pass,
       rol: 'prestamista',
-      estadoCuenta: 'activa',
-      pagosMes: {},
+      estadoSuscripcion: 'activo',
       fechaCreacion: new Date().toISOString()
     });
 
-    await appSecundaria.delete();
-
-    mostrarToast("✨ ¡Cuenta de prestamista habilitada correctamente!");
+    mostrarToast("🎉 Cuenta de Prestamista creada con éxito");
     document.getElementById('usr-nombre-prestamista').value = '';
     document.getElementById('usr-email').value = '';
     document.getElementById('usr-pass').value = '';
+    cargarListaPrestamistasAdmin();
   } catch (error) {
-    console.error(error);
-    mostrarToast("Error al crear cuenta: " + error.message, "error");
+    mostrarToast("Error al crear la cuenta de prestamista", "error");
   }
 }
 
-function renderizarListaPrestamistasAdmin(listaUsuarios) {
+async function cargarListaPrestamistasAdmin() {
   const container = document.getElementById('lista-prestamistas-admin');
   if (!container) return;
 
-  container.innerHTML = '';
-  const prestamistas = listaUsuarios.filter(u => u.rol === 'prestamista');
+  try {
+    const snapshot = await db.collection('usuarios').where('rol', '==', 'prestamista').get();
+    container.innerHTML = '';
 
-  if (prestamistas.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-500 italic">No hay prestamistas registrados todavía.</p>';
-    return;
-  }
+    if (snapshot.empty) {
+      container.innerHTML = '<p class="text-xs text-slate-500 italic">No hay cuentas de prestamistas registradas.</p>';
+      return;
+    }
 
-  const fechaHoy = new Date();
-  const mesAnioActualKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
-  const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  const nombreMesActual = `${nombresMeses[fechaHoy.getMonth()]} ${fechaHoy.getFullYear()}`;
-
-  prestamistas.forEach(p => {
-    const estaPagoMes = p.pagosMes && p.pagosMes[mesAnioActualKey] === true;
-    const estaSuspendida = p.estadoCuenta === 'suspendida';
-
-    container.innerHTML += `
-      <div class="p-4 rounded-2xl border ${estaSuspendida ? 'bg-red-950/20 border-red-500/50' : 'bg-[#1E293B]/60 border-slate-700/80'} space-y-3">
-        <div class="flex justify-between items-start flex-wrap gap-2">
+    snapshot.forEach(doc => {
+      const u = doc.data();
+      container.innerHTML += `
+        <div class="p-3 bg-[#1E293B] border border-slate-700/80 rounded-xl flex justify-between items-center text-xs">
           <div>
-            <h5 class="font-extrabold text-white text-base flex items-center gap-2">
-              <span>👤</span> ${p.nombre || 'Prestamista'}
-              <span class="text-[10px] px-2 py-0.5 rounded font-extrabold ${estaSuspendida ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}">
-                ${estaSuspendida ? '⛔ SUSPENDIDA' : '🟢 ACTIVA'}
-              </span>
-            </h5>
-            <p class="text-xs text-slate-300 mt-1">📧 <strong>Correo:</strong> ${p.email}</p>
-            <p class="text-xs text-fuchsia-400 font-semibold">🔑 <strong>Contraseña actual:</strong> <span class="bg-slate-900 px-2 py-0.5 rounded text-white font-mono">${p.passwordVisual || '••••••••'}</span></p>
+            <h5 class="font-bold text-white">${u.nombre}</h5>
+            <p class="text-slate-400">${u.email} | Clave: <strong class="text-fuchsia-400">${u.passwordVisual || '••••••'}</strong></p>
           </div>
-
-          <div class="text-right">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">SUSCRIPCIÓN VENCE DÍA 10 (${nombreMesActual.toUpperCase()})</span>
-            <button onclick="alternarPagoMesPrestamista('${p.id}', '${mesAnioActualKey}', ${estaPagoMes})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition shadow ${estaPagoMes ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}">
-              ${estaPagoMes ? '✓ PAGADO ESTE MES' : '⚠️ PENDIENTE DE PAGO'}
-            </button>
-          </div>
+          <span class="px-2.5 py-1 rounded-full font-extrabold ${u.estadoSuscripcion === 'activo' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">
+            ${u.estadoSuscripcion === 'activo' ? '🟢 Activa' : '🔴 Suspendida'}
+          </span>
         </div>
-
-        <div class="border-t border-slate-800/80 pt-3 flex justify-end items-center gap-2">
-          <button onclick="alternarSuspensionPrestamista('${p.id}', '${p.estadoCuenta || 'activa'}')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition border ${estaSuspendida ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'}">
-            ${estaSuspendida ? '✅ Reactivar Acceso' : '🚫 Suspender Acceso'}
-          </button>
-          <button onclick="eliminarPrestamistaEHistorial('${p.id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition">
-            🗑️ Eliminar Cuenta e Historial
-          </button>
-        </div>
-      </div>
-    `;
-  });
-}
-
-async function alternarPagoMesPrestamista(uid, mesKey, estadoActual) {
-  try {
-    await db.collection('usuarios').doc(uid).update({
-      [`pagosMes.${mesKey}`]: !estadoActual
+      `;
     });
-    mostrarToast(!estadoActual ? "Pago de suscripción registrado" : "Estado de pago cambiado a pendiente");
   } catch (error) {
-    mostrarToast("Error al actualizar pago", "error");
+    console.error("Error al obtener prestamistas:", error);
   }
-}
-
-async function alternarSuspensionPrestamista(uid, estadoActual) {
-  const nuevoEstado = (estadoActual === 'suspendida') ? 'activa' : 'suspendida';
-  try {
-    await db.collection('usuarios').doc(uid).update({
-      estadoCuenta: nuevoEstado
-    });
-    mostrarToast(nuevoEstado === 'suspendida' ? "Cuenta suspendida" : "Cuenta reactivada");
-  } catch (error) {
-    mostrarToast("Error al cambiar estado", "error");
-  }
-}
-
-async function eliminarPrestamistaEHistorial(uid) {
-  if (confirm("⚠️ ¿Estás seguro de eliminar este prestamista? Se borrará su cuenta y todo su historial de préstamos y clientes.")) {
-    try {
-      const snapshotClientes = await db.collection('clientes').where('usuarioId', '==', uid).get();
-      snapshotClientes.docs.forEach(doc => doc.ref.delete());
-
-      const snapshotPrestamos = await db.collection('prestamos').where('usuarioId', '==', uid).get();
-      snapshotPrestamos.docs.forEach(doc => doc.ref.delete());
-
-      await db.collection('usuarios').doc(uid).delete();
-
-      mostrarToast("Prestamista y todo su historial borrados con éxito");
-    } catch (error) {
-      console.error(error);
-      mostrarToast("Error al eliminar cuenta", "error");
-    }
-  }
-}
-
-function escucharConfigSuscripcion() {
-  db.collection('configuracion').doc('suscripcion').onSnapshot(doc => {
-    if (doc.exists) {
-      configSuscripcion = doc.data();
-
-      const inMonto = document.getElementById('cfg-sub-monto');
-      const inLink = document.getElementById('cfg-sub-link');
-      const inWsp = document.getElementById('cfg-sub-whatsapp');
-      
-      if (inMonto) inMonto.value = configSuscripcion.monto || 0;
-      if (inLink) inLink.value = configSuscripcion.link || '';
-      if (inWsp) inWsp.value = configSuscripcion.whatsapp || '';
-
-      const txtLinkInfo = document.getElementById('cli-sub-link-info');
-      if (txtLinkInfo) txtLinkInfo.innerText = configSuscripcion.link ? `Destino de Pago: ${configSuscripcion.link}` : 'Sin método configurado aún.';
-
-      const elemMontoBloqueo = document.getElementById('bloqueo-monto');
-      const elemAliasBloqueo = document.getElementById('bloqueo-alias-cbu');
-      if (elemMontoBloqueo) elemMontoBloqueo.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
-      if (elemAliasBloqueo) elemAliasBloqueo.innerText = configSuscripcion.link || 'Sin CBU/Alias configurado';
-
-      if (datosUsuarioActual) {
-        actualizarVistaSuscripcionUsuario(datosUsuarioActual);
-      }
-    }
-  });
-}
-
-async function guardarConfigSuscripcion(event) {
-  event.preventDefault();
-  const monto = parseFloat(document.getElementById('cfg-sub-monto').value) || 0;
-  const link = document.getElementById('cfg-sub-link').value.trim();
-  const whatsapp = document.getElementById('cfg-sub-whatsapp').value.trim();
-
-  await db.collection('configuracion').doc('suscripcion').set({ monto, link, whatsapp });
-  mostrarToast("Ajustes de suscripción de la app guardados con éxito");
 }

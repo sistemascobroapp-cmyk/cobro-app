@@ -397,4 +397,6 @@ function mostrarSeccion(idSec) {
   }
 }
   window.scrollTo(0, 0);
+}if (typeof adaptarInterfazAdmin === 'function') {
+  adaptarInterfazAdmin();
 }
