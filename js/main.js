@@ -259,7 +259,7 @@ function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
 
   const fechaHoy = new Date();
   const diaActual = fechaHoy.getDate(); 
-  const isoHoy = fechaHoy.toISOString().split('T')[0];
+  const isoHoy = obtenerFechaLocalISO(fechaHoy);
 
   if (diaActual >= 5 && diaActual <= 10) {
     const mesAnioKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
@@ -288,8 +288,8 @@ function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
 }
 
 function cerrarNotificacionSuscripcionVisual() {
-  const fechaHoy = new Date().toISOString().split('T')[0];
-  localStorage.setItem(`notif_sub_visto_${fechaHoy}`, 'true');
+  const isoHoy = obtenerFechaLocalISO();
+  localStorage.setItem(`notif_sub_visto_${isoHoy}`, 'true');
   const modal = document.getElementById('modal-notificacion-suscripcion');
   if (modal) modal.classList.add('hidden');
 }
@@ -303,7 +303,6 @@ function iniciarListenersFirestore() {
   if (!db || !window.usuarioActual) return;
 
   try {
-    // ESCUCHAR CLIENTES: MUESTRA NUEVOS Y MANTIENE RETROCOMPATIBILIDAD CON ANTERIORES
     db.collection('clientes').onSnapshot(snapshot => {
       const todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       window.clientes = todos.filter(c => !c.usuarioId || c.usuarioId === window.usuarioActual.uid);
@@ -312,7 +311,6 @@ function iniciarListenersFirestore() {
       if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
     }, err => console.error("Error clientes:", err));
 
-    // ESCUCHAR PRÉSTAMOS
     db.collection('prestamos').onSnapshot(snapshot => {
       const todos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       window.prestamos = todos.filter(p => !p.usuarioId || p.usuarioId === window.usuarioActual.uid);
@@ -320,6 +318,7 @@ function iniciarListenersFirestore() {
       if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
       if (typeof renderizarPlanificadorSemanal === 'function') renderizarPlanificadorSemanal();
       if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
+      if (typeof renderizarDeudasPasadasBajoCalendario === 'function') renderizarDeudasPasadasBajoCalendario();
     }, err => console.error("Error prestamos:", err));
 
     if (window.rolUsuarioActual === 'admin') {

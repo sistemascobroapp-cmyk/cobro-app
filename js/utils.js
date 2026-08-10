@@ -1,4 +1,12 @@
-// FUNCIONES DE UTILIDAD: TOASTS, NUMEROS A LETRAS Y TEMAS
+// FUNCIONES DE UTILIDAD: TOASTS, NUMEROS A LETRAS, TEMAS Y FECHA LOCAL
+
+function obtenerFechaLocalISO(d) {
+  const fecha = d || new Date();
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, '0');
+  const day = String(fecha.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function mostrarToast(mensaje, tipo = "exito") {
   const container = document.getElementById('toast-container');

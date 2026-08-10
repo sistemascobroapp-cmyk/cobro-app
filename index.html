@@ -132,7 +132,7 @@
                 <p id="monto-en-letras" class="text-xs text-fuchsia-400 font-bold mt-1.5 italic min-h-[18px]"></p>
               </div>
               <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Interés (%) *</label>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Interés por Mes/Período (%) *</label>
                 <input type="number" id="interes-prestamo" placeholder="Ej: 30" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
               </div>
             </div>
@@ -201,7 +201,7 @@
             <span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span>
           </div>
 
-          <!-- GRID DE DÍAS DEL CALENDARIO RESTAURADO -->
+          <!-- GRID DE DÍAS DEL CALENDARIO RESTAURADO CON DÍAS REALES -->
           <div id="cal-vis-grid-dias" class="grid grid-cols-7 gap-2 text-xs text-center"></div>
 
           <div class="border-t border-slate-800/80 pt-3 flex justify-between items-center text-xs text-slate-400 flex-wrap gap-2">
@@ -214,6 +214,18 @@
           </div>
         </div>
 
+        <!-- SECCIÓN DEUDAS PASADAS (RESTAURADA JUSTO DEBAJO DEL CALENDARIO) -->
+        <div id="sec-deudas-pasadas-contenedor" class="tarjeta-ui bg-[#0F172A] border-2 border-red-500/50 p-6 rounded-2xl shadow-2xl space-y-4 hidden">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-extrabold text-red-400 flex items-center gap-2">
+              <span>🚨</span> Deudas Pasadas & Cuotas Vencidas
+            </h3>
+            <span id="badge-total-deudas-pasadas" class="bg-red-500/20 text-red-400 border border-red-500/40 text-xs px-3 py-1 rounded-full font-extrabold">0 Vencidas</span>
+          </div>
+          <div id="lista-deudas-pasadas" class="space-y-3"></div>
+        </div>
+
+        <!-- PLANIFICADOR SEMANAL -->
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <h3 class="text-lg font-bold">📅 Planificador & Cobros de la Semana</h3>
@@ -226,8 +238,16 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS -->
+      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS (PESTAÑAS ACTIVOS Y FINALIZADOS) -->
       <section id="sec-resumen" class="seccion-app space-y-6 hidden">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <h3 class="text-xl font-bold">Resumen de Préstamos</h3>
+          <div class="flex items-center gap-2 bg-[#0F172A] border border-slate-800 p-1.5 rounded-2xl">
+            <button onclick="alternarPestanaResumen('activos')" id="btn-tab-activos" class="px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow">🟢 Activos</button>
+            <button onclick="alternarPestanaResumen('finalizados')" id="btn-tab-finalizados" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition">🏁 Finalizados</button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-5 rounded-2xl shadow-xl">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Capital Invertido (Activos)</p>
@@ -245,7 +265,13 @@
             <table class="w-full text-left text-sm">
               <thead class="text-xs text-slate-400 uppercase bg-[#1E293B]/60 border-b border-slate-800">
                 <tr>
-                  <th class="p-3">Cliente</th><th class="p-3">Inicio</th><th class="p-3">Prestado</th><th class="p-3">Total Devolución</th><th class="p-3">Plan</th><th class="p-3">Acciones</th>
+                  <th class="p-3">Cliente</th>
+                  <th class="p-3">Inicio</th>
+                  <th class="p-3">Prestado</th>
+                  <th class="p-3">Total Devolución</th>
+                  <th class="p-3">Cuánto Falta</th>
+                  <th class="p-3">Plan</th>
+                  <th class="p-3">Acciones</th>
                 </tr>
               </thead>
               <tbody id="tabla-prestamos-body" class="divide-y divide-slate-800/60"></tbody>
@@ -290,7 +316,7 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 6: REGISTRO DE CLIENTES -->
+      <!-- SECCIÓN 6: REGISTRO DE CLIENTES DEUDORES -->
       <section id="sec-clientes" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -330,7 +356,7 @@
     </main>
   </div>
 
-  <!-- NAVEGACIÓN MÓVIL INFERIOR CON ÍCONO DE TASAS (ROSQUITA) -->
+  <!-- NAVEGACIÓN MÓVIL INFERIOR -->
   <nav id="nav-mobile-app" class="nav-mobile hidden md:hidden fixed bottom-0 left-0 right-0 bg-[#0F172A]/95 border-t border-slate-800 flex justify-around items-center p-2 z-50 text-[10px] backdrop-blur-md">
     <button onclick="mostrarSeccion('sec-registrar')" id="m-btn-registrar" class="flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2"><span class="text-lg">💳</span><span>Registrar</span></button>
     <button onclick="mostrarSeccion('sec-por-cobrar')" id="m-btn-por-cobrar" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📅</span><span>Cobrar</span></button>
@@ -340,7 +366,7 @@
     <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Tasas</span></button>
   </nav>
 
-  <!-- MODAL AJUSTE DE INTERESES (ACCESO RÁPIDO DESDE ROSQUITA ⚙️) -->
+  <!-- MODAL DE CONFIGURACIÓN DE TASAS E INTERESES (ACCESO RÁPIDO CON ROSQUITA ⚙️) -->
   <div id="modal-config-intereses" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-5 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -371,7 +397,7 @@
     </div>
   </div>
 
-  <!-- MODALES DE COMPROBANTES, NUEVO CLIENTE Y PAGO -->
+  <!-- MODAL NUEVO CLIENTE (CON VALIDACIÓN DE 10 DÍGITOS) -->
   <div id="modal-nuevo-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-5">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 id="modal-cliente-titulo" class="text-lg font-bold">👤 Registrar Nuevo Cliente</h3><button onclick="cerrarModalCliente()" class="text-slate-400 font-bold">✕</button></div>
@@ -379,8 +405,14 @@
         <input type="hidden" id="cli-edit-id" value="">
         <div><label class="block text-xs font-bold uppercase mb-1">Nombre Completo *</label><input type="text" id="cli-nombre" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-bold uppercase mb-1">Teléfono Personal *</label><input type="tel" id="cli-tel" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1">Tel. Emergencia *</label><input type="tel" id="cli-emergencia" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
+          <div>
+            <label class="block text-xs font-bold uppercase mb-1">Teléfono Personal (10 dígs) *</label>
+            <input type="tel" id="cli-tel" required minlength="10" maxlength="10" pattern="[0-9]{10}" placeholder="Ej: 1112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase mb-1">Tel. Emergencia (10 dígs) *</label>
+            <input type="tel" id="cli-emergencia" required minlength="10" maxlength="10" pattern="[0-9]{10}" placeholder="Ej: 1112345678" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm">
+          </div>
         </div>
         <div><label class="block text-xs font-bold uppercase mb-1">Dirección de Cobro *</label><input type="text" id="cli-direccion" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
         <div><label class="block text-xs font-bold uppercase mb-1">Redes / Notas Opcionales</label><input type="text" id="cli-redes" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm"></div>
@@ -389,18 +421,128 @@
     </div>
   </div>
 
+  <!-- MODAL COBRO CUOTA INDIVIDUAL (CON RECARGO OPCIONAL Y VALIDACIÓN DE MÁXIMO) -->
   <div id="modal-pago-cuota" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 class="text-lg font-bold">💵 Registrar Cobro</h3><button onclick="cerrarModalPago()" class="text-slate-400 font-bold">✕</button></div>
-      <div class="bg-slate-800/60 p-3 rounded-xl space-y-1 text-xs"><p><span class="text-slate-400">Cliente:</span> <strong id="pago-cli-nombre" class="text-white"></strong></p><p><span class="text-slate-400">Cuota #:</span> <strong id="pago-cuota-num" class="text-fuchsia-400"></strong></p><p><span class="text-slate-400">Monto Base:</span> <strong id="pago-cuota-base" class="text-slate-200">$0</strong></p></div>
+      <div class="bg-slate-800/60 p-3 rounded-xl space-y-1.5 text-xs">
+        <p><span class="text-slate-400">Cliente:</span> <strong id="pago-cli-nombre" class="text-white"></strong></p>
+        <p><span class="text-slate-400">Cuota #:</span> <strong id="pago-cuota-num" class="text-fuchsia-400"></strong></p>
+        <p><span class="text-slate-400">Monto Base Pendiente:</span> <strong id="pago-cuota-base" class="text-slate-200">$0</strong></p>
+        <p><span class="text-slate-400">Saldo Total del Préstamo:</span> <strong id="pago-saldo-total-prestamo" class="text-fuchsia-400 font-bold">$0</strong></p>
+        <div id="box-recargo-cuota-indiv" class="hidden border-t border-slate-700/60 pt-1 text-xs text-red-400 space-y-0.5">
+          <p>⏱️ <strong>Atraso:</strong> <span id="pago-dias-atraso-txt">0 días</span></p>
+          <p>🚨 <strong>Recargo Sugerido:</strong> +$<span id="pago-monto-recargo-txt">0</span></p>
+        </div>
+        <p class="pt-1 text-sm border-t border-slate-700/60"><span class="text-slate-300 font-bold">Total Sugerido a Cobrar:</span> <strong id="pago-cuota-total-sugerido" class="text-emerald-400 text-base">$0</strong></p>
+      </div>
+
+      <!-- CHECKBOX PARA RECARGO OPCIONAL -->
+      <div id="contenedor-chk-recargo-cuota" class="hidden flex items-center gap-2 bg-slate-800/80 p-3 rounded-xl border border-red-500/30 text-xs">
+        <input type="checkbox" id="chk-aplicar-retraso-cuota" onchange="alternarRecargoCuota()" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+        <label for="chk-aplicar-retraso-cuota" class="text-slate-200 font-bold cursor-pointer">Incluir recargo por días atrasados</label>
+      </div>
+
       <form onsubmit="confirmarRegistroPago(event)" class="space-y-4">
         <input type="hidden" id="pago-prestamo-id"><input type="hidden" id="pago-cuota-id">
-        <div><label class="block text-xs font-bold uppercase mb-1">Monto Entregado ($) *</label><input type="number" id="pago-monto-ingresado" oninput="convertirMontoPagoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"><p id="pago-monto-en-letras" class="text-xs text-emerald-400 font-bold italic mt-1 min-h-[18px]"></p></div>
-        <div class="flex gap-3 pt-2"><button type="button" onclick="cerrarModalPago()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button><button type="submit" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg">Confirmar Pago</button></div>
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1">Monto Entregado ($) *</label>
+          <input type="number" id="pago-monto-ingresado" oninput="validarMontoPagoCuota(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+          <div class="flex justify-between items-center mt-1 flex-wrap gap-1">
+            <p id="pago-monto-en-letras" class="text-xs text-emerald-400 font-bold italic min-h-[18px]"></p>
+            <p id="pago-monto-max-hint" class="text-[11px] text-amber-400 font-bold"></p>
+          </div>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="cerrarModalPago()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
+          <button type="submit" id="btn-confirmar-pago-cuota" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg">Confirmar Pago</button>
+        </div>
       </form>
     </div>
   </div>
 
+  <!-- MODAL PAGO AGRUPADO (CON RECARGO OPCIONAL Y VALIDACIÓN DE MÁXIMO) -->
+  <div id="modal-pago-atrasado-agrupado" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-red-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 class="text-lg font-bold text-red-400">💵 Cobrar Deuda Atrasada</h3><button onclick="cerrarModalPagoAtrasadoTotal()" class="text-slate-400 font-bold">✕</button></div>
+      <div class="bg-red-950/30 border border-red-500/30 p-3 rounded-xl space-y-1.5 text-xs">
+        <p><span class="text-slate-400">Cliente:</span> <strong id="pago-atrasado-cli-nombre" class="text-white"></strong></p>
+        <p><span class="text-slate-400">Deuda Base Vencida:</span> <span id="pago-atrasado-monto-base" class="text-slate-200 font-bold">$0</span></p>
+        <p><span class="text-slate-400">Demora:</span> <strong id="pago-atrasado-tiempo-txt" class="text-red-400">0 días</strong></p>
+        <p><span class="text-slate-400">Recargo Aplicado:</span> +$<span id="pago-atrasado-monto-recargo">0</span></p>
+        <div class="border-t border-red-500/30 pt-1.5 text-sm"><span class="text-slate-300 font-bold">Total Sugerido:</span> <strong id="pago-atrasado-monto-total" class="text-red-400 text-base">$0</strong></div>
+      </div>
+
+      <!-- CHECKBOX RECARGO OPCIONAL -->
+      <div class="flex items-center gap-2 bg-slate-800/80 p-3 rounded-xl border border-red-500/30 text-xs">
+        <input type="checkbox" id="chk-aplicar-retraso-agrupado" onchange="alternarRecargoAgrupado()" checked class="w-4 h-4 accent-red-500 cursor-pointer">
+        <label for="chk-aplicar-retraso-agrupado" class="text-slate-200 font-bold cursor-pointer">Incluir recargo por retraso</label>
+      </div>
+
+      <form onsubmit="confirmarPagoAtrasadoAgrupado(event)" class="space-y-4">
+        <input type="hidden" id="pago-atrasado-cliente-id">
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1">Monto que entrega ($) *</label>
+          <input type="number" id="pago-atrasado-monto-ingresado" oninput="validarMontoPagoAtrasado(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+          <div class="flex justify-between items-center mt-1 flex-wrap gap-1">
+            <p id="pago-atrasado-monto-en-letras" class="text-xs text-red-400 font-bold italic min-h-[18px]"></p>
+            <p id="pago-atrasado-max-hint" class="text-[11px] text-amber-400 font-bold"></p>
+          </div>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="cerrarModalPagoAtrasadoTotal()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
+          <button type="submit" id="btn-confirmar-pago-atrasado" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg">Confirmar Pago</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DETALLE DEL PRÉSTAMO ACTIVO -->
+  <div id="modal-detalle-prestamo-activo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/40 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-fuchsia-400">📊 Detalle del Préstamo Activo</h3>
+        <button onclick="cerrarModalDetalleActivo()" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+      <div class="space-y-1 bg-slate-800/50 p-3.5 rounded-xl text-xs border border-slate-700/80">
+        <p><strong class="text-slate-400">Cliente:</strong> <span id="det-act-cliente" class="font-bold text-white text-sm"></span></p>
+        <p><strong class="text-slate-400">Inicio:</strong> <span id="det-act-fechainicio" class="text-slate-200"></span></p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center">
+          <div class="bg-slate-900 p-2 rounded-lg border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Prestado</p><p id="det-act-monto" class="font-bold text-white">$0</p></div>
+          <div class="bg-slate-900 p-2 rounded-lg border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Devolución</p><p id="det-act-total" class="font-bold text-fuchsia-400">$0</p></div>
+          <div class="bg-slate-900 p-2 rounded-lg border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Ganancia</p><p id="det-act-ganancia" class="font-bold text-emerald-400">$0</p></div>
+          <div class="bg-slate-900 p-2 rounded-lg border border-slate-800"><p class="text-[10px] text-amber-400 uppercase font-bold">Cuánto Falta</p><p id="det-act-falta" class="font-bold text-amber-400">$0</p></div>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-bold text-xs uppercase text-slate-400 mb-2">Desglose de Cuotas:</h4>
+        <div id="det-act-lista-cuotas" class="space-y-1.5 max-h-52 overflow-y-auto border-t border-b border-slate-800 py-2"></div>
+      </div>
+      <button onclick="cerrarModalDetalleActivo()" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs border border-slate-700">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR FINALIZAR -->
+  <div id="modal-confirmar-finalizar-prestamo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-emerald-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <h3 class="text-lg font-bold text-emerald-400">🏁 Confirmar Finalización</h3>
+      <p class="text-xs text-slate-300">¿Deseas enviar este préstamo a la carpeta de Finalizados?</p>
+      <div class="bg-slate-800/80 p-3 rounded-xl text-xs space-y-1"><p><strong class="text-slate-400">Cliente:</strong> <span id="fin-prestamo-cliente" class="text-white font-bold"></span></p><p><strong class="text-slate-400">Monto:</strong> <span id="fin-prestamo-monto" class="text-fuchsia-400 font-bold"></span></p></div>
+      <div class="flex gap-3 pt-2"><button onclick="cerrarModalFinalizarPrestamo()" class="w-1/2 bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">Cancelar</button><button onclick="confirmarFinalizacionPrestamo()" class="w-1/2 bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg">Sí, Finalizar</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR ELIMINAR -->
+  <div id="modal-confirmar-eliminar-prestamo" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-red-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+      <h3 class="text-lg font-bold text-red-400">⚠️ Confirmar Eliminación</h3>
+      <p class="text-xs text-slate-300">¿Estás seguro de eliminar este préstamo del sistema?</p>
+      <div class="bg-slate-800/80 p-3 rounded-xl text-xs space-y-1"><p><strong class="text-slate-400">Cliente:</strong> <span id="del-prestamo-cliente" class="text-white font-bold"></span></p><p><strong class="text-slate-400">Monto:</strong> <span id="del-prestamo-monto" class="text-fuchsia-400 font-bold"></span></p></div>
+      <div class="flex gap-3 pt-2"><button onclick="cerrarModalEliminarPrestamo()" class="w-1/2 bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">Cancelar</button><button onclick="confirmarEliminacionPrestamo()" class="w-1/2 bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-lg">Sí, Eliminar</button></div>
+    </div>
+  </div>
+
+  <!-- MODAL COMPROBANTE WHATSAPP -->
   <div id="modal-comprobante-whatsapp" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-emerald-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 class="text-lg font-bold text-emerald-400">📸 Comprobante Digital</h3><button onclick="cerrarModalComprobante()" class="text-slate-400 font-bold">✕</button></div>
@@ -435,18 +577,6 @@
       <div class="space-y-2 text-xs bg-slate-800/40 p-3 rounded-xl border border-slate-700/60"><p><strong class="text-slate-400">Nombre:</strong> <span id="info-cli-nombre" class="font-bold text-white text-sm"></span></p><p><strong class="text-slate-400">Teléfono:</strong> <span id="info-cli-tel" class="text-fuchsia-400 font-semibold"></span> | <strong class="text-slate-400">Emergencia:</strong> <span id="info-cli-emer" class="text-amber-400 font-semibold"></span></p><p><strong class="text-slate-400">Dirección:</strong> <span id="info-cli-dir" class="text-slate-200"></span></p><p><strong class="text-slate-400">Notas:</strong> <span id="info-cli-redes" class="text-slate-300 italic"></span></p></div>
       <div><h4 class="font-bold text-sm text-white mb-2">Historial de Préstamos:</h4><div id="contenedor-historial-prestamos-cliente" class="space-y-3"></div></div>
       <button onclick="cerrarModalInfoCliente()" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs">Cerrar</button>
-    </div>
-  </div>
-
-  <div id="modal-pago-atrasado-agrupado" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-    <div class="tarjeta-ui bg-[#0F172A] border border-red-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 class="text-lg font-bold text-red-400">💵 Cobrar Deuda Atrasada</h3><button onclick="cerrarModalPagoAtrasadoTotal()" class="text-slate-400 font-bold">✕</button></div>
-      <div class="bg-red-950/30 border border-red-500/30 p-3 rounded-xl space-y-1.5 text-xs"><p><span class="text-slate-400">Cliente:</span> <strong id="pago-atrasado-cli-nombre" class="text-white"></strong></p><p><span class="text-slate-400">Deuda Base Vencida:</span> <span id="pago-atrasado-monto-base" class="text-slate-200 font-bold">$0</span></p><p><span class="text-slate-400">Demora:</span> <strong id="pago-atrasado-tiempo-txt" class="text-red-400">0 días</strong></p><p class="text-red-400 font-bold"><span class="text-slate-400">Recargo Aplicado:</span> +$<span id="pago-atrasado-monto-recargo">0</span></p><div class="border-t border-red-500/30 pt-1.5 text-sm"><span class="text-slate-300 font-bold">Total Sugerido:</span> <strong id="pago-atrasado-monto-total" class="text-red-400 text-base">$0</strong></div></div>
-      <form onsubmit="confirmarPagoAtrasadoAgrupado(event)" class="space-y-4">
-        <input type="hidden" id="pago-atrasado-cliente-id">
-        <div><label class="block text-xs font-bold uppercase mb-1">Monto que entrega ($) *</label><input type="number" id="pago-atrasado-monto-ingresado" oninput="convertirMontoPagoAtrasadoEnLetras(this.value)" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"><p id="pago-atrasado-monto-en-letras" class="text-xs text-red-400 font-bold italic mt-1 min-h-[18px]"></p></div>
-        <div class="flex gap-3 pt-2"><button type="button" onclick="cerrarModalPagoAtrasadoTotal()" class="w-1/2 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button><button type="submit" class="w-1/2 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg">Confirmar Pago</button></div>
-      </form>
     </div>
   </div>
 
