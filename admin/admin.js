@@ -2,7 +2,6 @@
 
 let desuscribirListenerAdmin = null;
 
-// OBTENER MES ACTUAL EN FORMATO ISO (EJ: "2026-08")
 function obtenerMesActualISO() {
   const d = new Date();
   const anio = d.getFullYear();
@@ -10,19 +9,16 @@ function obtenerMesActualISO() {
   return `${anio}-${mes}`;
 }
 
-// OBTENER NOMBRE DEL MES Y AÑO PARA MOSTRAR
 function obtenerNombreMesActual() {
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const d = new Date();
   return `${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// COMPATIBILIDAD DE LLAMADA
 function cargarListaPrestamistasAdmin() {
   escucharPrestamistasEnTiempoReal();
 }
 
-// CARGA INICIAL DEL PANEL ADMIN
 async function cargarPanelAdmin() {
   if (!window.usuarioActual) return;
 
@@ -44,7 +40,6 @@ async function cargarPanelAdmin() {
   }
 }
 
-// ADAPTA LA INTERFAZ A "REGISTRO DE PAGO" PARA LA CUENTA DE ADMIN
 function adaptarInterfazAdmin() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
   const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com' || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
@@ -78,31 +73,21 @@ function adaptarInterfazAdmin() {
   }
 }
 
-// ESCUCHA EN TIEMPO REAL Y RENDERIZA LA LISTA DE PRESTAMISTAS ABAJO DEL FORMULARIO
 function escucharPrestamistasEnTiempoReal() {
   if (desuscribirListenerAdmin) desuscribirListenerAdmin();
 
   desuscribirListenerAdmin = db.collection('usuarios').onSnapshot(snapshot => {
     let container = document.getElementById('lista-prestamistas-admin');
-    
-    if (!container) {
-      const secHabilitar = document.getElementById('sec-usuarios') || document.querySelector('#sec-usuarios .tarjeta-ui');
-      if (secHabilitar) {
-        container = document.createElement('div');
-        container.id = 'lista-prestamistas-admin';
-        container.className = 'mt-6 space-y-3 pt-4 border-t border-slate-800';
-        secHabilitar.appendChild(container);
-      } else {
-        return;
-      }
-    }
+    if (!container) return;
 
     container.innerHTML = '';
     const prestamistas = [];
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (doc.id !== window.usuarioActual?.uid && data.rol !== 'admin') {
+      const userEmail = (data.email || '').toLowerCase();
+      
+      if (doc.id !== window.usuarioActual?.uid && userEmail !== 'sistemas.cobroapp@gmail.com') {
         prestamistas.push({ id: doc.id, ...data });
       }
     });
@@ -115,23 +100,21 @@ function escucharPrestamistasEnTiempoReal() {
     const mesActualISO = obtenerMesActualISO();
     const nombreMes = obtenerNombreMesActual();
 
-    let html = `
-      <div class="pt-2">
-        <h4 class="text-xs font-extrabold text-slate-300 uppercase tracking-wider mb-3 flex justify-between items-center flex-wrap gap-2">
-          <span>👥 Cuentas Habilitadas de Prestamistas (${prestamistas.length})</span>
-          <span class="text-[10px] text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-1 rounded-full border border-fuchsia-500/20">Mes: ${nombreMes}</span>
-        </h4>
-        <div class="space-y-3">
-    `;
+    let html = '<div class="pt-2">' +
+      '<h4 class="text-xs font-extrabold text-slate-300 uppercase tracking-wider mb-3 flex justify-between items-center flex-wrap gap-2">' +
+        '<span>👥 Cuentas Habilitadas de Prestamistas (' + prestamistas.length + ')</span>' +
+        '<span class="text-[10px] text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-1 rounded-full border border-fuchsia-500/20">Mes: ' + nombreMes + '</span>' +
+      '</h4>' +
+      '<div class="space-y-3">';
 
     prestamistas.forEach(u => {
       const estadoManual = u.estadoCuenta || u.estadoSuscripcion || 'activo';
-      const estaSuspendidoManual = estadoManual === 'suspendido' || estadoManual === 'inactivo' || estadoManual === 'suspendida';
+      const estaSuspendido = estadoManual === 'suspendido' || estadoManual === 'inactivo' || estadoManual === 'suspendida';
 
       const pagadoEsteMes = u.ultimoMesPagado === mesActualISO || (u.pagosMes && u.pagosMes[mesActualISO] === true);
 
       let badgeSuscripcion = '';
-      if (estaSuspendidoManual) {
+      if (estaSuspendido) {
         badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-red-500/20 text-red-400 border border-red-500/30">🔴 Suspendida</span>';
       } else if (pagadoEsteMes) {
         badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Al Día (' + nombreMes + ')</span>';
@@ -140,44 +123,43 @@ function escucharPrestamistasEnTiempoReal() {
       }
 
       const passMostrable = u.passwordVisual || u.password || '••••••';
+      const nombreUser = u.nombre || 'Prestamista';
+      const emailUser = u.email || 'Sin correo';
 
-      html += `
-        <div class="p-4 bg-[#1E293B] border border-slate-700/80 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs shadow-lg">
-          <div class="space-y-1.5 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
-              <h5 class="font-extrabold text-white text-sm">${u.nombre || 'Prestamista'}</h5>
-              ${badgeSuscripcion}
-            </div>
-            <p class="text-slate-300 font-medium">📧 Correo: <strong class="text-white">${u.email || 'Sin correo'}</strong></p>
-            <p class="text-slate-400">🔑 Clave actual: <strong class="text-fuchsia-400 font-mono text-xs bg-slate-900 px-2 py-0.5 rounded border border-slate-800">${passMostrable}</strong></p>
-            <p class="text-[10px] text-slate-500">Último período abonado: <strong class="text-slate-300">${u.ultimoMesPagado || 'Sin registros'}</strong></p>
-          </div>
+      html += '<div class="p-4 bg-[#1E293B] border border-slate-700/80 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs shadow-lg">' +
+        '<div class="space-y-1.5 flex-1">' +
+          '<div class="flex items-center gap-2 flex-wrap">' +
+            '<h5 class="font-extrabold text-white text-sm">' + nombreUser + '</h5>' +
+            badgeSuscripcion +
+          '</div>' +
+          '<p class="text-slate-300 font-medium">📧 Correo: <strong class="text-white">' + emailUser + '</strong></p>' +
+          '<p class="text-slate-400">🔑 Clave actual: <strong class="text-fuchsia-400 font-mono text-xs bg-slate-900 px-2 py-0.5 rounded border border-slate-800">' + passMostrable + '</strong></p>' +
+          '<p class="text-[10px] text-slate-500">Último período abonado: <strong class="text-slate-300">' + (u.ultimoMesPagado || 'Sin registros') + '</strong></p>' +
+        '</div>' +
 
-          <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-            <button onclick="marcarPagoMesPrestamista('${u.id}', '${u.nombre || u.email}')" class="px-3 py-2 rounded-xl font-extrabold text-xs ${pagadoEsteMes ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg'} transition flex items-center gap-1.5">
-              💳 ${pagadoEsteMes ? 'Re-Acreditar Pago' : 'Marcar Cuota Pagada'}
-            </button>
+        '<div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800">' +
+          '<button onclick="marcarPagoMesPrestamista(\'' + u.id + '\', \'' + nombreUser + '\')" class="px-3 py-2 rounded-xl font-extrabold text-xs ' + (pagadoEsteMes ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg') + ' transition flex items-center gap-1.5">' +
+            '💳 ' + (pagadoEsteMes ? 'Re-Acreditar Pago' : 'Marcar Cuota Pagada') +
+          '</button>' +
 
-            <button onclick="toggleEstadoPrestamista('${u.id}', '${estadoManual}')" class="px-3 py-2 rounded-xl font-bold text-xs ${estaSuspendidoManual ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30'} transition flex items-center gap-1">
-              ${estaSuspendidoManual ? '▶️ Activar' : '⏸️ Suspender'}
-            </button>
+          '<button onclick="toggleEstadoPrestamista(\'' + u.id + '\', \'' + estadoManual + '\')" class="px-3 py-2 rounded-xl font-bold text-xs ' + (estaSuspendido ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30') + ' transition flex items-center gap-1">' +
+            (estaSuspendido ? '▶️ Activar' : '⏸️ Suspender') +
+          '</button>' +
 
-            <button onclick="eliminarUsuarioPrestamista('${u.id}', '${u.nombre || u.email}')" class="px-3 py-2 rounded-xl font-bold text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition flex items-center gap-1">
-              🗑️ Eliminar
-            </button>
-          </div>
-        </div>
-      `;
+          '<button onclick="eliminarUsuarioPrestamista(\'' + u.id + '\', \'' + nombreUser + '\')" class="px-3 py-2 rounded-xl font-bold text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition flex items-center gap-1">' +
+            '🗑️ Eliminar' +
+          '</button>' +
+        '</div>' +
+      '</div>';
     });
 
-    html += `</div></div>`;
+    html += '</div></div>';
     container.innerHTML = html;
   }, error => {
     console.error("Error al escuchar cuentas en Firestore:", error);
   });
 }
 
-// MARCAR O REGISTRAR EL PAGO DEL MES ACTUAL
 async function marcarPagoMesPrestamista(id, nombre) {
   const mesActualISO = obtenerMesActualISO();
   const nombreMes = obtenerNombreMesActual();
@@ -185,13 +167,15 @@ async function marcarPagoMesPrestamista(id, nombre) {
   if (!confirm(`¿Confirmás registrar el pago de cuota mensual de ${nombreMes} para "${nombre}"?`)) return;
 
   try {
-    await db.collection('usuarios').doc(id).update({
+    const updateData = {
       ultimoMesPagado: mesActualISO,
-      [`pagosMes.${mesActualISO}`]: true,
       estadoCuenta: 'activo',
       estadoSuscripcion: 'activo',
       fechaUltimoPago: new Date().toISOString()
-    });
+    };
+    updateData[`pagosMes.${mesActualISO}`] = true;
+
+    await db.collection('usuarios').doc(id).update(updateData);
 
     if (typeof mostrarToast === 'function') {
       mostrarToast(`🎉 Pago de cuota (${nombreMes}) acreditado para ${nombre}`);
@@ -202,7 +186,6 @@ async function marcarPagoMesPrestamista(id, nombre) {
   }
 }
 
-// SUSPENDER O ACTIVAR LA CUENTA
 async function toggleEstadoPrestamista(id, estadoActual) {
   const estaSuspendido = estadoActual === 'suspendido' || estadoActual === 'inactivo' || estadoActual === 'suspendida';
   const nuevoEstado = estaSuspendido ? 'activo' : 'suspendido';
@@ -222,7 +205,6 @@ async function toggleEstadoPrestamista(id, estadoActual) {
   }
 }
 
-// ELIMINAR CUENTA Y TODOS SUS DATOS VINCULADOS
 async function eliminarUsuarioPrestamista(id, nombre) {
   if (!confirm(`⚠️ ATENCIÓN: ¿Estás seguro de eliminar permanentemente la cuenta de "${nombre}"?\n\nSe eliminarán el usuario, sus clientes y sus préstamos.`)) return;
 
@@ -246,7 +228,6 @@ async function eliminarUsuarioPrestamista(id, nombre) {
   }
 }
 
-// CREAR NUEVA CUENTA EN AUTHENTICATION Y FIRESTORE
 async function crearUsuarioPrestamista(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -260,41 +241,43 @@ async function crearUsuarioPrestamista(event) {
   const pass = document.getElementById('usr-pass')?.value.trim();
 
   if (!nombre || !email || !pass) {
-    return typeof mostrarToast === 'function' ? mostrarToast("Completá todos los campos requeridos", "error");
+    return typeof mostrarToast === 'function' ? mostrarToast("Completá todos los campos requeridos", "error") : null;
+  }
+
+  if (pass.length < 6) {
+    return typeof mostrarToast === 'function' ? mostrarToast("La contraseña debe tener al menos 6 caracteres", "error") : alert("La contraseña debe tener al menos 6 caracteres.");
   }
 
   try {
-    let secondaryApp = firebase.apps.find(a => a.name === 'SecondaryApp');
-    if (!secondaryApp) {
-      secondaryApp = firebase.initializeApp(firebaseConfig, 'SecondaryApp');
-    }
-    const secondaryAuth = secondaryApp.auth();
+    let newUid = db.collection('usuarios').doc().id;
 
-    let newUid = null;
     try {
+      let secondaryApp = firebase.apps.find(a => a.name === 'SecondaryApp');
+      if (!secondaryApp) {
+        secondaryApp = firebase.initializeApp(firebaseConfig, 'SecondaryApp');
+      }
+      const secondaryAuth = secondaryApp.auth();
       const userCred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
       newUid = userCred.user.uid;
       await secondaryAuth.signOut();
-    } catch (authError) {
-      if (authError.code === 'auth/email-already-in-use') {
-        newUid = db.collection('usuarios').doc().id;
-      } else {
-        throw authError;
-      }
+    } catch (authErr) {
+      console.warn("Aviso Firebase Auth:", authErr.message);
     }
 
     const mesActualISO = obtenerMesActualISO();
-    await db.collection('usuarios').doc(newUid).set({
-      nombre,
-      email,
+    const userData = {
+      nombre: nombre,
+      email: email,
       passwordVisual: pass,
       rol: 'prestamista',
       estadoCuenta: 'activo',
       estadoSuscripcion: 'activo',
       ultimoMesPagado: mesActualISO,
-      [`pagosMes.${mesActualISO}`]: true,
       fechaCreacion: new Date().toISOString()
-    });
+    };
+    userData[`pagosMes.${mesActualISO}`] = true;
+
+    await db.collection('usuarios').doc(newUid).set(userData);
 
     if (typeof mostrarToast === 'function') mostrarToast("🎉 Cuenta creada con éxito para " + nombre);
 
