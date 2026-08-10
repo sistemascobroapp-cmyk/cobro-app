@@ -91,6 +91,24 @@ async function guardarInteresesConfigDesdeModal(event) {
 }
 
 // ==========================================
+// LÓGICA DE RECARGO DE MORA ESCALONADO
+// ==========================================
+function calcularPorcentajeRecargoEscalonado(diasAtraso) {
+  if (diasAtraso <= 0) return 0;
+  const cfg = window.datosUsuarioActual?.configIntereses || {};
+  const retDiario = parseFloat(cfg.retrasoDiario) || 0;
+  const retSemanal = parseFloat(cfg.retrasoSemanal) || 0;
+  const retMensual = parseFloat(cfg.retrasoMensual) || 0;
+
+  const meses = Math.floor(diasAtraso / 30);
+  const remMes = diasAtraso % 30;
+  const semanas = Math.floor(remMes / 7);
+  const dias = remMes % 7;
+
+  return (meses * retMensual) + (semanas * retSemanal) + (dias * retDiario);
+}
+
+// ==========================================
 // 2. CLIENTES Y VALIDACIÓN DE 10 DÍGITOS
 // ==========================================
 
@@ -170,7 +188,6 @@ async function guardarYVincularCliente(event) {
   const direccion = document.getElementById('cli-direccion').value.trim();
   const redes = document.getElementById('cli-redes').value.trim();
 
-  // VALIDACIÓN EXACTA DE 10 DÍGITOS
   const regexTel = /^[0-9]{10}$/;
   if (!regexTel.test(telefono)) {
     return mostrarToast("El teléfono personal debe tener exactamente 10 dígitos numéricos.", "error");
@@ -189,8 +206,17 @@ async function guardarYVincularCliente(event) {
       await db.collection('clientes').doc(editId).update(dataCliente);
       mostrarToast("Cliente actualizado correctamente");
     } else {
-      await db.collection('clientes').add(dataCliente);
+      const docRef = await db.collection('clientes').add(dataCliente);
       mostrarToast("¡Cliente registrado con éxito!");
+
+      // Si estábamos vinculando desde el simulador, autoseleccionar
+      if (simulacionActual && !simulacionActual.clienteId) {
+        simulacionActual.clienteId = docRef.id;
+        simulacionActual.nombreCliente = nombre;
+        const inputCli = document.getElementById('input-cliente');
+        if (inputCli) inputCli.value = docRef.id;
+        cerrarModalVincularClienteSimulacion();
+      }
     }
     cerrarModalCliente();
   } catch (error) {
@@ -268,7 +294,7 @@ function cerrarModalInfoCliente() {
 }
 
 // ==========================================
-// 3. SIMULADOR Y CÁLCULO DE INTERÉS POR CUOTA/MES
+// 3. SIMULADOR Y POPUP DE ASIGNACIÓN DE CLIENTE
 // ==========================================
 
 function alCambiarFrecuencia() {
@@ -300,7 +326,6 @@ function generarSimulacion(event) {
     return mostrarToast("Completá todos los campos requeridos para simular", "error");
   }
 
-  // REGLA SOLICITADA: INTERÉS MULTIPLICADO POR LA CANTIDAD DE MESES/CUOTAS (30% x 3 cuotas = 90%)
   const porcentajeTotalInteres = interesPorPeriodo * cuotas;
   const ganancia = (monto * (porcentajeTotalInteres / 100));
   const montoTotal = monto + ganancia;
@@ -385,7 +410,8 @@ function guardarPrestamoOficial() {
   if (!simulacionActual) return;
 
   if (!simulacionActual.clienteId) {
-    return mostrarToast("Seleccioná un cliente para guardar el préstamo oficial", "error");
+    abrirModalVincularClienteSimulacion();
+    return;
   }
 
   const prestamoDuplicado = window.prestamos.find(p => p.clienteId === simulacionActual.clienteId && p.estado !== 'finalizado');
@@ -396,6 +422,48 @@ function guardarPrestamoOficial() {
   } else {
     guardarPrestamoFirestore();
   }
+}
+
+function abrirModalVincularClienteSimulacion() {
+  const select = document.getElementById('select-vincular-cliente');
+  if (select) {
+    select.innerHTML = '<option value="">-- Seleccioná un cliente --</option>';
+    window.clientes.forEach(c => {
+      select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.telefono})</option>`;
+    });
+  }
+  document.getElementById('modal-vincular-cliente-simulacion')?.classList.remove('hidden');
+}
+
+function cerrarModalVincularClienteSimulacion() {
+  document.getElementById('modal-vincular-cliente-simulacion')?.classList.add('hidden');
+}
+
+function confirmarVinculacionClienteSimulacion() {
+  const select = document.getElementById('select-vincular-cliente');
+  const clienteId = select?.value;
+
+  if (!clienteId) {
+    return mostrarToast("Seleccioná un cliente de la lista", "error");
+  }
+
+  const cli = window.clientes.find(c => c.id === clienteId);
+  if (!cli) return;
+
+  simulacionActual.clienteId = cli.id;
+  simulacionActual.nombreCliente = cli.nombre;
+
+  const badgeCli = document.getElementById('badge-cliente');
+  if (badgeCli) {
+    badgeCli.innerText = cli.nombre;
+    badgeCli.className = "text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+  }
+
+  const inputCli = document.getElementById('input-cliente');
+  if (inputCli) inputCli.value = cli.id;
+
+  cerrarModalVincularClienteSimulacion();
+  guardarPrestamoOficial();
 }
 
 function cancelarPrestamoDuplicado() {
@@ -461,7 +529,6 @@ function renderizarGridCalendarioVisual() {
     container.innerHTML += `<div class="p-2 opacity-20"></div>`;
   }
 
-  // OBTENER EL DÍA HOY REAL EN ZONA HORARIA LOCAL (Evita salto de fecha pasadas las 21hs)
   const hoyISO = obtenerFechaLocalISO();
 
   for (let d = 1; d <= ultimoDia.getDate(); d++) {
@@ -704,7 +771,7 @@ function obtenerLunesSemana(fecha) {
 }
 
 // ==========================================
-// 6. RESUMEN: ACTIVOS VS FINALIZADOS & DETALLE
+// 6. RESUMEN: ACTIVOS VS FINALIZADOS EN CARPETAS
 // ==========================================
 
 function alternarPestanaResumen(pestana) {
@@ -726,14 +793,12 @@ function alternarPestanaResumen(pestana) {
 function renderizarResumenYPrestamos() {
   const elemCap = document.getElementById('resumen-capital');
   const elemGan = document.getElementById('resumen-ganancia');
-  const bodyTabla = document.getElementById('tabla-prestamos-body');
+  const contResumen = document.getElementById('contenedor-vista-resumen-tabla');
   const tituloTabla = document.getElementById('titulo-tabla-resumen');
-  if (!bodyTabla) return;
+  if (!contResumen) return;
 
   let totalCapital = 0;
   let totalGanancia = 0;
-
-  const prestamosFiltrados = window.prestamos.filter(p => pestanaResumenActual === 'activos' ? p.estado !== 'finalizado' : p.estado === 'finalizado');
 
   window.prestamos.filter(p => p.estado !== 'finalizado').forEach(p => {
     totalCapital += parseFloat(p.monto || 0);
@@ -743,36 +808,136 @@ function renderizarResumenYPrestamos() {
   if (elemCap) elemCap.innerText = '$' + totalCapital.toLocaleString('es-AR');
   if (elemGan) elemGan.innerText = '+$' + totalGanancia.toLocaleString('es-AR');
 
-  if (tituloTabla) tituloTabla.innerText = pestanaResumenActual === 'activos' ? "Préstamos Activos en Curso" : "Historial de Préstamos Finalizados";
+  if (pestanaResumenActual === 'activos') {
+    if (tituloTabla) tituloTabla.innerText = "Préstamos Activos en Curso";
+    const activos = window.prestamos.filter(p => p.estado !== 'finalizado');
 
-  bodyTabla.innerHTML = '';
-  if (prestamosFiltrados.length === 0) {
-    bodyTabla.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic">No hay préstamos ${pestanaResumenActual === 'activos' ? 'activos' : 'finalizados'}.</td></tr>`;
-    return;
-  }
+    if (activos.length === 0) {
+      contResumen.innerHTML = '<p class="p-6 text-center text-slate-500 italic">No hay préstamos activos en curso.</p>';
+      return;
+    }
 
-  prestamosFiltrados.forEach(p => {
-    const cli = window.clientes.find(c => c.id === p.clienteId);
-    let cobrado = 0;
-    (p.cuotasDetalle || []).forEach(c => { if (c.pagado) cobrado += parseFloat(c.montoCuota); });
-    const restante = Math.max(0, parseFloat(p.montoTotal) - cobrado);
-
-    bodyTabla.innerHTML += `
-      <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
-        <td class="p-3 font-bold text-white">${cli ? cli.nombre : 'Cliente'}</td>
-        <td class="p-3 text-slate-300">${p.fechaInicio}</td>
-        <td class="p-3 font-bold text-slate-200">$${parseFloat(p.monto).toLocaleString('es-AR')}</td>
-        <td class="p-3 font-extrabold text-fuchsia-400">$${parseFloat(p.montoTotal).toLocaleString('es-AR')}</td>
-        <td class="p-3 font-bold text-amber-400">$${restante.toLocaleString('es-AR')}</td>
-        <td class="p-3 text-slate-400">${p.cuotas} (${p.frecuencia})</td>
-        <td class="p-3 flex gap-2">
-          <button onclick="verDetallePrestamoActivo('${p.id}')" class="px-2 py-1 text-xs bg-slate-800 text-fuchsia-400 rounded-lg border border-slate-700 font-bold">📊 Detalle</button>
-          ${pestanaResumenActual === 'activos' ? `<button onclick="solicitarFinalizarPrestamo('${p.id}')" class="px-2 py-1 text-xs bg-emerald-600/20 text-emerald-400 rounded-lg border border-emerald-500/30 font-bold">🏁 Finalizar</button>` : ''}
-          <button onclick="solicitarEliminarPrestamo('${p.id}')" class="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 font-bold">🗑️</button>
-        </td>
-      </tr>
+    let htmlTabla = `
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="text-xs text-slate-400 uppercase bg-[#1E293B]/60 border-b border-slate-800">
+            <tr>
+              <th class="p-3">Cliente</th>
+              <th class="p-3">Inicio</th>
+              <th class="p-3">Prestado</th>
+              <th class="p-3">Total Devolución</th>
+              <th class="p-3">Cuánto Falta</th>
+              <th class="p-3">Plan</th>
+              <th class="p-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60">
     `;
-  });
+
+    activos.forEach(p => {
+      const cli = window.clientes.find(c => c.id === p.clienteId);
+      let cobrado = 0;
+      (p.cuotasDetalle || []).forEach(c => { if (c.pagado) cobrado += parseFloat(c.montoCuota); });
+      const restante = Math.max(0, parseFloat(p.montoTotal) - cobrado);
+
+      htmlTabla += `
+        <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
+          <td class="p-3 font-bold text-white">${cli ? cli.nombre : 'Cliente'}</td>
+          <td class="p-3 text-slate-300">${p.fechaInicio}</td>
+          <td class="p-3 font-bold text-slate-200">$${parseFloat(p.monto).toLocaleString('es-AR')}</td>
+          <td class="p-3 font-extrabold text-fuchsia-400">$${parseFloat(p.montoTotal).toLocaleString('es-AR')}</td>
+          <td class="p-3 font-bold text-amber-400">$${restante.toLocaleString('es-AR')}</td>
+          <td class="p-3 text-slate-400">${p.cuotas} (${p.frecuencia})</td>
+          <td class="p-3 flex gap-2">
+            <button onclick="verDetallePrestamoActivo('${p.id}')" class="px-2 py-1 text-xs bg-slate-800 text-fuchsia-400 rounded-lg border border-slate-700 font-bold">📊 Detalle</button>
+            <button onclick="solicitarFinalizarPrestamo('${p.id}')" class="px-2 py-1 text-xs bg-emerald-600/20 text-emerald-400 rounded-lg border border-emerald-500/30 font-bold">🏁 Finalizar</button>
+            <button onclick="solicitarEliminarPrestamo('${p.id}')" class="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 font-bold">🗑️</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    htmlTabla += `</tbody></table></div>`;
+    contResumen.innerHTML = htmlTabla;
+
+  } else {
+    // VISTA DE FINALIZADOS POR CARPETAS (MES Y AÑO)
+    if (tituloTabla) tituloTabla.innerText = "Carpetas de Préstamos Finalizados";
+    const finalizados = window.prestamos.filter(p => p.estado === 'finalizado');
+
+    if (finalizados.length === 0) {
+      contResumen.innerHTML = '<p class="p-6 text-center text-slate-500 italic">No tenés préstamos finalizados guardados en el historial.</p>';
+      return;
+    }
+
+    const gruposCarpetas = {};
+    const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+    finalizados.forEach(p => {
+      const fechaBase = p.fechaFinalizacion || p.fechaInicio || '2026-01-01';
+      const [y, m] = fechaBase.split('-');
+      const keyCarpeta = `${y}-${m}`;
+      const nombreCarpeta = `${nombresMeses[parseInt(m) - 1]} ${y}`;
+
+      if (!gruposCarpetas[keyCarpeta]) {
+        gruposCarpetas[keyCarpeta] = { titulo: nombreCarpeta, items: [] };
+      }
+      gruposCarpetas[keyCarpeta].items.push(p);
+    });
+
+    let htmlCarpetas = '<div class="space-y-4 p-2">';
+
+    Object.keys(gruposCarpetas).sort().reverse().forEach(key => {
+      const grupo = gruposCarpetas[key];
+      htmlCarpetas += `
+        <div class="border border-slate-800 rounded-2xl overflow-hidden bg-[#0F172A] shadow-lg">
+          <button onclick="alternarCarpetaFinalizados('carpeta-${key}')" class="w-full bg-[#1E293B]/80 hover:bg-[#1E293B] p-4 font-bold text-left text-fuchsia-300 flex justify-between items-center transition">
+            <span class="flex items-center gap-2.5 text-base">📁 ${grupo.titulo}</span>
+            <span class="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-extrabold">${grupo.items.length} Préstamo(s) Finalizado(s)</span>
+          </button>
+          <div id="carpeta-${key}" class="hidden p-4 overflow-x-auto space-y-2 border-t border-slate-800 bg-[#090D16]/50">
+            <table class="w-full text-left text-sm">
+              <thead class="text-xs text-slate-400 uppercase bg-[#1E293B]/40">
+                <tr>
+                  <th class="p-2.5">Cliente</th>
+                  <th class="p-2.5">Inicio</th>
+                  <th class="p-2.5">Prestado</th>
+                  <th class="p-2.5">Total Cobrado</th>
+                  <th class="p-2.5">Plan</th>
+                  <th class="p-2.5">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60">
+      `;
+
+      grupo.items.forEach(p => {
+        const cli = window.clientes.find(c => c.id === p.clienteId);
+        htmlCarpetas += `
+          <tr class="hover:bg-slate-800/30">
+            <td class="p-2.5 font-bold text-white">${cli ? cli.nombre : 'Cliente'}</td>
+            <td class="p-2.5 text-slate-300">${p.fechaInicio}</td>
+            <td class="p-2.5 font-bold text-slate-200">$${parseFloat(p.monto).toLocaleString('es-AR')}</td>
+            <td class="p-2.5 font-extrabold text-emerald-400">$${parseFloat(p.montoTotal).toLocaleString('es-AR')}</td>
+            <td class="p-2.5 text-slate-400">${p.cuotas} (${p.frecuencia})</td>
+            <td class="p-2.5 flex gap-2">
+              <button onclick="verDetallePrestamoActivo('${p.id}')" class="px-2 py-1 text-xs bg-slate-800 text-fuchsia-400 rounded-lg border border-slate-700 font-bold">📊 Ficha</button>
+              <button onclick="solicitarEliminarPrestamo('${p.id}')" class="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 font-bold">🗑️</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      htmlCarpetas += `</tbody></table></div></div>`;
+    });
+
+    htmlCarpetas += '</div>';
+    contResumen.innerHTML = htmlCarpetas;
+  }
+}
+
+function alternarCarpetaFinalizados(idCarpeta) {
+  const elem = document.getElementById(idCarpeta);
+  if (elem) elem.classList.toggle('hidden');
 }
 
 function verDetallePrestamoActivo(prestamoId) {
@@ -837,8 +1002,11 @@ function cerrarModalFinalizarPrestamo() {
 async function confirmarFinalizacionPrestamo() {
   if (!idPrestamoAFinalizar) return;
   try {
-    await db.collection('prestamos').doc(idPrestamoAFinalizar).update({ estado: 'finalizado' });
-    mostrarToast("🏁 Préstamo marcado como finalizado");
+    await db.collection('prestamos').doc(idPrestamoAFinalizar).update({
+      estado: 'finalizado',
+      fechaFinalizacion: obtenerFechaLocalISO()
+    });
+    mostrarToast("🏁 Préstamo archivado en Finalizados");
     cerrarModalFinalizarPrestamo();
   } catch (error) {
     mostrarToast("Error al finalizar préstamo", "error");
@@ -920,7 +1088,7 @@ function renderizarEstadoCuentas() {
 }
 
 // ==========================================
-// 8. PAGO AGRUPADO CON RECARGO OPCIONAL Y VALIDACIÓN
+// 8. PAGO AGRUPADO Y PASE AUTOMÁTICO A FINALIZADO
 // ==========================================
 
 function abrirModalPagoAtrasadoTotal(clienteId, montoBase, diasAtraso) {
@@ -933,7 +1101,8 @@ function abrirModalPagoAtrasadoTotal(clienteId, montoBase, diasAtraso) {
     (p.cuotasDetalle || []).forEach(c => { if (!c.pagado) saldoTotalDeuda += parseFloat(c.montoPendiente || c.montoCuota); });
   });
 
-  const recargoPct = (window.datosUsuarioActual?.configIntereses?.retrasoDiario || 2) * diasAtraso;
+  // CÁLCULO DE MORA ESCALONADA (DÍAS, SEMANAS, MESES)
+  const recargoPct = calcularPorcentajeRecargoEscalonado(diasAtraso);
   const montoRecargo = Math.round(montoBase * (recargoPct / 100));
 
   datosPagoAtrasadoAgrupadoActual = {
@@ -1033,7 +1202,16 @@ async function confirmarPagoAtrasadoAgrupado(event) {
         return c;
       });
 
-      await db.collection('prestamos').doc(p.id).update({ cuotasDetalle: cuotasActualizadas });
+      // VERIFICAR SI SE PAGÓ EL PRÉSTAMO COMPLETO PARA PASAR A FINALIZADO
+      const todasPagadas = cuotasActualizadas.every(c => c.pagado === true);
+      const dataUpdate = { cuotasDetalle: cuotasActualizadas };
+
+      if (todasPagadas) {
+        dataUpdate.estado = 'finalizado';
+        dataUpdate.fechaFinalizacion = obtenerFechaLocalISO();
+      }
+
+      await db.collection('prestamos').doc(p.id).update(dataUpdate);
     }
 
     mostrarToast("💵 Deuda regularizada correctamente");
@@ -1047,7 +1225,7 @@ async function confirmarPagoAtrasadoAgrupado(event) {
 }
 
 // ==========================================
-// 9. PAGO CUOTA INDIVIDUAL Y RECARGO OPCIONAL
+// 9. PAGO CUOTA INDIVIDUAL Y PASE AUTOMÁTICO A FINALIZADO
 // ==========================================
 
 function abrirModalPago(prestamoId, cuotaId) {
@@ -1069,7 +1247,8 @@ function abrirModalPago(prestamoId, cuotaId) {
     diasAtraso = Math.max(0, Math.floor((new Date() - new Date(y, m - 1, d)) / (1000 * 60 * 60 * 24)));
   }
 
-  const recargoPct = (window.datosUsuarioActual?.configIntereses?.retrasoDiario || 2) * diasAtraso;
+  // CÁLCULO DE MORA ESCALONADA (DÍAS, SEMANAS, MESES)
+  const recargoPct = calcularPorcentajeRecargoEscalonado(diasAtraso);
   const montoBaseCuota = parseFloat(cuota.montoPendiente || cuota.montoCuota);
   const montoRecargo = Math.round(montoBaseCuota * (recargoPct / 100));
 
@@ -1181,13 +1360,26 @@ async function confirmarRegistroPago(event) {
       return c;
     });
 
-    await db.collection('prestamos').doc(prestamoId).update({ cuotasDetalle: nuevasCuotas });
+    // PASAR A FINALIZADO AUTOMÁTICAMENTE SI TODAS LAS CUOTAS FUERON SALDADAS
+    const todasPagadas = nuevasCuotas.every(c => c.pagado === true);
+    const dataUpdate = { cuotasDetalle: nuevasCuotas };
 
-    mostrarToast("✅ Pago de cuota registrado");
+    if (todasPagadas) {
+      dataUpdate.estado = 'finalizado';
+      dataUpdate.fechaFinalizacion = obtenerFechaLocalISO();
+    }
+
+    await db.collection('prestamos').doc(prestamoId).update(dataUpdate);
+
+    if (todasPagadas) {
+      mostrarToast("🎉 ¡Préstamo pagado al 100% y enviado a Finalizados!");
+    } else {
+      mostrarToast("✅ Pago de cuota registrado");
+    }
+
     cerrarModalPago();
 
     const cli = window.clientes.find(c => c.id === p.clienteId);
-    
     let saldoPendiente = 0;
     nuevasCuotas.forEach(c => { if (!c.pagado) saldoPendiente += parseFloat(c.montoPendiente || c.montoCuota); });
 
@@ -1198,7 +1390,7 @@ async function confirmarRegistroPago(event) {
 }
 
 // ==========================================
-// 10. COMPROBANTES, WHATSAPP Y SUSCRIPCIÓN
+// 10. COMPROBANTES Y WHATSAPP
 // ==========================================
 
 function abrirModalComprobante(clienteNombre, monto, fecha, concepto, saldo) {

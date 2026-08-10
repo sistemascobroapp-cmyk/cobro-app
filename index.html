@@ -238,13 +238,13 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS (PESTAÑAS ACTIVOS Y FINALIZADOS) -->
+      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS (ACTIVOS Y FINALIZADOS EN CARPETAS) -->
       <section id="sec-resumen" class="seccion-app space-y-6 hidden">
         <div class="flex justify-between items-center flex-wrap gap-3">
           <h3 class="text-xl font-bold">Resumen de Préstamos</h3>
           <div class="flex items-center gap-2 bg-[#0F172A] border border-slate-800 p-1.5 rounded-2xl">
             <button onclick="alternarPestanaResumen('activos')" id="btn-tab-activos" class="px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white shadow">🟢 Activos</button>
-            <button onclick="alternarPestanaResumen('finalizados')" id="btn-tab-finalizados" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition">🏁 Finalizados</button>
+            <button onclick="alternarPestanaResumen('finalizados')" id="btn-tab-finalizados" class="px-4 py-2 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition">🏁 Finalizados (Carpetas 📁)</button>
           </div>
         </div>
 
@@ -261,22 +261,7 @@
 
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
           <h3 id="titulo-tabla-resumen" class="text-lg font-bold">Préstamos Activos en Curso</h3>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead class="text-xs text-slate-400 uppercase bg-[#1E293B]/60 border-b border-slate-800">
-                <tr>
-                  <th class="p-3">Cliente</th>
-                  <th class="p-3">Inicio</th>
-                  <th class="p-3">Prestado</th>
-                  <th class="p-3">Total Devolución</th>
-                  <th class="p-3">Cuánto Falta</th>
-                  <th class="p-3">Plan</th>
-                  <th class="p-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tabla-prestamos-body" class="divide-y divide-slate-800/60"></tbody>
-            </table>
-          </div>
+          <div id="contenedor-vista-resumen-tabla"></div>
         </div>
       </section>
 
@@ -365,6 +350,40 @@
     <button onclick="mostrarSeccion('sec-clientes')" id="m-btn-clientes" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">👥</span><span>Clientes</span></button>
     <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Tasas</span></button>
   </nav>
+
+  <!-- MODAL PARA SELECCIONAR O CREAR CLIENTE AL OTORGAR DESDE EL SIMULADOR -->
+  <div id="modal-vincular-cliente-simulacion" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+    <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/60 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-5">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>👤</span> Asignar Cliente al Préstamo</h3>
+        <button onclick="cerrarModalVincularClienteSimulacion()" class="text-slate-400 font-bold">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-300">Elegí a qué cliente le vas a otorgar este préstamo o creá uno nuevo rápidamente:</p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold uppercase mb-1 text-slate-400">Seleccionar Cliente Existente:</label>
+          <select id="select-vincular-cliente" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-fuchsia-500 cursor-pointer">
+            <option value="">-- Seleccioná un cliente --</option>
+          </select>
+        </div>
+
+        <div class="text-center py-1">
+          <span class="text-xs text-slate-500 uppercase font-bold">o también</span>
+        </div>
+
+        <button type="button" onclick="abrirModalNuevoCliente()" class="w-full bg-slate-800 hover:bg-slate-700 text-fuchsia-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700 flex justify-center items-center gap-2 transition">
+          <span>➕</span> Crear Nuevo Cliente Ahora
+        </button>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="cerrarModalVincularClienteSimulacion()" class="w-1/3 bg-slate-800 text-slate-300 font-bold py-3 rounded-xl text-xs">Cancelar</button>
+        <button type="button" onclick="confirmarVinculacionClienteSimulacion()" class="w-2/3 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl text-xs shadow-lg">✨ Confirmar & Otorgar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL DE CONFIGURACIÓN DE TASAS E INTERESES (ACCESO RÁPIDO CON ROSQUITA ⚙️) -->
   <div id="modal-config-intereses" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
