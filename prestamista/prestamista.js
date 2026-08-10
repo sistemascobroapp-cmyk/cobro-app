@@ -1682,22 +1682,28 @@ function compartirComprobanteImagen() {
 }
 
 // ==========================================
-// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO Y PERSISTENCIA
+// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO Y PERSISTENCIA FIJA
 // ==========================================
 
+// Actualiza el texto visual del interruptor al hacer clic en la llave
+function actualizarEstadoToggleMP() {
+  const chkAuto = document.getElementById('chk-mp-auto-activo');
+  const lblEstado = document.getElementById('lbl-mp-auto-estado');
+  if (chkAuto && lblEstado) {
+    lblEstado.innerText = chkAuto.checked ? 'Activado 🟢' : 'Desactivado 🔴';
+  }
+}
+
 async function guardarConfigMercadoPago() {
-  if (!window.usuarioActual) return;
+  if (!window.usuarioActual) return mostrarToast("Espera un momento mientras carga tu usuario...", "error");
 
   const tokenInput = document.getElementById('cfg-mp-access-token');
   const chkAuto = document.getElementById('chk-mp-auto-activo');
-  const lblEstado = document.getElementById('lbl-mp-auto-estado');
 
   const mpAccessToken = tokenInput ? tokenInput.value.trim() : '';
   const cobroAutomativoActivo = chkAuto ? chkAuto.checked : false;
 
-  if (lblEstado) {
-    lblEstado.innerText = cobroAutomativoActivo ? 'Activado 🟢' : 'Desactivado 🔴';
-  }
+  actualizarEstadoToggleMP();
 
   try {
     const configMP = {
@@ -1710,13 +1716,13 @@ async function guardarConfigMercadoPago() {
       configMercadoPago: configMP
     }, { merge: true });
 
-    // Mantener estado en memoria local inmediatamente
+    // Actualizar estado en memoria local inmediatamente
     if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
     window.datosUsuarioActual.configMercadoPago = configMP;
 
-    mostrarToast("🤖 Configuración de Mercado Pago guardada");
+    mostrarToast("🤖 Configuración de Mercado Pago guardada correctamente");
 
-    // Re-renderizar para reflejar o quitar el botón de WhatsApp inmediatamente
+    // Actualizar la vista del planificador para mostrar/ocultar el botón de WhatsApp
     if (typeof renderizarPlanificadorSemanal === 'function') {
       renderizarPlanificadorSemanal();
     }
@@ -1727,7 +1733,12 @@ async function guardarConfigMercadoPago() {
 }
 
 async function cargarConfigMercadoPagoUI() {
-  if (!window.usuarioActual) return;
+  // Si Firebase aún está iniciando sesión al refrescar, reintentamos en 300ms
+  if (!window.usuarioActual) {
+    setTimeout(cargarConfigMercadoPagoUI, 300);
+    return;
+  }
+
   try {
     const doc = await db.collection('usuarios').doc(window.usuarioActual.uid).get();
     if (doc.exists) {
@@ -1740,13 +1751,16 @@ async function cargarConfigMercadoPagoUI() {
 
       const inputToken = document.getElementById('cfg-mp-access-token');
       const chkAuto = document.getElementById('chk-mp-auto-activo');
-      const lblEstado = document.getElementById('lbl-mp-auto-estado');
 
       if (inputToken) inputToken.value = cfgMP.accessToken || '';
-      if (chkAuto) chkAuto.checked = !!cfgMP.activo;
-      if (lblEstado) lblEstado.innerText = cfgMP.activo ? 'Activado 🟢' : 'Desactivado 🔴';
+      
+      if (chkAuto) {
+        chkAuto.checked = !!cfgMP.activo; // Fija el interruptor encendido si en Firestore es true
+      }
 
-      // Actualizar vista del planificador
+      actualizarEstadoToggleMP(); // Pone el texto visual en "Activado 🟢" o "Desactivado 🔴"
+
+      // Refrescar planificador semanal con el nuevo estado cargado
       if (typeof renderizarPlanificadorSemanal === 'function') {
         renderizarPlanificadorSemanal();
       }
