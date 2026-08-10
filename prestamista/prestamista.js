@@ -1656,3 +1656,58 @@ function compartirComprobanteImagen() {
     });
   });
 }
+
+// ==========================================
+// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO
+// ==========================================
+
+async function guardarConfigMercadoPago() {
+  if (!window.usuarioActual) return;
+
+  const tokenInput = document.getElementById('cfg-mp-access-token');
+  const chkAuto = document.getElementById('chk-mp-auto-activo');
+  const lblEstado = document.getElementById('lbl-mp-auto-estado');
+
+  const mpAccessToken = tokenInput ? tokenInput.value.trim() : '';
+  const cobroAutomativoActivo = chkAuto ? chkAuto.checked : false;
+
+  if (lblEstado) {
+    lblEstado.innerText = cobroAutomativoActivo ? 'Activado 🟢' : 'Desactivado 🔴';
+  }
+
+  try {
+    await db.collection('usuarios').doc(window.usuarioActual.uid).set({
+      configMercadoPago: {
+        accessToken: mpAccessToken,
+        activo: cobroAutomativoActivo,
+        fechaActualizacion: new Date().toISOString()
+      }
+    }, { merge: true });
+
+    mostrarToast("🤖 Configuración de Mercado Pago guardada");
+  } catch (error) {
+    console.error("Error al guardar token MP:", error);
+    mostrarToast("Error al guardar token de Mercado Pago", "error");
+  }
+}
+
+async function cargarConfigMercadoPagoUI() {
+  if (!window.usuarioActual) return;
+  try {
+    const doc = await db.collection('usuarios').doc(window.usuarioActual.uid).get();
+    if (doc.exists) {
+      const data = doc.data();
+      const cfgMP = data.configMercadoPago || {};
+
+      const inputToken = document.getElementById('cfg-mp-access-token');
+      const chkAuto = document.getElementById('chk-mp-auto-activo');
+      const lblEstado = document.getElementById('lbl-mp-auto-estado');
+
+      if (inputToken) inputToken.value = cfgMP.accessToken || '';
+      if (chkAuto) chkAuto.checked = !!cfgMP.activo;
+      if (lblEstado) lblEstado.innerText = cfgMP.activo ? 'Activado 🟢' : 'Desactivado 🔴';
+    }
+  } catch (e) {
+    console.error("Error al cargar config MP:", e);
+  }
+}

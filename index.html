@@ -297,10 +297,10 @@
           </form>
         </div>
 
-        <!-- PANEL PARA EL PRESTAMISTA (SOLO PRESTAMISTA) -->
+      <!-- PANEL PARA EL PRESTAMISTA (SOLO PRESTAMISTA) -->
         <div id="panel-cfg-prestamista-tasas" class="space-y-6 hidden">
           
-          <!-- FORMULARIO DE TASAS DE INTERÉS DE PRESTAMISTA -->
+          <!-- 1. CONFIGURACIÓN DE TASAS E INTERESES -->
           <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
             <div class="border-b border-slate-800 pb-3">
               <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>⚙️</span> Configuración de Tasas e Intereses</h3>
@@ -348,7 +348,7 @@
             </form>
           </div>
 
-          <!-- ESTADO DE ALQUILER DE LA APP (UBICADO JUSTO ABAJO DE LAS TASAS) -->
+          <!-- 2. ESTADO DE ALQUILER DE LA APP -->
           <div class="tarjeta-ui bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] border border-indigo-500/50 p-6 rounded-2xl shadow-2xl space-y-4">
             <div class="border-b border-indigo-500/30 pb-3">
               <h3 class="text-lg font-bold text-indigo-300 flex items-center gap-2"><span>💳</span> Estado de Alquiler de la Aplicación</h3>
@@ -362,38 +362,66 @@
               <button onclick="contactarAdministradorWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2 transition">📲 Contactar a Administrador</button>
             </div>
           </div>
- <!-- SECCIÓN: CAMBIAR MI CORREO Y CONTRASEÑA -->
-<div class="mt-6 pt-6 border-t border-slate-800 space-y-4">
-  <div class="flex items-center gap-2">
-    <span class="text-base">🔐</span>
-    <h4 class="font-extrabold text-sm text-white">Actualizar Credenciales de Acceso</h4>
-  </div>
-  <p class="text-xs text-slate-400">
-    Cambiá tu correo o contraseña cuando quieras. Los cambios se guardan en tiempo real y se sincronizan con la administración.
-  </p>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label class="block text-xs font-bold text-slate-300 mb-1.5">Nuevo Correo Electrónico</label>
-      <input type="email" id="cfg-mi-email" class="w-full bg-[#0F172A] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-fuchsia-500" placeholder="tu@correo.com">
-    </div>
+          <!-- 3. AUTOMATIZACIÓN DE MERCADO PAGO -->
+          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+            <div class="border-b border-slate-800 pb-3 flex justify-between items-center flex-wrap gap-2">
+              <div>
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                  <span>🤖</span> Automatización de Pagos con Mercado Pago
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">Conectá tu cuenta de Mercado Pago para acreditar cuotas y ponerlas en verde automáticamente.</p>
+              </div>
+              
+              <label class="inline-flex items-center cursor-pointer gap-2 bg-[#1E293B] px-3 py-1.5 rounded-xl border border-slate-700">
+                <input type="checkbox" id="chk-mp-auto-activo" onchange="guardarConfigMercadoPago()" class="sr-only peer">
+                <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-fuchsia-600 relative"></div>
+                <span class="text-xs font-bold text-slate-200" id="lbl-mp-auto-estado">Desactivado</span>
+              </label>
+            </div>
 
-    <div>
-      <label class="block text-xs font-bold text-slate-300 mb-1.5">Nueva Contraseña</label>
-      <input type="password" id="cfg-mi-pass" class="w-full bg-[#0F172A] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-fuchsia-500" placeholder="•••••••• (dejar en blanco para no cambiar)">
-    </div>
-  </div>
+            <div class="space-y-4 max-w-lg">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1">Mercado Pago Access Token (Producción)</label>
+                <input type="password" id="cfg-mp-access-token" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-fuchsia-500 font-mono" placeholder="APP_USR-0000000000000000-000000-..." />
+                <p class="text-[11px] text-slate-500 mt-1">
+                  Obtenelo en <a href="https://www.mercadopago.com.ar/developers/panel/credentials" target="_blank" class="text-fuchsia-400 underline">Mercado Pago Developers</a> (Credenciales de Producción ➔ Access Token).
+                </p>
+              </div>
 
-  <button type="button" onclick="actualizarCredencialesUsuario()" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-extrabold py-3.5 rounded-xl shadow-lg text-xs transition flex justify-center items-center gap-2">
-    <span>💾</span> Guardar Nuevo Correo / Contraseña
-  </button>
-</div>
+              <button type="button" onclick="guardarConfigMercadoPago()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold py-3 rounded-xl shadow-lg text-xs transition flex justify-center items-center gap-2">
+                <span>💾</span> Guardar Token de Mercado Pago
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. CAMBIAR CORREO Y CONTRASEÑA -->
+          <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="border-b border-slate-800 pb-3">
+              <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>🔐</span> Actualizar Credenciales de Acceso</h3>
+              <p class="text-xs text-slate-400 mt-1">Cambiá tu correo o contraseña cuando quieras. Los cambios se guardan en tiempo real y se sincronizan con la administración.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1.5">Nuevo Correo Electrónico</label>
+                <input type="email" id="cfg-mi-email" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-fuchsia-500" placeholder="tu@correo.com">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-1.5">Nueva Contraseña</label>
+                <input type="password" id="cfg-mi-pass" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-fuchsia-500" placeholder="•••••••• (dejar en blanco para no cambiar)">
+              </div>
+            </div>
+
+            <button type="button" onclick="actualizarCredencialesUsuario()" class="w-full max-w-lg bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-extrabold py-3.5 rounded-xl shadow-lg text-xs transition flex justify-center items-center gap-2">
+              <span>💾</span> Guardar Nuevo Correo / Contraseña
+            </button>
+          </div>
+
         </div>
 
       </section>
-
-  
-
       <!-- SECCIÓN 6: REGISTRO DE CLIENTES -->
       <section id="sec-clientes" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
