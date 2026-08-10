@@ -415,11 +415,11 @@
       <section id="sec-suscripcion" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-gradient-to-br from-[#0F172A] to-[#1E1B4B] border border-indigo-500/50 p-6 rounded-2xl shadow-2xl space-y-4 max-w-lg">
           <h3 class="text-lg font-bold text-indigo-300">💳 Estado de Alquiler de la App</h3>
-          <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400">$0 / mes</p>
+          <p id="cli-sub-monto-txt" class="text-3xl font-black text-indigo-400 flex items-center gap-3 flex-wrap">$0 / mes</p>
           <p id="cli-sub-link-info" class="text-xs text-slate-400 italic"></p>
 
           <div class="space-y-2 pt-2">
-            <button onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2">
+            <button id="btn-pagar-sub-mp" onclick="pagarSuscripcionMercadoPago()" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2">
               <span>💳</span> Pagar Alquiler por Mercado Pago
             </button>
             <button onclick="enviarComprobanteAlquilerWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow flex justify-center items-center gap-2">

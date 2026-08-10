@@ -143,15 +143,17 @@ function escucharConfigSuscripcion() {
       if (inLink) inLink.value = configSuscripcion.link || '';
       if (inWsp) inWsp.value = configSuscripcion.whatsapp || '';
 
-      const txtMonto = document.getElementById('cli-sub-monto-txt');
       const txtLinkInfo = document.getElementById('cli-sub-link-info');
-      if (txtMonto) txtMonto.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
       if (txtLinkInfo) txtLinkInfo.innerText = configSuscripcion.link ? `Destino de Pago: ${configSuscripcion.link}` : 'Sin método configurado aún.';
 
       const elemMontoBloqueo = document.getElementById('bloqueo-monto');
       const elemAliasBloqueo = document.getElementById('bloqueo-alias-cbu');
       if (elemMontoBloqueo) elemMontoBloqueo.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
       if (elemAliasBloqueo) elemAliasBloqueo.innerText = configSuscripcion.link || 'Sin CBU/Alias configurado';
+
+      if (datosUsuarioActual) {
+        actualizarVistaSuscripcionUsuario(datosUsuarioActual);
+      }
     }
   });
 }

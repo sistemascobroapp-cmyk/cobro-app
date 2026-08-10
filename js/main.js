@@ -3,6 +3,7 @@
 let usuarioActual = null;
 let rolUsuarioActual = 'prestamista';
 let unsubListenerUsuario = null;
+let datosUsuarioActual = null;
 
 window.onload = function() {
   aplicarTema(temaActual);
@@ -36,14 +37,17 @@ window.onload = function() {
             return;
           }
 
-          const data = doc.data();
-          const estado = data.estadoCuenta || 'activa';
+          datosUsuarioActual = doc.data();
+          const estado = datosUsuarioActual.estadoCuenta || 'activa';
+
+          // ACTUALIZAR ESTADO DE ALQUILER EN LA PESTAÑA DEL PRESTAMISTA
+          actualizarVistaSuscripcionUsuario(datosUsuarioActual);
 
           if (estado === 'suspendida') {
-            mostrarPantallaBloqueo(data);
+            mostrarPantallaBloqueo(datosUsuarioActual);
           } else {
             ocultarPantallaBloqueo();
-            evaluarNotificacionSuscripcionDiaria(data);
+            evaluarNotificacionSuscripcionDiaria(datosUsuarioActual);
           }
         });
       }
@@ -69,6 +73,7 @@ window.onload = function() {
 
     } else {
       usuarioActual = null;
+      datosUsuarioActual = null;
       rolUsuarioActual = 'prestamista';
       ocultarPantallaBloqueo();
 
@@ -85,6 +90,33 @@ window.onload = function() {
     }
   });
 };
+
+function actualizarVistaSuscripcionUsuario(dataUsuario) {
+  const txtMonto = document.getElementById('cli-sub-monto-txt');
+  const btnPagarMp = document.getElementById('btn-pagar-sub-mp');
+  if (!txtMonto) return;
+
+  const fechaHoy = new Date();
+  const mesAnioKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
+  const estaPagoMes = dataUsuario && dataUsuario.pagosMes && dataUsuario.pagosMes[mesAnioKey] === true;
+
+  if (estaPagoMes) {
+    txtMonto.innerHTML = `<span class="text-emerald-400">$0</span> <span class="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-500/30">🟢 Alquiler Saldado</span>`;
+    if (btnPagarMp) {
+      btnPagarMp.innerText = "✓ Alquiler Abonado este Mes";
+      btnPagarMp.className = "w-full bg-emerald-600/30 text-emerald-300 font-extrabold py-3.5 rounded-xl border border-emerald-500/30 cursor-default";
+      btnPagarMp.onclick = null;
+    }
+  } else {
+    const monto = (configSuscripcion && configSuscripcion.monto) ? configSuscripcion.monto : 0;
+    txtMonto.innerHTML = `<span class="text-indigo-400">$${monto.toLocaleString('es-AR')} / mes</span> <span class="text-xs font-bold text-amber-400 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/30">⚠️ Pendiente</span>`;
+    if (btnPagarMp) {
+      btnPagarMp.innerText = "💳 Pagar Alquiler por Mercado Pago";
+      btnPagarMp.className = "w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2 cursor-pointer";
+      btnPagarMp.onclick = pagarSuscripcionMercadoPago;
+    }
+  }
+}
 
 function mostrarPantallaBloqueo(datosUsuario) {
   const modalBloqueo = document.getElementById('pantalla-bloqueo-suspension');
@@ -219,13 +251,9 @@ function irAPagarSuscripcionDesdeNotif() {
 function iniciarListenersFirestore() {
   if (!db || !usuarioActual) return;
 
-  let consultaClientes = db.collection('clientes');
-  let consultaPrestamos = db.collection('prestamos');
-
-  if (rolUsuarioActual !== 'admin') {
-    consultaClientes = consultaClientes.where('usuarioId', '==', usuarioActual.uid);
-    consultaPrestamos = consultaPrestamos.where('usuarioId', '==', usuarioActual.uid);
-  }
+  // CADA USUARIO (INCLUYENDO EL ADMIN) ÚNICAMENTE VE SUS PROPIOS CLIENTES Y PRÉSTAMOS
+  let consultaClientes = db.collection('clientes').where('usuarioId', '==', usuarioActual.uid);
+  let consultaPrestamos = db.collection('prestamos').where('usuarioId', '==', usuarioActual.uid);
 
   consultaClientes.onSnapshot(snapshot => {
     clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
