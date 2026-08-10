@@ -1,113 +1,175 @@
 // PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN, CONTROL DE SUSPENSIÓN Y ENRUTAMIENTO
 
-// VARIABLES DE ESTADO GLOBAL
-let usuarioActual = null;
-let rolUsuarioActual = 'prestamista';
-let unsubListenerUsuario = null;
-let datosUsuarioActual = null;
-let clientes = [];
-let prestamos = [];
-let configSuscripcion = { monto: 0, link: '', whatsapp: '' };
-let temaActual = localStorage.getItem('tema_app') || 'oscuro';
+// VARIABLES GLOBALES DE ESTADO
+window.usuarioActual = null;
+window.rolUsuarioActual = 'prestamista';
+window.unsubListenerUsuario = null;
+window.datosUsuarioActual = null;
+window.clientes = window.clientes || [];
+window.prestamos = window.prestamos || [];
+window.configSuscripcion = window.configSuscripcion || { monto: 0, link: '', whatsapp: '' };
+window.temaActual = localStorage.getItem('tema_app') || 'oscuro';
 
 window.onload = function() {
-  if (typeof aplicarTema === 'function') aplicarTema(temaActual);
-  if (typeof cargarCamposConfigIntereses === 'function') cargarCamposConfigIntereses();
+  try {
+    if (typeof aplicarTema === 'function') aplicarTema(window.temaActual);
+    if (typeof cargarCamposConfigIntereses === 'function') cargarCamposConfigIntereses();
 
-  const elemFrecuencia = document.getElementById('frecuencia-prestamo');
-  if (elemFrecuencia) elemFrecuencia.value = 'mensual';
+    const elemFrecuencia = document.getElementById('frecuencia-prestamo');
+    if (elemFrecuencia) elemFrecuencia.value = 'mensual';
 
-  if (typeof alCambiarFrecuencia === 'function') alCambiarFrecuencia();
-  if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
+    if (typeof alCambiarFrecuencia === 'function') alCambiarFrecuencia();
+    if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
+  } catch (e) {
+    console.error("Error durante el onload:", e);
+  }
 
-  auth.onAuthStateChanged(async user => {
-    const btnSubmit = document.getElementById('btn-login-submit');
+  // LISTENER DE ESTADO DE AUTENTICACIÓN
+  if (typeof auth !== 'undefined' && auth) {
+    auth.onAuthStateChanged(async user => {
+      const btnSubmit = document.getElementById('btn-login-submit');
 
-    if (unsubListenerUsuario) {
-      unsubListenerUsuario();
-      unsubListenerUsuario = null;
-    }
+      if (window.unsubListenerUsuario) {
+        window.unsubListenerUsuario();
+        window.unsubListenerUsuario = null;
+      }
 
-    if (user) {
-      usuarioActual = user;
+      if (user) {
+        window.usuarioActual = user;
 
-      // RECONOCIMIENTO AUTOMÁTICO DE ADMINISTRADOR MASTER POR CORREO
-      if (user.email && user.email.toLowerCase() === 'sistemas.cobroapp@gmail.com') {
-        rolUsuarioActual = 'admin';
-        ocultarPantallaBloqueo();
+        // 1. OCULTAR PANTALLA DE LOGIN DE INMEDIATO PARA EVITAR TILDES
+        const pantallaLogin = document.getElementById('pantalla-login');
+        if (pantallaLogin) pantallaLogin.classList.add('hidden');
+
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerText = "Ingresar al Sistema";
+        }
+
+        const navMobile = document.getElementById('nav-mobile-app');
+        if (navMobile) navMobile.classList.remove('hidden');
+
+        const sidebar = document.getElementById('sidebar-app');
+        if (sidebar) {
+          sidebar.classList.add('hidden', 'md:flex');
+          sidebar.classList.remove('md:hidden');
+        }
+
+        // 2. DETERMINAR ROL DEL USUARIO
+        if (user.email && user.email.toLowerCase() === 'sistemas.cobroapp@gmail.com') {
+          window.rolUsuarioActual = 'admin';
+          ocultarPantallaBloqueo();
+        } else {
+          window.rolUsuarioActual = 'prestamista';
+
+          // LISTENER EN TIEMPO REAL SOBRE EL DOCUMENTO DEL PRESTAMISTA
+          try {
+            window.unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+              if (!doc.exists) {
+                if (typeof mostrarToast === 'function') mostrarToast("🚫 Tu cuenta ha sido dada de baja.", "error");
+                auth.signOut();
+                return;
+              }
+
+              window.datosUsuarioActual = doc.data();
+              const estado = window.datosUsuarioActual.estadoCuenta || 'activa';
+
+              actualizarVistaSuscripcionUsuario(window.datosUsuarioActual);
+
+              if (estado === 'suspendida') {
+                mostrarPantallaBloqueo(window.datosUsuarioActual);
+              } else {
+                ocultarPantallaBloqueo();
+                evaluarNotificacionSuscripcionDiaria(window.datosUsuarioActual);
+              }
+            }, err => {
+              console.error("Error en listener de usuario:", err);
+            });
+          } catch (errUser) {
+            console.error("Error suscribiendo a usuario:", errUser);
+          }
+        }
+
+        // 3. CARGAR INTERFAZ Y LISTENERS DE FIRESTORE
+        try { if (typeof configurarInterfazPorRol === 'function') configurarInterfazPorRol(); } catch (e) { console.error(e); }
+        try { if (typeof iniciarListenersFirestore === 'function') iniciarListenersFirestore(); } catch (e) { console.error(e); }
+        try { if (typeof escucharConfigSuscripcion === 'function') escucharConfigSuscripcion(); } catch (e) { console.error(e); }
+        try { if (typeof verificarRetornoAutomaticoMercadoPago === 'function') verificarRetornoAutomaticoMercadoPago(); } catch (e) { console.error(e); }
+
       } else {
-        rolUsuarioActual = 'prestamista';
+        // USUARIO NO AUTENTICADO
+        window.usuarioActual = null;
+        window.datosUsuarioActual = null;
+        window.rolUsuarioActual = 'prestamista';
+        ocultarPantallaBloqueo();
 
-        // LISTENER EN TIEMPO REAL SOBRE EL DOCUMENTO DEL PRESTAMISTA
-        unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
-          if (!doc.exists) {
-            if (typeof mostrarToast === 'function') mostrarToast("🚫 Tu cuenta ha sido dada de baja del sistema.", "error");
-            auth.signOut();
-            return;
-          }
+        const pantallaLogin = document.getElementById('pantalla-login');
+        if (pantallaLogin) pantallaLogin.classList.remove('hidden');
 
-          datosUsuarioActual = doc.data();
-          const estado = datosUsuarioActual.estadoCuenta || 'activa';
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerText = "Ingresar al Sistema";
+        }
 
-          // ACTUALIZAR ESTADO DE ALQUILER EN LA PESTAÑA DEL PRESTAMISTA
-          actualizarVistaSuscripcionUsuario(datosUsuarioActual);
+        const navMobile = document.getElementById('nav-mobile-app');
+        if (navMobile) navMobile.classList.add('hidden');
 
-          if (estado === 'suspendida') {
-            mostrarPantallaBloqueo(datosUsuarioActual);
-          } else {
-            ocultarPantallaBloqueo();
-            evaluarNotificacionSuscripcionDiaria(datosUsuarioActual);
-          }
-        }, err => {
-          console.error("Error en listener usuario:", err);
-        });
+        const sidebar = document.getElementById('sidebar-app');
+        if (sidebar) {
+          sidebar.classList.add('hidden', 'md:hidden');
+          sidebar.classList.remove('md:flex');
+        }
       }
-
-      // OCULTAR PANTALLA DE LOGIN Y ACTIVAR INTERFAZ
-      const pantallaLogin = document.getElementById('pantalla-login');
-      if (pantallaLogin) pantallaLogin.classList.add('hidden');
-      
-      const navMobile = document.getElementById('nav-mobile-app');
-      if (navMobile) navMobile.classList.remove('hidden');
-
-      const sidebar = document.getElementById('sidebar-app');
-      if (sidebar) {
-        sidebar.classList.add('hidden', 'md:flex');
-        sidebar.classList.remove('md:hidden');
-      }
-
-      configurarInterfazPorRol();
-      iniciarListenersFirestore();
-      escucharConfigSuscripcion();
-
-      // VERIFICACIÓN AUTOMÁTICA DE PAGO DESDE MERCADO PAGO
-      verificarRetornoAutomaticoMercadoPago();
-
-    } else {
-      usuarioActual = null;
-      datosUsuarioActual = null;
-      rolUsuarioActual = 'prestamista';
-      ocultarPantallaBloqueo();
-
-      const pantallaLogin = document.getElementById('pantalla-login');
-      if (pantallaLogin) pantallaLogin.classList.remove('hidden');
-
-      if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = "Ingresar al Sistema";
-      }
-
-      const navMobile = document.getElementById('nav-mobile-app');
-      if (navMobile) navMobile.classList.add('hidden');
-
-      const sidebar = document.getElementById('sidebar-app');
-      if (sidebar) {
-        sidebar.classList.add('hidden', 'md:hidden');
-        sidebar.classList.remove('md:flex');
-      }
-    }
-  });
+    });
+  } else {
+    console.error("Firebase Auth no está disponible.");
+  }
 };
+
+async function iniciarSesionUsuario(event) {
+  if (event && event.preventDefault) event.preventDefault();
+
+  const btn = document.getElementById('btn-login-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerText = "Ingresando...";
+  }
+
+  const emailElem = document.getElementById('login-email');
+  const passElem = document.getElementById('login-pass');
+
+  if (!emailElem || !passElem) {
+    if (btn) { btn.disabled = false; btn.innerText = "Ingresar al Sistema"; }
+    return;
+  }
+
+  const email = emailElem.value.trim();
+  const pass = passElem.value.trim();
+
+  if (!email || !pass) {
+    if (typeof mostrarToast === 'function') mostrarToast("Completá tu correo y contraseña.", "error");
+    if (btn) { btn.disabled = false; btn.innerText = "Ingresar al Sistema"; }
+    return;
+  }
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+    if (typeof mostrarToast === 'function') mostrarToast("¡Bienvenido al sistema!");
+  } catch (error) {
+    console.error("Error al iniciar sesión:", error);
+    let msg = "Correo o contraseña incorrectos";
+    if (error.code === 'auth/invalid-email') msg = "El correo no tiene un formato válido";
+    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = "Usuario o contraseña incorrectos";
+    if (error.code === 'auth/too-many-requests') msg = "Demasiados intentos. Aguardá unos momentos";
+    
+    if (typeof mostrarToast === 'function') mostrarToast(msg, "error");
+    
+    if (btn) {
+      btn.disabled = false;
+      btn.innerText = "Ingresar al Sistema";
+    }
+  }
+}
 
 function actualizarVistaSuscripcionUsuario(dataUsuario) {
   const txtMonto = document.getElementById('cli-sub-monto-txt');
@@ -126,7 +188,7 @@ function actualizarVistaSuscripcionUsuario(dataUsuario) {
       btnPagarMp.onclick = null;
     }
   } else {
-    const monto = (configSuscripcion && configSuscripcion.monto) ? configSuscripcion.monto : 0;
+    const monto = (window.configSuscripcion && window.configSuscripcion.monto) ? window.configSuscripcion.monto : 0;
     txtMonto.innerHTML = `<span class="text-indigo-400">$${monto.toLocaleString('es-AR')} / mes</span> <span class="text-xs font-bold text-amber-400 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/30">⚠️ Pendiente</span>`;
     if (btnPagarMp) {
       btnPagarMp.innerText = "💳 Pagar Alquiler por Mercado Pago";
@@ -143,8 +205,8 @@ function mostrarPantallaBloqueo(datosUsuario) {
   const elemMonto = document.getElementById('bloqueo-monto');
   const elemAlias = document.getElementById('bloqueo-alias-cbu');
 
-  const monto = (configSuscripcion && configSuscripcion.monto) ? configSuscripcion.monto : 0;
-  const link = (configSuscripcion && configSuscripcion.link) ? configSuscripcion.link : '';
+  const monto = (window.configSuscripcion && window.configSuscripcion.monto) ? window.configSuscripcion.monto : 0;
+  const link = (window.configSuscripcion && window.configSuscripcion.link) ? window.configSuscripcion.link : '';
 
   if (elemMonto) elemMonto.innerText = '$' + monto.toLocaleString('es-AR') + ' / mes';
   if (elemAlias) elemAlias.innerText = link || 'Sin CBU/Alias configurado';
@@ -158,7 +220,7 @@ function ocultarPantallaBloqueo() {
 }
 
 function copiarAliasBloqueo() {
-  const alias = (configSuscripcion && configSuscripcion.link) ? configSuscripcion.link : '';
+  const alias = (window.configSuscripcion && window.configSuscripcion.link) ? window.configSuscripcion.link : '';
   if (!alias) return typeof mostrarToast === 'function' ? mostrarToast("Sin datos para copiar", "error") : null;
 
   navigator.clipboard.writeText(alias);
@@ -173,7 +235,7 @@ function configurarInterfazPorRol() {
   const panelSubAdmin = document.getElementById('panel-cfg-suscripcion-admin');
   const lblRol = document.getElementById('lbl-rol-usuario');
 
-  if (rolUsuarioActual === 'admin') {
+  if (window.rolUsuarioActual === 'admin') {
     if (lblRol) lblRol.innerText = "Panel Administrador Master";
     
     if (btnUsrs) { btnUsrs.classList.remove('hidden'); btnUsrs.classList.add('flex'); }
@@ -205,12 +267,12 @@ async function verificarRetornoAutomaticoMercadoPago() {
   const urlParams = new URLSearchParams(window.location.search);
   const status = urlParams.get('status') || urlParams.get('collection_status');
 
-  if (status === 'approved' && usuarioActual && rolUsuarioActual !== 'admin') {
+  if (status === 'approved' && window.usuarioActual && window.rolUsuarioActual !== 'admin') {
     const fechaHoy = new Date();
     const mesAnioKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
 
     try {
-      await db.collection('usuarios').doc(usuarioActual.uid).update({
+      await db.collection('usuarios').doc(window.usuarioActual.uid).update({
         [`pagosMes.${mesAnioKey}`]: true,
         estadoCuenta: 'activa'
       });
@@ -270,67 +332,46 @@ function irAPagarSuscripcionDesdeNotif() {
 }
 
 function iniciarListenersFirestore() {
-  if (!db || !usuarioActual) return;
-
-  // CADA USUARIO ÚNICAMENTE VE SUS PROPIOS CLIENTES Y PRÉSTAMOS
-  let consultaClientes = db.collection('clientes').where('usuarioId', '==', usuarioActual.uid);
-  let consultaPrestamos = db.collection('prestamos').where('usuarioId', '==', usuarioActual.uid);
-
-  consultaClientes.onSnapshot(snapshot => {
-    clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (typeof renderizarClientesSelect === 'function') renderizarClientesSelect();
-    if (typeof renderizarDirectorioClientes === 'function') renderizarDirectorioClientes();
-    if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
-  }, err => console.error("Error clientes snapshot:", err));
-
-  consultaPrestamos.onSnapshot(snapshot => {
-    prestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if (typeof renderizarResumenYPrestamos === 'function') renderizarResumenYPrestamos();
-    if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
-    if (typeof renderizarPlanificadorSemanal === 'function') renderizarPlanificadorSemanal();
-    if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
-  }, err => console.error("Error prestamos snapshot:", err));
-
-  if (rolUsuarioActual === 'admin') {
-    db.collection('usuarios').onSnapshot(snapshot => {
-      const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (typeof renderizarListaPrestamistasAdmin === 'function') renderizarListaPrestamistasAdmin(listaUsuarios);
-    }, err => console.error("Error usuarios snapshot:", err));
-  }
-}
-
-async function iniciarSesionUsuario(event) {
-  event.preventDefault();
-  const btn = document.getElementById('btn-login-submit');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = "Ingresando...";
-  }
-
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value.trim();
+  if (!db || !window.usuarioActual) return;
 
   try {
-    await auth.signInWithEmailAndPassword(email, pass);
-    if (typeof mostrarToast === 'function') mostrarToast("¡Bienvenido al sistema!");
-  } catch (error) {
-    console.error("Error al iniciar sesión:", error);
-    if (typeof mostrarToast === 'function') mostrarToast("Correo o contraseña incorrectos", "error");
-    if (btn) {
-      btn.disabled = false;
-      btn.innerText = "Ingresar al Sistema";
+    let consultaClientes = db.collection('clientes').where('usuarioId', '==', window.usuarioActual.uid);
+    let consultaPrestamos = db.collection('prestamos').where('usuarioId', '==', window.usuarioActual.uid);
+
+    consultaClientes.onSnapshot(snapshot => {
+      window.clientes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (typeof renderizarClientesSelect === 'function') renderizarClientesSelect();
+      if (typeof renderizarDirectorioClientes === 'function') renderizarDirectorioClientes();
+      if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
+    }, err => console.error("Error en snapshot clientes:", err));
+
+    consultaPrestamos.onSnapshot(snapshot => {
+      window.prestamos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (typeof renderizarResumenYPrestamos === 'function') renderizarResumenYPrestamos();
+      if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
+      if (typeof renderizarPlanificadorSemanal === 'function') renderizarPlanificadorSemanal();
+      if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
+    }, err => console.error("Error en snapshot préstamos:", err));
+
+    if (window.rolUsuarioActual === 'admin') {
+      db.collection('usuarios').onSnapshot(snapshot => {
+        const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (typeof renderizarListaPrestamistasAdmin === 'function') renderizarListaPrestamistasAdmin(listaUsuarios);
+      }, err => console.error("Error en snapshot usuarios:", err));
     }
+  } catch (error) {
+    console.error("Error al iniciar listeners:", error);
   }
 }
 
 function cerrarSesionApp() {
-  auth.signOut();
+  if (typeof auth !== 'undefined' && auth) auth.signOut();
 }
 
 function mostrarSeccion(idSeccion) {
-  if (!usuarioActual) return;
+  if (!window.usuarioActual) return;
 
-  if (idSeccion === 'sec-usuarios' && rolUsuarioActual !== 'admin') {
+  if (idSeccion === 'sec-usuarios' && window.rolUsuarioActual !== 'admin') {
     idSeccion = 'sec-registrar';
   }
 
@@ -352,10 +393,10 @@ function mostrarSeccion(idSeccion) {
 
     const mBtnElem = document.getElementById('m-btn-' + b);
     if (mBtnElem) {
-      if (b === 'usuarios' && rolUsuarioActual !== 'admin') {
+      if (b === 'usuarios' && window.rolUsuarioActual !== 'admin') {
         mBtnElem.className = "hidden";
       }
-      else if (b === 'suscripcion' && rolUsuarioActual === 'admin') {
+      else if (b === 'suscripcion' && window.rolUsuarioActual === 'admin') {
         mBtnElem.className = "hidden";
       }
       else if ('sec-' + b === idSeccion) {
