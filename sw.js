@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cobroapp-v1';
+const CACHE_NAME = 'cobroapp-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,16 +7,26 @@ const urlsToCache = [
 
 // Instalación del Service Worker
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
   );
 });
 
-// Activación del Service Worker
+// Activación del Service Worker y limpieza de caché antiguo
 self.addEventListener('activate', event => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 // Estrategia de respuesta (Red primero, respaldo en caché)

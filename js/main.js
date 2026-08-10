@@ -69,11 +69,11 @@ window.onload = function() {
               }
 
               window.datosUsuarioActual = doc.data();
-              const estado = window.datosUsuarioActual.estadoCuenta || 'activa';
+              const estado = window.datosUsuarioActual.estadoCuenta || window.datosUsuarioActual.estadoSuscripcion || 'activo';
 
               actualizarVistaSuscripcionUsuario(window.datosUsuarioActual);
 
-              if (estado === 'suspendida') {
+              if (estado === 'suspendido' || estado === 'inactivo' || estado === 'suspendida') {
                 mostrarPantallaBloqueo(window.datosUsuarioActual);
               } else {
                 ocultarPantallaBloqueo();
@@ -222,7 +222,7 @@ function configurarInterfazPorRol() {
     if (panelSubAdmin) panelSubAdmin.classList.remove('hidden');
 
     if (typeof adaptarInterfazAdmin === 'function') adaptarInterfazAdmin();
-    if (typeof cargarListaPrestamistasAdmin === 'function') cargarListaPrestamistasAdmin();
+    if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
   } else {
     if (lblRol) lblRol.innerText = "Panel de Prestamista";
     if (btnUsrs) { btnUsrs.classList.add('hidden'); btnUsrs.classList.remove('flex'); }
@@ -249,7 +249,7 @@ async function verificarRetornoAutomaticoMercadoPago() {
     try {
       await db.collection('usuarios').doc(window.usuarioActual.uid).update({
         [`pagosMes.${mesAnioKey}`]: true,
-        estadoCuenta: 'activa'
+        estadoCuenta: 'activo'
       });
 
       if (typeof mostrarToast === 'function') mostrarToast("🎉 ¡Pago de suscripción acreditado!");
@@ -329,7 +329,7 @@ function iniciarListenersFirestore() {
 
     if (window.rolUsuarioActual === 'admin') {
       db.collection('usuarios').onSnapshot(snapshot => {
-        if (typeof cargarListaPrestamistasAdmin === 'function') cargarListaPrestamistasAdmin();
+        if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
       }, err => console.error("Error usuarios:", err));
     }
   } catch (error) {
@@ -399,6 +399,10 @@ function mostrarSeccion(idSeccion) {
 
   if (typeof adaptarInterfazAdmin === 'function') {
     adaptarInterfazAdmin();
+  }
+
+  if (idSeccion === 'sec-usuarios' && typeof escucharPrestamistasEnTiempoReal === 'function') {
+    escucharPrestamistasEnTiempoReal();
   }
 
   window.scrollTo(0, 0);

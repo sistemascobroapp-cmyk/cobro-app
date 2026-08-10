@@ -17,7 +17,7 @@ function obtenerNombreMesActual() {
   return `${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// ALIAS PARA COMPATIBILIDAD CON MAIN.JS
+// COMPATIBILIDAD DE LLAMADA
 function cargarListaPrestamistasAdmin() {
   escucharPrestamistasEnTiempoReal();
 }
@@ -85,7 +85,6 @@ function escucharPrestamistasEnTiempoReal() {
   desuscribirListenerAdmin = db.collection('usuarios').onSnapshot(snapshot => {
     let container = document.getElementById('lista-prestamistas-admin');
     
-    // Si el contenedor no existe en el HTML, lo busca o genera automáticamente
     if (!container) {
       const secHabilitar = document.getElementById('sec-usuarios') || document.querySelector('#sec-usuarios .tarjeta-ui');
       if (secHabilitar) {
@@ -103,7 +102,7 @@ function escucharPrestamistasEnTiempoReal() {
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (doc.id !== window.usuarioActual?.uid) {
+      if (doc.id !== window.usuarioActual?.uid && data.rol !== 'admin') {
         prestamistas.push({ id: doc.id, ...data });
       }
     });
@@ -119,8 +118,8 @@ function escucharPrestamistasEnTiempoReal() {
     let html = `
       <div class="pt-2">
         <h4 class="text-xs font-extrabold text-slate-300 uppercase tracking-wider mb-3 flex justify-between items-center flex-wrap gap-2">
-          <span>👥 Cuentas de Prestamistas Habilitadas (${prestamistas.length})</span>
-          <span class="text-[10px] text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-1 rounded-full border border-fuchsia-500/20">Suscripción Mes: ${nombreMes}</span>
+          <span>👥 Cuentas Habilitadas de Prestamistas (${prestamistas.length})</span>
+          <span class="text-[10px] text-fuchsia-400 bg-fuchsia-500/10 px-2.5 py-1 rounded-full border border-fuchsia-500/20">Mes: ${nombreMes}</span>
         </h4>
         <div class="space-y-3">
     `;
@@ -129,7 +128,6 @@ function escucharPrestamistasEnTiempoReal() {
       const estadoManual = u.estadoCuenta || u.estadoSuscripcion || 'activo';
       const estaSuspendidoManual = estadoManual === 'suspendido' || estadoManual === 'inactivo' || estadoManual === 'suspendida';
 
-      // VERIFICACIÓN DE PAGO DE SUSCRIPCIÓN DEL MES EN CURSO
       const pagadoEsteMes = u.ultimoMesPagado === mesActualISO || (u.pagosMes && u.pagosMes[mesActualISO] === true);
 
       let badgeSuscripcion = '';
@@ -138,7 +136,7 @@ function escucharPrestamistasEnTiempoReal() {
       } else if (pagadoEsteMes) {
         badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Al Día (' + nombreMes + ')</span>';
       } else {
-        badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente de Pago</span>';
+        badgeSuscripcion = '<span class="px-2.5 py-0.5 rounded-full font-extrabold text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente Pago</span>';
       }
 
       const passMostrable = u.passwordVisual || u.password || '••••••';
@@ -204,7 +202,7 @@ async function marcarPagoMesPrestamista(id, nombre) {
   }
 }
 
-// SUSPENDER O ACTIVAR LA CUENTA MANUALMENTE
+// SUSPENDER O ACTIVAR LA CUENTA
 async function toggleEstadoPrestamista(id, estadoActual) {
   const estaSuspendido = estadoActual === 'suspendido' || estadoActual === 'inactivo' || estadoActual === 'suspendida';
   const nuevoEstado = estaSuspendido ? 'activo' : 'suspendido';
@@ -224,24 +222,21 @@ async function toggleEstadoPrestamista(id, estadoActual) {
   }
 }
 
-// ELIMINAR CUENTA DE PRESTAMISTA PERMANENTEMENTE (JUNTO CON SUS CLIENTES Y PRÉSTAMOS)
+// ELIMINAR CUENTA Y TODOS SUS DATOS VINCULADOS
 async function eliminarUsuarioPrestamista(id, nombre) {
-  if (!confirm(`⚠️ ATENCIÓN: ¿Estás seguro de eliminar permanentemente la cuenta de "${nombre}"?\n\nEsta acción eliminará el usuario, TODOS sus clientes y TODOS sus préstamos registrados.`)) return;
+  if (!confirm(`⚠️ ATENCIÓN: ¿Estás seguro de eliminar permanentemente la cuenta de "${nombre}"?\n\nSe eliminarán el usuario, sus clientes y sus préstamos.`)) return;
 
   try {
-    // 1. Eliminar préstamos asociados al prestamista
     const snapPrestamos = await db.collection('prestamos').where('usuarioId', '==', id).get();
     const batch1 = db.batch();
     snapPrestamos.forEach(doc => batch1.delete(doc.ref));
     await batch1.commit();
 
-    // 2. Eliminar clientes asociados al prestamista
     const snapClientes = await db.collection('clientes').where('usuarioId', '==', id).get();
     const batch2 = db.batch();
     snapClientes.forEach(doc => batch2.delete(doc.ref));
     await batch2.commit();
 
-    // 3. Eliminar el documento de usuario
     await db.collection('usuarios').doc(id).delete();
 
     if (typeof mostrarToast === 'function') mostrarToast("🗑️ Cuenta y todos sus datos eliminados correctamente");
@@ -251,7 +246,7 @@ async function eliminarUsuarioPrestamista(id, nombre) {
   }
 }
 
-// CREAR NUEVA CUENTA DE PRESTAMISTA
+// CREAR NUEVA CUENTA EN AUTHENTICATION Y FIRESTORE
 async function crearUsuarioPrestamista(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -269,10 +264,27 @@ async function crearUsuarioPrestamista(event) {
   }
 
   try {
-    const mesActualISO = obtenerMesActualISO();
-    const nuevoUserRef = db.collection('usuarios').doc();
+    let secondaryApp = firebase.apps.find(a => a.name === 'SecondaryApp');
+    if (!secondaryApp) {
+      secondaryApp = firebase.initializeApp(firebaseConfig, 'SecondaryApp');
+    }
+    const secondaryAuth = secondaryApp.auth();
 
-    await nuevoUserRef.set({
+    let newUid = null;
+    try {
+      const userCred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
+      newUid = userCred.user.uid;
+      await secondaryAuth.signOut();
+    } catch (authError) {
+      if (authError.code === 'auth/email-already-in-use') {
+        newUid = db.collection('usuarios').doc().id;
+      } else {
+        throw authError;
+      }
+    }
+
+    const mesActualISO = obtenerMesActualISO();
+    await db.collection('usuarios').doc(newUid).set({
       nombre,
       email,
       passwordVisual: pass,
@@ -292,11 +304,10 @@ async function crearUsuarioPrestamista(event) {
 
   } catch (error) {
     console.error("Error al crear la cuenta:", error);
-    if (typeof mostrarToast === 'function') mostrarToast("Error al crear la cuenta", "error");
+    if (typeof mostrarToast === 'function') mostrarToast("Error al crear la cuenta: " + error.message, "error");
   }
 }
 
-// CAMBIO DE CONTRASEÑA PARA CUALQUIER USUARIO (MANTIENE LA CLAVE VISIBLE PARA EL ADMIN)
 async function cambiarMiContrasena(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -307,10 +318,7 @@ async function cambiarMiContrasena(event) {
   if (pass1 !== pass2) return mostrarToast("Las contraseñas no coinciden", "error");
 
   try {
-    // 1. Cambia en Firebase Authentication
     await window.usuarioActual.updatePassword(pass1);
-
-    // 2. Guarda la clave legible en Firestore para que el Admin la siga viendo
     await db.collection('usuarios').doc(window.usuarioActual.uid).update({
       passwordVisual: pass1
     });
