@@ -26,7 +26,7 @@ function formatearTelefonoWhatsApp(numStr) {
   let limpio = numStr.replace(/\D/g, ''); // Deja sólo los dígitos numéricos
   if (limpio.startsWith('0')) limpio = limpio.substring(1); // Quita el 0 inicial
   if (limpio.length === 10) {
-    limpio = '549' + limpio; // Agrega prefijo internacional para Argentina si ingresó 10 dígitos (ej: 1122334455)
+    limpio = '549' + limpio; // Agrega prefijo internacional para Argentina
   }
   return limpio;
 }
@@ -107,7 +107,7 @@ function renderizarClientesSelect() {
   const datalistAdmin = document.getElementById('lista-clientes-admin-datalist');
   
   if (selectCliente) {
-    let htmlOptions = '<option value="">-- Seleccioná un cliente agendado --</option>';
+    let htmlOptions = '<option value="">-- Sin cliente seleccionado (Solo Simular) --</option>';
     clientes.forEach(c => {
       htmlOptions += `<option value="${c.id}">${c.nombre} — (${c.dir})</option>`;
     });
@@ -192,12 +192,28 @@ async function guardarYVincularCliente(event) {
     redes: document.getElementById('cli-redes').value
   };
 
+  let docIdProcesado = editId;
+
   if (editId) {
     if (db) await db.collection('clientes').doc(editId).update(datosCliente);
     mostrarToast("Cliente actualizado correctamente");
   } else {
-    if (db) await db.collection('clientes').add(datosCliente);
+    if (db) {
+      const docRef = await db.collection('clientes').add(datosCliente);
+      docIdProcesado = docRef.id;
+    }
     mostrarToast("Cliente registrado e ingresado al directorio");
+  }
+
+  // AUTO-VINCULAR AL CLIENTE RECIÉN CREADO A LA SIMULACIÓN ACTIVA
+  if (!editId && docIdProcesado && datosPrestamoSimulado) {
+    datosPrestamoSimulado.clienteId = docIdProcesado;
+    datosPrestamoSimulado.clienteNombre = `${datosCliente.nombre} (${datosCliente.dir})`;
+    
+    const selCliente = document.getElementById('input-cliente');
+    if (selCliente) selCliente.value = docIdProcesado;
+    
+    renderizarSimulacion();
   }
 
   cerrarModalCliente();
@@ -214,23 +230,26 @@ function generarSimulacion(event) {
   event.preventDefault();
   const clienteIdSeleccionado = document.getElementById('input-cliente').value;
   
-  if (!clienteIdSeleccionado) {
-    mostrarToast("Por favor seleccioná un cliente de la lista", "error");
-    return;
+  let clienteId = null;
+  let clienteNombre = "Cliente No Registrado";
+
+  if (clienteIdSeleccionado) {
+    const clienteObj = clientes.find(c => c.id === clienteIdSeleccionado);
+    if (clienteObj) {
+      clienteId = clienteObj.id;
+      clienteNombre = `${clienteObj.nombre} (${clienteObj.dir})`;
+    }
   }
 
-  const clienteObj = clientes.find(c => c.id === clienteIdSeleccionado);
-  
-  const clienteId = clienteObj ? clienteObj.id : null;
-  const clienteNombre = clienteObj ? `${clienteObj.nombre} (${clienteObj.dir})` : 'Cliente Seleccionado';
-  
   const monto = parseFloat(document.getElementById('monto-prestamo').value);
-  const interesPct = parseFloat(document.getElementById('interes-prestamo').value);
+  const interesTasaCuota = parseFloat(document.getElementById('interes-prestamo').value);
   const numCuotas = parseInt(document.getElementById('cuotas-prestamo').value);
   const frecuencia = document.getElementById('frecuencia-prestamo').value;
   const fechaInicioStr = document.getElementById('fecha-inicio').value;
 
-  const ganancia = monto * (interesPct / 100);
+  // CÁLCULO DE INTERÉS ACUMULADO ACORDES AL NÚMERO DE CUOTAS
+  const interesTotalPct = interesTasaCuota * numCuotas;
+  const ganancia = monto * (interesTotalPct / 100);
   const totalADevolver = monto + ganancia;
   const valorCuota = totalADevolver / numCuotas;
 
@@ -256,7 +275,7 @@ function generarSimulacion(event) {
   const datosCalculados = {
     usuarioId: usuarioActual ? usuarioActual.uid : 'sin_usuario',
     clienteId, clienteNombre, monto, ganancia, totalADevolver, valorCuota, numCuotas, frecuencia, calendario,
-    fechaInicio: fechaInicioStr, estado: 'activo', fechaCreacion: new Date().toISOString()
+    interesTasaCuota, interesTotalPct, fechaInicio: fechaInicioStr, estado: 'activo', fechaCreacion: new Date().toISOString()
   };
 
   const tieneCuentaActiva = clienteId && prestamos.some(p => p.clienteId === clienteId && p.estado !== 'finalizado');
@@ -292,7 +311,7 @@ function renderizarSimulacion() {
   document.getElementById('sim-cuota').innerText = '$' + datosPrestamoSimulado.valorCuota.toLocaleString('es-AR');
   
   let textoFrec = datosPrestamoSimulado.frecuencia + 'es';
-  document.getElementById('sim-plan').innerText = `${datosPrestamoSimulado.numCuotas} cuotas ${textoFrec}`;
+  document.getElementById('sim-plan').innerText = `${datosPrestamoSimulado.numCuotas} cuotas ${textoFrec} (${datosPrestamoSimulado.interesTotalPct}% int. total)`;
 
   const badge = document.getElementById('badge-cliente');
   const contenedorAcciones = document.getElementById('contenedor-acciones-prestamo');
@@ -308,10 +327,10 @@ function renderizarSimulacion() {
     `;
   } else {
     badge.className = "text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30";
-    badge.innerText = "⚠️ Cliente No Registrado";
+    badge.innerText = "⚠️ Simulación Sin Cliente Registrado";
 
     contenedorAcciones.innerHTML = `
-      <button onclick="abrirModalNuevoCliente()" class="w-full bg-fuchsia-600/20 hover:bg-fuchsia-600/30 text-fuchsia-300 font-bold py-3 rounded-xl border border-fuchsia-500/40">
+      <button onclick="abrirModalNuevoCliente()" class="w-full bg-fuchsia-600/20 hover:bg-fuchsia-600/30 text-fuchsia-300 font-bold py-3.5 rounded-xl border border-fuchsia-500/40">
         👤 Registrar Este Cliente para Otorgar
       </button>
     `;
@@ -863,7 +882,7 @@ function alternarPestanaResumen(pestana) {
     vistaFinalizados.classList.remove('hidden');
   }
 
-  renderizerResumenYPrestamos();
+  renderizarResumenYPrestamos();
 }
 
 function renderizarResumenYPrestamos() {
@@ -946,21 +965,19 @@ function renderizarEstadoCuentas() {
     `;
   });
 }
+
 function pagarSuscripcionMercadoPago() {
   if (!configSuscripcion.link) return mostrarToast("Sin link de pago configurado", "error");
   
   let link = configSuscripcion.link.trim();
   
   if (link.startsWith('http')) {
-    // Usar location.href fuerza al sistema operativo del celular a abrir la App nativa de Mercado Pago
     window.location.href = link;
   } else {
-    // Si pusiste solo un Alias/CBU de texto, lo copia al portapapeles
     navigator.clipboard.writeText(link);
     mostrarToast(`📋 Alias copiado: ${link}`);
   }
 }
-
 
 function enviarComprobanteAlquilerWhatsApp() {
   if (!configSuscripcion.whatsapp) return mostrarToast("El administrador no configuró teléfono de WhatsApp todavía", "error");

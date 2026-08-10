@@ -68,7 +68,7 @@ function renderizarListaPrestamistasAdmin(listaUsuarios) {
           </div>
 
           <div class="text-right">
-            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Suscripción Vence Día 10 (${nombreMesActual})</span>
+            <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">SUSCRIPCIÓN VENCE DÍA 10 (${nombreMesActual.toUpperCase()})</span>
             <button onclick="alternarPagoMesPrestamista('${p.id}', '${mesAnioActualKey}', ${estaPagoMes})" class="px-3 py-1.5 rounded-xl text-xs font-bold transition shadow ${estaPagoMes ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white'}">
               ${estaPagoMes ? '✓ PAGADO ESTE MES' : '⚠️ PENDIENTE DE PAGO'}
             </button>
@@ -148,7 +148,6 @@ function escucharConfigSuscripcion() {
       if (txtMonto) txtMonto.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
       if (txtLinkInfo) txtLinkInfo.innerText = configSuscripcion.link ? `Destino de Pago: ${configSuscripcion.link}` : 'Sin método configurado aún.';
 
-      // VINCULACIÓN EN TIEMPO REAL CON LA PANTALLA DE SUSPENSIÓN Y BLOQUEO
       const elemMontoBloqueo = document.getElementById('bloqueo-monto');
       const elemAliasBloqueo = document.getElementById('bloqueo-alias-cbu');
       if (elemMontoBloqueo) elemMontoBloqueo.innerText = '$' + (configSuscripcion.monto || 0).toLocaleString('es-AR') + ' / mes';
