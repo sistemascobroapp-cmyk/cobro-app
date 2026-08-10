@@ -87,7 +87,7 @@ function adaptarInterfazSegunRol() {
 }
 
 // ==========================================
-// 1. CONFIGURACIÓN DE INTERESES Y TASAS ⚙️
+// 1. CONFIGURACIÓN DE INTERESES, TASAS Y CREDENCIALES ⚙️
 // ==========================================
 
 async function guardarConfigInteresesPrestamista(event) {
@@ -146,9 +146,75 @@ async function cargarCamposConfigIntereses() {
       setVal('cfg-ret-diario', cfg.retDiario ?? cfg.retrasoDiario ?? 0.5);
       setVal('cfg-ret-semanal', cfg.retSemanal ?? cfg.retrasoSemanal ?? 2);
       setVal('cfg-ret-mensual', cfg.retMensual ?? cfg.retrasoMensual ?? 5);
+
+      // Cargar correo actual del usuario
+      setVal('cfg-mi-email', window.usuarioActual.email || data.email || '');
     }
   } catch (error) {
     console.error("Error al cargar configuración de intereses:", error);
+  }
+}
+
+// ACTUALIZACIÓN DE CORREO Y CONTRASEÑA EN TIEMPO REAL
+async function actualizarCredencialesUsuario() {
+  if (!window.usuarioActual) return mostrarToast("No hay usuario autenticado", "error");
+
+  const nuevoEmail = document.getElementById('cfg-mi-email')?.value.trim();
+  const nuevaPass = document.getElementById('cfg-mi-pass')?.value.trim();
+
+  if (!nuevoEmail && !nuevaPass) {
+    return mostrarToast("Ingresá un nuevo correo o contraseña para actualizar", "error");
+  }
+
+  try {
+    const updatesFirestore = {};
+    const cambiosRealizados = [];
+
+    // 1. Cambiar Correo si fue modificado
+    if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!regexEmail.test(nuevoEmail)) {
+        return mostrarToast("Ingresá un correo electrónico válido", "error");
+      }
+
+      await window.usuarioActual.updateEmail(nuevoEmail);
+      updatesFirestore.email = nuevoEmail;
+      if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
+      cambiosRealizados.push("Correo");
+    }
+
+    // 2. Cambiar Contraseña si se ingresó alguna
+    if (nuevaPass) {
+      if (nuevaPass.length < 6) {
+        return mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
+      }
+
+      await window.usuarioActual.updatePassword(nuevaPass);
+      updatesFirestore.passwordVisual = nuevaPass;
+      cambiosRealizados.push("Contraseña");
+    }
+
+    if (cambiosRealizados.length === 0) {
+      return mostrarToast("No se detectaron cambios en las credenciales", "error");
+    }
+
+    // 3. Sincronizar en Firestore para que el ADMIN lo vea en tiempo real
+    await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
+
+    mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizado(s) correctamente`);
+
+    if (document.getElementById('cfg-mi-pass')) {
+      document.getElementById('cfg-mi-pass').value = '';
+    }
+  } catch (error) {
+    console.error("Error al actualizar credenciales:", error);
+    if (error.code === 'auth/requires-recent-login') {
+      mostrarToast("Por seguridad, cerrá sesión y volvé a ingresar antes de cambiar tu correo o contraseña.", "error");
+    } else if (error.code === 'auth/email-already-in-use') {
+      mostrarToast("Ese correo electrónico ya está en uso por otro usuario.", "error");
+    } else {
+      mostrarToast("Error al actualizar: " + error.message, "error");
+    }
   }
 }
 
@@ -1589,23 +1655,4 @@ function compartirComprobanteImagen() {
       }
     });
   });
-}
-
-async function cambiarMiContrasena(event) {
-  if (event && event.preventDefault) event.preventDefault();
-  const pass1 = document.getElementById('cli-nueva-pass')?.value;
-  const pass2 = document.getElementById('cli-confirm-pass')?.value;
-
-  if (!pass1 || !pass2) return mostrarToast("Completá los campos de contraseña", "error");
-  if (pass1 !== pass2) return mostrarToast("Las contraseñas no coinciden", "error");
-
-  try {
-    await window.usuarioActual.updatePassword(pass1);
-    await db.collection('usuarios').doc(window.usuarioActual.uid).update({ passwordVisual: pass1 });
-    mostrarToast("🔑 Contraseña actualizada correctamente");
-    if (document.getElementById('cli-nueva-pass')) document.getElementById('cli-nueva-pass').value = '';
-    if (document.getElementById('cli-confirm-pass')) document.getElementById('cli-confirm-pass').value = '';
-  } catch (error) {
-    mostrarToast("Error al cambiar contraseña", "error");
-  }
 }
