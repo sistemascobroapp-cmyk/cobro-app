@@ -38,6 +38,40 @@ function convertirMontoPagoAtrasadoEnLetras(val) {
 }
 
 // ==========================================
+// VERIFICACIÓN DE ALQUILER Y SUSPENSIÓN (REGLA DEL DÍA 5)
+// ==========================================
+function verificarEstadoSuscripcionPrestamista(usuarioData) {
+  const bannerAviso = document.getElementById('banner-alquiler-pendiente');
+  const modalSuspendido = document.getElementById('modal-cuenta-suspendida');
+
+  // 1. BLOQUEO SOLO SI VOS LO SUSPENDISTE MANUALMENTE DESDE EL PANEL MASTER
+  if (usuarioData && (usuarioData.estadoCuenta === 'suspendido' || usuarioData.suspendido === true)) {
+    if (modalSuspendido) modalSuspendido.classList.remove('hidden');
+    return;
+  } else {
+    if (modalSuspendido) modalSuspendido.classList.add('hidden');
+  }
+
+  // 2. CALCULAR FECHA Y PERÍODO ACTUAL (AÑO-MES)
+  const hoy = new Date();
+  const diaDelMes = hoy.getDate(); // Día del mes (1 al 31)
+  const mesActual = String(hoy.getMonth() + 1).padStart(2, '0');
+  const anioActual = hoy.getFullYear();
+  const periodoActual = `${anioActual}-${mesActual}`;
+
+  // Verificar si el usuario ya pagó el alquiler del mes actual
+  const ultimoAbonado = usuarioData ? (usuarioData.ultimoPeriodoAbonado || usuarioData.ultimoPago) : null;
+  const estaAlDia = ultimoAbonado === periodoActual;
+
+  // 3. REGLA DÍA 5: Mostrar cartelito SOLO si NO pagó Y YA ES DÍA 5 O MÁS
+  if (!estaAlDia && diaDelMes >= 5) {
+    if (bannerAviso) bannerAviso.classList.remove('hidden');
+  } else {
+    if (bannerAviso) bannerAviso.classList.add('hidden');
+  }
+}
+
+// ==========================================
 // ADAPTACIÓN DE INTERFAZ SEGÚN ROL (ADMIN VS PRESTAMISTA)
 // ==========================================
 function adaptarInterfazSegunRol() {
@@ -89,6 +123,11 @@ function adaptarInterfazSegunRol() {
 
   // Cargar configuración de Mercado Pago en la UI al iniciar
   cargarConfigMercadoPagoUI();
+
+  // Evaluar aviso de alquiler (partiendo del día 5) y estado de cuenta
+  if (window.datosUsuarioActual) {
+    verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
+  }
 }
 
 // ==========================================
@@ -1863,5 +1902,44 @@ async function copiarLinkPagoMP(prestamoId, cuotaId, monto, clienteNombre, numer
     });
   } else {
     prompt("Copiá el enlace de pago:", linkMP);
+  }
+}
+
+// ==========================================
+// 13. PAGO DE ALQUILER / SUSCRIPCIÓN DE PRESTAMISTA AL ADMIN
+// ==========================================
+
+async function pagarSuscripcionMercadoPago() {
+  try {
+    if (typeof mostrarToast === 'function') mostrarToast("⏳ Cargando link de pago...");
+
+    let docAdmin = await db.collection('configuracion').doc('admin_mp').get();
+    
+    if (!docAdmin.exists) {
+      docAdmin = await db.collection('configuracion').doc('general').get();
+    }
+
+    if (docAdmin.exists) {
+      const data = docAdmin.data();
+      const linkCobro = data.linkCobro || data.linkMercadoPago || data.link || '';
+
+      if (linkCobro && linkCobro.startsWith('http')) {
+        window.open(linkCobro, '_blank');
+      } else if (linkCobro) {
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(linkCobro);
+          mostrarToast(`📋 Datos de cobro copiados: ${linkCobro}`);
+        } else {
+          alert(`Datos de cobro del Administrador:\n${linkCobro}`);
+        }
+      } else {
+        mostrarToast("El Administrador no ha configurado un link de cobro aún.", "error");
+      }
+    } else {
+      mostrarToast("No se encontraron los datos de cobro del Administrador.", "error");
+    }
+  } catch (error) {
+    console.error("Error al obtener datos de suscripción:", error);
+    mostrarToast("Error al conectar con la base de datos", "error");
   }
 }
