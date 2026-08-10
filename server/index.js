@@ -7,8 +7,10 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 // ==========================================
-// 1. INICIALIZAR FIREBASE ADMIN
+// 1. INICIALIZAR FIREBASE ADMIN Y FIRESTORE
 // ==========================================
+let db;
+
 try {
   let rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 
@@ -16,23 +18,22 @@ try {
     throw new Error("La variable FIREBASE_SERVICE_ACCOUNT no existe en Render.");
   }
 
-  // Parsear JSON
   const serviceAccount = typeof rawServiceAccount === 'string' 
     ? JSON.parse(rawServiceAccount) 
     : rawServiceAccount;
 
-  // Corregir formato de los saltos de línea en la clave privada
   if (serviceAccount.private_key) {
     serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  } else {
-    throw new Error("El JSON cargado no contiene la propiedad 'private_key'.");
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  }
 
-  console.log("🔥 Firebase Admin inicializado correctamente");
+  db = admin.firestore();
+  console.log("🔥 Firebase Admin y Firestore inicializados correctamente");
 } catch (error) {
   console.error("❌ Error crítico al inicializar Firebase Admin:", error.message);
 }
@@ -42,13 +43,21 @@ try {
 // ==========================================
 app.post('/crear-preferencia', async (req, res) => {
   try {
+    if (!db) {
+      return res.status(500).json({ error: "La base de datos (db) no está inicializada en el servidor." });
+    }
+
     const { prestamoId, cuotaId, usuarioId, monto, clienteNombre, numeroCuota } = req.body;
 
     const userDoc = await db.collection('usuarios').doc(usuarioId).get();
-    if (!userDoc.exists) return res.status(404).json({ error: "Usuario no encontrado" });
+    if (!userDoc.exists) return res.status(404).json({ error: "Usuario prestamista no encontrado" });
 
-    const accessToken = userDoc.data().configMercadoPago?.accessToken;
-    if (!accessToken) return res.status(400).json({ error: "Token de MP no configurado" });
+    const userData = userDoc.data();
+    const accessToken = userData.configMercadoPago?.accessToken;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: "El prestamista no configuró su Access Token de Mercado Pago en la app." });
+    }
 
     const serverUrl = process.env.SERVER_URL || `https://${req.get('host')}`;
 
@@ -74,17 +83,26 @@ app.post('/crear-preferencia', async (req, res) => {
     });
 
     const mpData = await mpResponse.json();
+
+    if (!mpResponse.ok) {
+      console.error("Error Mercado Pago API:", mpData);
+      return res.status(500).json({ error: mpData.message || "Error al generar preferencia en Mercado Pago" });
+    }
+
     return res.json({ init_point: mpData.init_point });
   } catch (e) {
+    console.error("Error en /crear-preferencia:", e);
     return res.status(500).json({ error: e.message });
   }
 });
 
 // ==========================================
-// 3. RUTA 2: WEBHOOK (PONE LA CUOTA EN VERDE)
+// 3. RUTA 2: WEBHOOK DE MERCADO PAGO (PONE CUOTA EN VERDE)
 // ==========================================
 app.all('/webhook-mp', async (req, res) => {
   try {
+    if (!db) return res.status(200).send("OK");
+
     const usuarioId = req.query.uid;
     const paymentId = req.query["data.id"] || req.body?.data?.id || req.query.id;
 
