@@ -1,4 +1,4 @@
-// FUNCIONES DE UTILIDAD GENERAL, TOASTS, FECHAS Y ENLACES
+// FUNCIONES DE UTILIDAD GENERAL, TOASTS, FECHAS, CONVERSIÓN A LETRAS Y ENLACES
 
 function mostrarToast(mensaje, tipo = 'exito') {
   const container = document.getElementById('toast-container');
@@ -39,18 +39,13 @@ function formatearFechaEspanol(isoFechaStr) {
   return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
 
-function convertirMontoEnLetras(num) {
-  const elem = document.getElementById('monto-en-letras');
-  if (!elem) return;
+// CONVERTIDOR COMPLETO DE NÚMEROS A LETRAS (HASTA CIENTOS DE MILLONES)
+function numeroALetras(num) {
+  const valor = Math.floor(parseFloat(num));
+  if (isNaN(valor) || valor <= 0) return '';
 
-  const valor = parseFloat(num);
-  if (isNaN(valor) || valor <= 0) {
-    elem.innerText = '';
-    return;
-  }
-
-  function Unidades(num){
-    switch(num){
+  function Unidades(n) {
+    switch (n) {
       case 1: return 'UN';
       case 2: return 'DOS';
       case 3: return 'TRES';
@@ -64,12 +59,12 @@ function convertirMontoEnLetras(num) {
     return '';
   }
 
-  function Decenas(num){
-    const decena = Math.floor(num/10);
-    const unidad = num - (decena * 10);
-    switch(decena){
+  function Decenas(n) {
+    const decena = Math.floor(n / 10);
+    const unidad = n % 10;
+    switch (decena) {
       case 1:
-        switch(unidad){
+        switch (unidad) {
           case 0: return 'DIEZ';
           case 1: return 'ONCE';
           case 2: return 'DOCE';
@@ -79,7 +74,7 @@ function convertirMontoEnLetras(num) {
           default: return 'DIECI' + Unidades(unidad);
         }
       case 2:
-        switch(unidad){
+        switch (unidad) {
           case 0: return 'VEINTE';
           default: return 'VEINTI' + Unidades(unidad);
         }
@@ -99,10 +94,10 @@ function convertirMontoEnLetras(num) {
     return strSin;
   }
 
-  function Centenas(num) {
-    const centenas = Math.floor(num / 100);
-    const decenas = num - (centenas * 100);
-    switch(centenas) {
+  function Centenas(n) {
+    const centenas = Math.floor(n / 100);
+    const decenas = n % 100;
+    switch (centenas) {
       case 1:
         if (decenas > 0) return 'CIENTO ' + Decenas(decenas);
         return 'CIEN';
@@ -112,49 +107,57 @@ function convertirMontoEnLetras(num) {
       case 5: return 'QUINIENTOS ' + Decenas(decenas);
       case 6: return 'SEISCIENTOS ' + Decenas(decenas);
       case 7: return 'SETECIENTOS ' + Decenas(decenas);
-      case 8: return 'OCHOIENTOS ' + Decenas(decenas);
+      case 8: return 'OCHOCIENTOS ' + Decenas(decenas);
       case 9: return 'NOVECIENTOS ' + Decenas(decenas);
     }
     return Decenas(decenas);
   }
 
-  function Seccion(num, divisor, strSingular, strPlural) {
-    const cientos = Math.floor(num / divisor);
-    const resto = num - (cientos * divisor);
+  function Seccion(n, divisor, strSingular, strPlural) {
+    const cientos = Math.floor(n / divisor);
     let letras = '';
     if (cientos > 0) {
       if (cientos > 1) letras = Centenas(cientos) + ' ' + strPlural;
       else letras = strSingular;
     }
-    if (resto > 0) letras += '';
     return letras;
   }
 
-  function Miles(num) {
+  function Miles(n) {
     const divisor = 1000;
-    const cientos = Math.floor(num / divisor);
-    const resto = num - (cientos * divisor);
-    const strMiles = Seccion(num, divisor, 'UN MIL', 'MIL');
+    const resto = n % divisor;
+    const strMiles = Seccion(n, divisor, 'UN MIL', 'MIL');
     const strCentenas = Centenas(resto);
 
-    if(strMiles === '') return strCentenas;
-    return strMiles + ' ' + strCentenas;
+    if (strMiles === '') return strCentenas;
+    return (strMiles + ' ' + strCentenas).trim();
   }
 
-  function Millones(num) {
+  function Millones(n) {
     const divisor = 1000000;
-    const cientos = Math.floor(num / divisor);
-    const resto = num - (cientos * divisor);
-    const strMillones = Seccion(num, divisor, 'UN MILLON DE', 'MILLONES DE');
+    const cientos = Math.floor(n / divisor);
+    const resto = n % divisor;
+    let strMillones = '';
+    if (cientos > 0) {
+      if (cientos === 1) {
+        strMillones = (resto === 0) ? 'UN MILLON DE' : 'UN MILLON';
+      } else {
+        strMillones = (resto === 0) ? Centenas(cientos) + ' MILLONES DE' : Centenas(cientos) + ' MILLONES';
+      }
+    }
     const strMiles = Miles(resto);
 
-    if(strMillones === '') return strMiles;
-    return strMillones + ' ' + strMiles;
+    if (strMillones === '') return strMiles;
+    return (strMillones + ' ' + strMiles).trim();
   }
 
-  const enteramente = Math.floor(valor);
-  const texto = Millones(enteramente).trim();
-  elem.innerText = `(${texto} PESOS)`;
+  const texto = Millones(valor).trim();
+  return `(${texto} PESOS)`;
+}
+
+function convertirMontoEnLetras(num) {
+  const elem = document.getElementById('monto-en-letras');
+  if (elem) elem.innerText = numeroALetras(num);
 }
 
 function alternarTema() {
@@ -187,7 +190,6 @@ function aplicarTema(tema) {
   }
 }
 
-// PAGAR SUSCRIPCIÓN EN MERCADO PAGO (CON RESPALDO DIRECTO DE FIRESTORE)
 async function pagarSuscripcionMercadoPago() {
   try {
     let link = window.configSuscripcion ? (window.configSuscripcion.link || window.configSuscripcion.linkPago || window.configSuscripcion.alias) : '';
@@ -217,7 +219,6 @@ async function pagarSuscripcionMercadoPago() {
   }
 }
 
-// CONTACTAR ADMINISTRADOR POR WHATSAPP (CON RESPALDO DIRECTO DE FIRESTORE)
 async function contactarAdministradorWhatsApp() {
   try {
     let wsp = window.configSuscripcion ? window.configSuscripcion.whatsapp : '';

@@ -11,7 +11,7 @@ let datosPagoAtrasadoAgrupadoActual = null;
 let idPrestamoAFinalizar = null;
 let idPrestamoAEliminar = null;
 
-// FUNCIÓN AUXILIAR PARA CÁLCULO EXACTO DE DÍAS ENTRE FECHAS ISO (SIN ERRORES POR HORA)
+// FUNCIÓN AUXILIAR PARA CÁLCULO EXACTO DE DÍAS ENTRE FECHAS ISO
 function calcularDiasDeDiferencia(fechaISOInicial, fechaISOFinal) {
   if (!fechaISOInicial || !fechaISOFinal) return 0;
   const [y1, m1, d1] = fechaISOInicial.split('-').map(Number);
@@ -19,6 +19,22 @@ function calcularDiasDeDiferencia(fechaISOInicial, fechaISOFinal) {
   const f1 = new Date(y1, m1 - 1, d1);
   const f2 = new Date(y2, m2 - 1, d2);
   return Math.round((f2 - f1) / (1000 * 60 * 60 * 24));
+}
+
+// FUNCIONES DE CONVERSIÓN A LETRAS EN TIEMPO REAL
+function convertirMontoEnLetras(val) {
+  const elem = document.getElementById('monto-en-letras');
+  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(val) : '';
+}
+
+function convertirMontoPagoEnLetras(val) {
+  const elem = document.getElementById('pago-monto-en-letras');
+  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(val) : '';
+}
+
+function convertirMontoPagoAtrasadoEnLetras(val) {
+  const elem = document.getElementById('pago-atrasado-monto-en-letras');
+  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(val) : '';
 }
 
 // ==========================================
@@ -156,9 +172,7 @@ async function guardarInteresesConfigDesdeModal(event) {
   cerrarModalConfigIntereses();
 }
 
-// ==========================================
 // LÓGICA DE RECARGO DE MORA ESCALONADO
-// ==========================================
 function calcularPorcentajeRecargoEscalonado(diasAtraso) {
   if (diasAtraso <= 0) return 0;
   const cfg = window.datosUsuarioActual?.tasasConfig || window.datosUsuarioActual?.configIntereses || {};
@@ -383,11 +397,6 @@ function alCambiarFrecuencia() {
   if (frec === 'diario') inputInt.value = tasas.intDiario ?? 1;
   else if (frec === 'semanal') inputInt.value = tasas.intSemanal ?? 5;
   else inputInt.value = tasas.intMensual ?? 20;
-}
-
-function convertirMontoEnLetras(val) {
-  const elem = document.getElementById('monto-en-letras');
-  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(Math.round(parseFloat(val) || 0)) : '';
 }
 
 function generarSimulacion(event) {
@@ -1291,11 +1300,6 @@ function cerrarModalPagoAtrasadoTotal() {
   datosPagoAtrasadoAgrupadoActual = null;
 }
 
-function convertirMontoPagoAtrasadoEnLetras(val) {
-  const elem = document.getElementById('pago-atrasado-monto-en-letras');
-  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(Math.round(parseFloat(val) || 0)) : '';
-}
-
 async function confirmarPagoAtrasadoAgrupado(event) {
   if (event && event.preventDefault) event.preventDefault();
   const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
@@ -1466,11 +1470,6 @@ function validarMontoPagoCuota(val) {
 function cerrarModalPago() {
   document.getElementById('modal-pago-cuota').classList.add('hidden');
   datosPagoCuotaActual = null;
-}
-
-function convertirMontoPagoEnLetras(val) {
-  const elem = document.getElementById('pago-monto-en-letras');
-  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(Math.round(parseFloat(val) || 0)) : '';
 }
 
 async function confirmarRegistroPago(event) {
