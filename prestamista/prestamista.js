@@ -11,11 +11,22 @@ let datosPagoAtrasadoAgrupadoActual = null;
 let idPrestamoAFinalizar = null;
 let idPrestamoAEliminar = null;
 
+// FUNCIÓN AUXILIAR PARA CÁLCULO EXACTO DE DÍAS ENTRE FECHAS ISO (SIN ERRORES POR HORA)
+function calcularDiasDeDiferencia(fechaISOInicial, fechaISOFinal) {
+  if (!fechaISOInicial || !fechaISOFinal) return 0;
+  const [y1, m1, d1] = fechaISOInicial.split('-').map(Number);
+  const [y2, m2, d2] = fechaISOFinal.split('-').map(Number);
+  const f1 = new Date(y1, m1 - 1, d1);
+  const f2 = new Date(y2, m2 - 1, d2);
+  return Math.round((f2 - f1) / (1000 * 60 * 60 * 24));
+}
+
 // ==========================================
 // ADAPTACIÓN DE INTERFAZ SEGÚN ROL (ADMIN VS PRESTAMISTA)
 // ==========================================
 function adaptarInterfazSegunRol() {
-  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
+  const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
+  const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com' || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
 
   const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
   const mBtnRegistrar = document.getElementById('m-btn-registrar');
@@ -36,7 +47,7 @@ function adaptarInterfazSegunRol() {
     
     if (inputInteres) {
       inputInteres.type = 'date';
-      inputInteres.value = obtenerFechaLocalISO();
+      inputInteres.value = typeof obtenerFechaLocalISO === 'function' ? obtenerFechaLocalISO() : new Date().toISOString().split('T')[0];
       inputInteres.removeAttribute('min');
       inputInteres.removeAttribute('step');
     }
@@ -77,12 +88,12 @@ async function cargarCamposConfigIntereses() {
       ['cfg-retraso-mensual', 'modal-cfg-retraso-mensual'].forEach(id => { const el = document.getElementById(id); if (el) el.value = cfg.retrasoMensual ?? 0; });
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error al cargar configuración de intereses:", error);
   }
 }
 
 async function guardarInteresesConfig(event) {
-  if (event) event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
   if (!window.usuarioActual) return;
 
   const configIntereses = {
@@ -115,7 +126,7 @@ function cerrarModalConfigIntereses() {
 }
 
 async function guardarInteresesConfigDesdeModal(event) {
-  event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
   if (!window.usuarioActual) return;
 
   const configIntereses = {
@@ -167,7 +178,8 @@ function renderizarClientesSelect() {
   const valActual = select.value;
   select.innerHTML = '<option value="">-- Sin cliente seleccionado (Solo Simular) --</option>';
 
-  window.clientes.forEach(c => {
+  const clientes = window.clientes || [];
+  clientes.forEach(c => {
     select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.telefono})</option>`;
   });
 
@@ -179,13 +191,16 @@ function renderizarDirectorioClientes() {
   if (!container) return;
 
   container.innerHTML = '';
-  if (window.clientes.length === 0) {
+  const clientes = window.clientes || [];
+  const prestamos = window.prestamos || [];
+
+  if (clientes.length === 0) {
     container.innerHTML = '<p class="text-xs text-slate-500 italic">No tenés clientes registrados aún.</p>';
     return;
   }
 
-  window.clientes.forEach(c => {
-    const prestamosCliente = window.prestamos.filter(p => p.clienteId === c.id && p.estado !== 'finalizado');
+  clientes.forEach(c => {
+    const prestamosCliente = prestamos.filter(p => p.clienteId === c.id && p.estado !== 'finalizado');
     const tieneActivo = prestamosCliente.length > 0;
 
     container.innerHTML += `
@@ -226,7 +241,7 @@ function cerrarModalCliente() {
 }
 
 async function guardarYVincularCliente(event) {
-  event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
   if (!window.usuarioActual) return;
 
   const editId = document.getElementById('cli-edit-id').value;
@@ -272,7 +287,7 @@ async function guardarYVincularCliente(event) {
 }
 
 function editarCliente(id) {
-  const cli = window.clientes.find(c => c.id === id);
+  const cli = (window.clientes || []).find(c => c.id === id);
   if (!cli) return;
 
   document.getElementById('cli-edit-id').value = cli.id;
@@ -297,7 +312,7 @@ async function eliminarCliente(id) {
 }
 
 function abrirModalInfoCliente(id) {
-  const cli = window.clientes.find(c => c.id === id);
+  const cli = (window.clientes || []).find(c => c.id === id);
   if (!cli) return;
 
   document.getElementById('info-cli-nombre').innerText = cli.nombre;
@@ -309,7 +324,7 @@ function abrirModalInfoCliente(id) {
   const contHistorial = document.getElementById('contenedor-historial-prestamos-cliente');
   if (contHistorial) {
     contHistorial.innerHTML = '';
-    const prestamosCli = window.prestamos.filter(p => p.clienteId === id);
+    const prestamosCli = (window.prestamos || []).filter(p => p.clienteId === id);
 
     if (prestamosCli.length === 0) {
       contHistorial.innerHTML = '<p class="text-xs text-slate-500 italic">Este cliente no tiene historial de préstamos.</p>';
@@ -348,7 +363,8 @@ function cerrarModalInfoCliente() {
 // ==========================================
 
 function alCambiarFrecuencia() {
-  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
+  const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
+  const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   if (esAdmin) return; // En Admin no se aplican intereses por frecuencia
 
   const frec = document.getElementById('frecuencia-prestamo')?.value;
@@ -362,29 +378,31 @@ function alCambiarFrecuencia() {
 
 function convertirMontoEnLetras(val) {
   const elem = document.getElementById('monto-en-letras');
-  if (elem) elem.innerText = numeroALetras(Math.round(parseFloat(val) || 0));
+  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(Math.round(parseFloat(val) || 0)) : '';
 }
 
 function generarSimulacion(event) {
-  if (event) event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
 
-  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
-  const clienteId = document.getElementById('input-cliente').value;
-  const monto = Math.round(parseFloat(document.getElementById('monto-prestamo').value) || 0);
+  const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
+  const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
+
+  const clienteId = document.getElementById('input-cliente')?.value || '';
+  const monto = Math.round(parseFloat(document.getElementById('monto-prestamo')?.value) || 0);
   
   let interesPorPeriodo = 0;
   let fechaRegistroAdmin = null;
 
   if (esAdmin) {
-    interesPorPeriodo = 0; // Sin intereses para Admin
+    interesPorPeriodo = 0;
     fechaRegistroAdmin = document.getElementById('interes-prestamo')?.value || obtenerFechaLocalISO();
   } else {
     interesPorPeriodo = parseFloat(document.getElementById('interes-prestamo')?.value) || 0;
   }
 
-  const cuotas = parseInt(document.getElementById('cuotas-prestamo').value) || 1;
-  const frecuencia = document.getElementById('frecuencia-prestamo').value;
-  const fechaInicioStr = document.getElementById('fecha-inicio').value;
+  const cuotas = parseInt(document.getElementById('cuotas-prestamo')?.value) || 1;
+  const frecuencia = document.getElementById('frecuencia-prestamo')?.value || 'mensual';
+  const fechaInicioStr = document.getElementById('fecha-inicio')?.value;
 
   if (monto <= 0 || cuotas <= 0 || !fechaInicioStr) {
     return mostrarToast("Completá todos los campos requeridos", "error");
@@ -395,7 +413,7 @@ function generarSimulacion(event) {
   const montoTotal = monto + ganancia;
   const valorCuota = Math.round(montoTotal / cuotas);
 
-  let clienteObj = window.clientes.find(c => c.id === clienteId);
+  let clienteObj = (window.clientes || []).find(c => c.id === clienteId);
   const nombreCliente = clienteObj ? clienteObj.nombre : 'Sin Cliente Seleccionado';
 
   const fechasCuotas = [];
@@ -404,7 +422,7 @@ function generarSimulacion(event) {
   for (let i = 1; i <= cuotas; i++) {
     const isoFecha = obtenerFechaLocalISO(fechaCursor);
     fechasCuotas.push({
-      id: 'cuota_' + i + '_' + Date.now(),
+      id: 'cuota_' + i + '_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
       numero: i,
       fecha: isoFecha,
       montoCuota: valorCuota,
@@ -412,9 +430,17 @@ function generarSimulacion(event) {
       pagado: false
     });
 
-    if (frecuencia === 'diario') fechaCursor.setDate(fechaCursor.getDate() + 1);
-    else if (frecuencia === 'semanal') fechaCursor.setDate(fechaCursor.getDate() + 7);
-    else if (frecuencia === 'mensual') fechaCursor.setMonth(fechaCursor.getMonth() + 1);
+    if (frecuencia === 'diario') {
+      fechaCursor.setDate(fechaCursor.getDate() + 1);
+    } else if (frecuencia === 'semanal') {
+      fechaCursor.setDate(fechaCursor.getDate() + 7);
+    } else if (frecuencia === 'mensual') {
+      const diaOriginal = fechaCursor.getDate();
+      fechaCursor.setMonth(fechaCursor.getMonth() + 1);
+      if (fechaCursor.getDate() !== diaOriginal) {
+        fechaCursor.setDate(0); // Evita desbordamiento de fin de mes
+      }
+    }
   }
 
   simulacionActual = {
@@ -479,7 +505,7 @@ function guardarPrestamoOficial() {
     return;
   }
 
-  const prestamoDuplicado = window.prestamos.find(p => p.clienteId === simulacionActual.clienteId && p.estado !== 'finalizado');
+  const prestamoDuplicado = (window.prestamos || []).find(p => p.clienteId === simulacionActual.clienteId && p.estado !== 'finalizado');
 
   if (prestamoDuplicado) {
     document.getElementById('adv-cli-nombre').innerText = simulacionActual.nombreCliente;
@@ -493,7 +519,7 @@ function abrirModalVincularClienteSimulacion() {
   const select = document.getElementById('select-vincular-cliente');
   if (select) {
     select.innerHTML = '<option value="">-- Seleccioná un cliente --</option>';
-    window.clientes.forEach(c => {
+    (window.clientes || []).forEach(c => {
       select.innerHTML += `<option value="${c.id}">${c.nombre} (${c.telefono})</option>`;
     });
   }
@@ -512,7 +538,7 @@ function confirmarVinculacionClienteSimulacion() {
     return mostrarToast("Seleccioná un cliente de la lista", "error");
   }
 
-  const cli = window.clientes.find(c => c.id === clienteId);
+  const cli = (window.clientes || []).find(c => c.id === clienteId);
   if (!cli) return;
 
   simulacionActual.clienteId = cli.id;
@@ -605,7 +631,7 @@ function renderizarGridCalendarioVisual() {
     let tienePendiente = false;
     let todoCobrado = true;
 
-    window.prestamos.forEach(p => {
+    (window.prestamos || []).forEach(p => {
       if (p.estado === 'finalizado') return;
       (p.cuotasDetalle || []).forEach(c => {
         if (c.fecha === isoDia) {
@@ -661,10 +687,10 @@ function renderizarDeudasPasadasBajoCalendario() {
   listaDeudas.innerHTML = '';
   let cantidadDeudasPasadas = 0;
 
-  window.prestamos.forEach(p => {
+  (window.prestamos || []).forEach(p => {
     if (p.estado === 'finalizado') return;
 
-    const cli = window.clientes.find(c => c.id === p.clienteId);
+    const cli = (window.clientes || []).find(c => c.id === p.clienteId);
     const cuotasVencidas = (p.cuotasDetalle || []).filter(c => {
       const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
       return !pag && c.fecha < hoyISO;
@@ -679,9 +705,8 @@ function renderizarDeudasPasadasBajoCalendario() {
       cuotasVencidas.forEach(cv => {
         const valPend = cv.montoPendiente !== undefined ? cv.montoPendiente : cv.montoCuota;
         sumaBaseDeuda += Math.round(parseFloat(valPend || 0));
-        const [y, m, d] = cv.fecha.split('-').map(Number);
-        const fechaCuota = new Date(y, m - 1, d);
-        const diff = Math.floor((new Date() - fechaCuota) / (1000 * 60 * 60 * 24));
+        
+        const diff = calcularDiasDeDiferencia(cv.fecha, hoyISO);
         if (diff > diasMax) diasMax = diff;
       });
 
@@ -739,10 +764,10 @@ function renderizarPlanificadorSemanal() {
     let htmlCuotasDia = '';
     let cobrosAgendadosCount = 0;
 
-    window.prestamos.forEach(p => {
+    (window.prestamos || []).forEach(p => {
       if (p.estado === 'finalizado') return;
 
-      const cli = window.clientes.find(c => c.id === p.clienteId);
+      const cli = (window.clientes || []).find(c => c.id === p.clienteId);
       const nombreCliente = cli ? cli.nombre : 'Cliente Desconocido';
 
       const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
@@ -757,8 +782,8 @@ function renderizarPlanificadorSemanal() {
         cuotasAtrasadasAnteriores.forEach(ca => {
           const valPend = ca.montoPendiente !== undefined ? ca.montoPendiente : ca.montoCuota;
           totalMontoAtrasado += Math.round(parseFloat(valPend || 0));
-          const [y, m, d] = ca.fecha.split('-').map(Number);
-          const diffDias = Math.floor((new Date(diaActual) - new Date(y, m - 1, d)) / (1000 * 60 * 60 * 24));
+          
+          const diffDias = calcularDiasDeDiferencia(ca.fecha, isoDia);
           if (diffDias > diasMaxAtraso) diasMaxAtraso = diffDias;
         });
       }
@@ -875,7 +900,7 @@ function renderizarResumenYPrestamos() {
   let totalCapital = 0;
   let totalGanancia = 0;
 
-  window.prestamos.filter(p => p.estado !== 'finalizado').forEach(p => {
+  (window.prestamos || []).filter(p => p.estado !== 'finalizado').forEach(p => {
     totalCapital += Math.round(parseFloat(p.monto || 0));
     totalGanancia += Math.round(parseFloat(p.ganancia || 0));
   });
@@ -885,7 +910,7 @@ function renderizarResumenYPrestamos() {
 
   if (pestanaResumenActual === 'activos') {
     if (tituloTabla) tituloTabla.innerText = "Préstamos Activos en Curso";
-    const activos = window.prestamos.filter(p => p.estado !== 'finalizado');
+    const activos = (window.prestamos || []).filter(p => p.estado !== 'finalizado');
 
     if (activos.length === 0) {
       contResumen.innerHTML = '<p class="p-6 text-center text-slate-500 italic">No hay préstamos activos en curso.</p>';
@@ -910,7 +935,7 @@ function renderizarResumenYPrestamos() {
     `;
 
     activos.forEach(p => {
-      const cli = window.clientes.find(c => c.id === p.clienteId);
+      const cli = (window.clientes || []).find(c => c.id === p.clienteId);
       let cobrado = 0;
       (p.cuotasDetalle || []).forEach(c => {
         const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
@@ -940,7 +965,7 @@ function renderizarResumenYPrestamos() {
 
   } else {
     if (tituloTabla) tituloTabla.innerText = "Carpetas de Préstamos Finalizados";
-    const finalizados = window.prestamos.filter(p => p.estado === 'finalizado');
+    const finalizados = (window.prestamos || []).filter(p => p.estado === 'finalizado');
 
     if (finalizados.length === 0) {
       contResumen.innerHTML = '<p class="p-6 text-center text-slate-500 italic">No tenés préstamos finalizados guardados en el historial.</p>';
@@ -988,7 +1013,7 @@ function renderizarResumenYPrestamos() {
       `;
 
       grupo.items.forEach(p => {
-        const cli = window.clientes.find(c => c.id === p.clienteId);
+        const cli = (window.clientes || []).find(c => c.id === p.clienteId);
         htmlCarpetas += `
           <tr class="hover:bg-slate-800/30">
             <td class="p-2.5 font-bold text-white">${cli ? cli.nombre : 'Cliente'}</td>
@@ -1018,10 +1043,10 @@ function alternarCarpetaFinalizados(idCarpeta) {
 }
 
 function verDetallePrestamoActivo(prestamoId) {
-  const p = window.prestamos.find(pr => pr.id === prestamoId);
+  const p = (window.prestamos || []).find(pr => pr.id === prestamoId);
   if (!p) return;
 
-  const cli = window.clientes.find(c => c.id === p.clienteId);
+  const cli = (window.clientes || []).find(c => c.id === p.clienteId);
   document.getElementById('det-act-cliente').innerText = cli ? cli.nombre : 'Cliente';
   document.getElementById('det-act-fechainicio').innerText = p.fechaInicio;
   document.getElementById('det-act-monto').innerText = '$' + Math.round(parseFloat(p.monto)).toLocaleString('es-AR');
@@ -1067,8 +1092,8 @@ function cerrarModalDetalleActivo() {
 
 function solicitarFinalizarPrestamo(id) {
   idPrestamoAFinalizar = id;
-  const p = window.prestamos.find(pr => pr.id === id);
-  const cli = window.clientes.find(c => c.id === (p ? p.clienteId : ''));
+  const p = (window.prestamos || []).find(pr => pr.id === id);
+  const cli = (window.clientes || []).find(c => c.id === (p ? p.clienteId : ''));
 
   document.getElementById('fin-prestamo-cliente').innerText = cli ? cli.nombre : 'Cliente';
   document.getElementById('fin-prestamo-monto').innerText = '$' + (p ? Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR') : '0');
@@ -1096,8 +1121,8 @@ async function confirmarFinalizacionPrestamo() {
 
 function solicitarEliminarPrestamo(id) {
   idPrestamoAEliminar = id;
-  const p = window.prestamos.find(pr => pr.id === id);
-  const cli = window.clientes.find(c => c.id === (p ? p.clienteId : ''));
+  const p = (window.prestamos || []).find(pr => pr.id === id);
+  const cli = (window.clientes || []).find(c => c.id === (p ? p.clienteId : ''));
 
   document.getElementById('del-prestamo-cliente').innerText = cli ? cli.nombre : 'Cliente';
   document.getElementById('del-prestamo-monto').innerText = '$' + (p ? Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR') : '0');
@@ -1134,10 +1159,10 @@ function renderizarEstadoCuentas() {
   const hoyISO = obtenerFechaLocalISO();
   let atrasosTotales = 0;
 
-  window.prestamos.forEach(p => {
+  (window.prestamos || []).forEach(p => {
     if (p.estado === 'finalizado') return;
 
-    const cli = window.clientes.find(c => c.id === p.clienteId);
+    const cli = (window.clientes || []).find(c => c.id === p.clienteId);
     const cuotasAtrasadas = (p.cuotasDetalle || []).filter(c => {
       const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
       return !pag && c.fecha < hoyISO;
@@ -1179,10 +1204,10 @@ function renderizarEstadoCuentas() {
 // ==========================================
 
 function abrirModalPagoAtrasadoTotal(clienteId, montoBase, diasAtraso) {
-  const cli = window.clientes.find(c => c.id === clienteId);
+  const cli = (window.clientes || []).find(c => c.id === clienteId);
   if (!cli) return;
 
-  const prestamosCliente = window.prestamos.filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
+  const prestamosCliente = (window.prestamos || []).filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
   let saldoTotalDeuda = 0;
   prestamosCliente.forEach(p => {
     (p.cuotasDetalle || []).forEach(c => {
@@ -1259,18 +1284,18 @@ function cerrarModalPagoAtrasadoTotal() {
 
 function convertirMontoPagoAtrasadoEnLetras(val) {
   const elem = document.getElementById('pago-atrasado-monto-en-letras');
-  if (elem) elem.innerText = numeroALetras(Math.round(parseFloat(val) || 0));
+  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(Math.round(parseFloat(val) || 0)) : '';
 }
 
 async function confirmarPagoAtrasadoAgrupado(event) {
-  event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
   const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
   const montoPagado = Math.round(parseFloat(document.getElementById('pago-atrasado-monto-ingresado').value) || 0);
 
   if (montoPagado <= 0) return mostrarToast("Ingresá un monto válido", "error");
 
   try {
-    const prestamosCliente = window.prestamos.filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
+    const prestamosCliente = (window.prestamos || []).filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
     
     let saldoIngresado = montoPagado;
     for (let p of prestamosCliente) {
@@ -1306,7 +1331,7 @@ async function confirmarPagoAtrasadoAgrupado(event) {
     mostrarToast("💵 Deuda regularizada correctamente");
     cerrarModalPagoAtrasadoTotal();
 
-    const cli = window.clientes.find(c => c.id === clienteId);
+    const cli = (window.clientes || []).find(c => c.id === clienteId);
     abrirModalComprobante(
       cli ? cli.nombre : 'Cliente',
       montoPagado,
@@ -1324,13 +1349,13 @@ async function confirmarPagoAtrasadoAgrupado(event) {
 // ==========================================
 
 function abrirModalPago(prestamoId, cuotaId) {
-  const p = window.prestamos.find(pr => pr.id === prestamoId);
+  const p = (window.prestamos || []).find(pr => pr.id === prestamoId);
   if (!p) return;
 
-  const cuota = p.cuotasDetalle.find(c => c.id === cuotaId);
+  const cuota = (p.cuotasDetalle || []).find(c => c.id === cuotaId);
   if (!cuota) return;
 
-  const cli = window.clientes.find(c => c.id === p.clienteId);
+  const cli = (window.clientes || []).find(c => c.id === p.clienteId);
 
   let saldoTotalPrestamo = 0;
   (p.cuotasDetalle || []).forEach(c => {
@@ -1345,8 +1370,7 @@ function abrirModalPago(prestamoId, cuotaId) {
   const estaPagadaYa = cuota.pagado === true || (cuota.montoPendiente !== undefined && cuota.montoPendiente <= 0.5);
 
   if (cuota.fecha < hoyISO && !estaPagadaYa) {
-    const [y, m, d] = cuota.fecha.split('-').map(Number);
-    diasAtraso = Math.max(0, Math.floor((new Date() - new Date(y, m - 1, d)) / (1000 * 60 * 60 * 24)));
+    diasAtraso = Math.max(0, calcularDiasDeDiferencia(cuota.fecha, hoyISO));
   }
 
   const recargoPct = calcularPorcentajeRecargoEscalonado(diasAtraso);
@@ -1437,16 +1461,16 @@ function cerrarModalPago() {
 
 function convertirMontoPagoEnLetras(val) {
   const elem = document.getElementById('pago-monto-en-letras');
-  if (elem) elem.innerText = numeroALetras(Math.round(parseFloat(val) || 0));
+  if (elem) elem.innerText = typeof numeroALetras === 'function' ? numeroALetras(Math.round(parseFloat(val) || 0)) : '';
 }
 
 async function confirmarRegistroPago(event) {
-  event.preventDefault();
+  if (event && event.preventDefault) event.preventDefault();
   const prestamoId = document.getElementById('pago-prestamo-id').value;
   const cuotaId = document.getElementById('pago-cuota-id').value;
   const montoIngresado = Math.round(parseFloat(document.getElementById('pago-monto-ingresado').value) || 0);
 
-  const p = window.prestamos.find(pr => pr.id === prestamoId);
+  const p = (window.prestamos || []).find(pr => pr.id === prestamoId);
   if (!p) return;
 
   const cuotaPagadaObj = p.cuotasDetalle ? p.cuotasDetalle.find(c => c.id === cuotaId) : null;
@@ -1489,7 +1513,7 @@ async function confirmarRegistroPago(event) {
 
     cerrarModalPago();
 
-    const cli = window.clientes.find(c => c.id === p.clienteId);
+    const cli = (window.clientes || []).find(c => c.id === p.clienteId);
     let saldoPendiente = 0;
     nuevasCuotas.forEach(c => {
       const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
@@ -1534,6 +1558,10 @@ function compartirComprobanteImagen() {
   const card = document.getElementById('ticket-recibo-card');
   if (!card) return;
 
+  if (typeof html2canvas !== 'function') {
+    return mostrarToast("Librería de captura no cargada", "error");
+  }
+
   html2canvas(card).then(canvas => {
     canvas.toBlob(blob => {
       const file = new File([blob], 'comprobante.png', { type: 'image/png' });
@@ -1556,18 +1584,19 @@ function compartirComprobanteImagen() {
 }
 
 async function cambiarMiContrasena(event) {
-  event.preventDefault();
-  const pass1 = document.getElementById('cli-nueva-pass').value;
-  const pass2 = document.getElementById('cli-confirm-pass').value;
+  if (event && event.preventDefault) event.preventDefault();
+  const pass1 = document.getElementById('cli-nueva-pass')?.value;
+  const pass2 = document.getElementById('cli-confirm-pass')?.value;
 
+  if (!pass1 || !pass2) return mostrarToast("Completá los campos de contraseña", "error");
   if (pass1 !== pass2) return mostrarToast("Las contraseñas no coinciden", "error");
 
   try {
     await window.usuarioActual.updatePassword(pass1);
     await db.collection('usuarios').doc(window.usuarioActual.uid).update({ passwordVisual: pass1 });
     mostrarToast("🔑 Contraseña actualizada correctamente");
-    document.getElementById('cli-nueva-pass').value = '';
-    document.getElementById('cli-confirm-pass').value = '';
+    if (document.getElementById('cli-nueva-pass')) document.getElementById('cli-nueva-pass').value = '';
+    if (document.getElementById('cli-confirm-pass')) document.getElementById('cli-confirm-pass').value = '';
   } catch (error) {
     mostrarToast("Error al cambiar contraseña", "error");
   }
@@ -1587,6 +1616,6 @@ function enviarComprobanteAlquilerWhatsApp() {
     return mostrarToast("Número de WhatsApp no configurado.", "error");
   }
   const numWsp = window.configSuscripcion.whatsapp.replace(/[^0-9]/g, '');
-  const mensaje = encodeURIComponent(`Hola! Aboné la suscripción mensual de CobroApp (${window.usuarioActual.email}). Adjunto comprobante.`);
+  const mensaje = encodeURIComponent(`Hola! Aboné la suscripción mensual de CobroApp (${window.usuarioActual?.email || ''}). Adjunto comprobante.`);
   window.open(`https://wa.me/${numWsp}?text=${mensaje}`, '_blank');
 }

@@ -1,7 +1,17 @@
-// FUNCIONES DE UTILIDAD: TOASTS, NUMEROS A LETRAS, TEMAS Y FECHA LOCAL
+// FUNCIONES DE UTILIDAD: TOASTS, NÚMEROS A LETRAS, TEMAS Y FECHA LOCAL
 
 function obtenerFechaLocalISO(d) {
-  const fecha = d || new Date();
+  let fecha = d;
+  if (!fecha) {
+    fecha = new Date();
+  } else if (typeof fecha === 'string') {
+    // Si ya viene en formato YYYY-MM-DD, lo devuelve directamente
+    if (/^\d{4}-\d{2}-\d{2}/.test(fecha)) {
+      return fecha.split('T')[0];
+    }
+    fecha = new Date(fecha);
+  }
+
   const year = fecha.getFullYear();
   const month = String(fecha.getMonth() + 1).padStart(2, '0');
   const day = String(fecha.getDate()).padStart(2, '0');
@@ -70,6 +80,8 @@ function numeroALetras(num) {
     }
   };
 
+  const DecenasY = (strSin, numUnidades) => numUnidades > 0 ? strSin + ' Y ' + Unidades(numUnidades) : strSin;
+
   const Decenas = num => {
     const decena = Math.floor(num / 10);
     const unidad = num - (decena * 10);
@@ -100,8 +112,6 @@ function numeroALetras(num) {
     }
   };
 
-  const DecenasY = (strSin, numUnidades) => numUnidades > 0 ? strSin + ' Y ' + Unidades(numUnidades) : strSin;
-
   const Centenas = num => {
     const centenas = Math.floor(num / 100);
     const decenas = num - (centenas * 100);
@@ -115,7 +125,7 @@ function numeroALetras(num) {
       case 5: return 'QUINIENTOS ' + Decenas(decenas);
       case 6: return 'SEISCIENTOS ' + Decenas(decenas);
       case 7: return 'SETECIENTOS ' + Decenas(decenas);
-      case 8: return 'OCHO CIENTOS ' + Decenas(decenas);
+      case 8: return 'OCHOCIENTOS ' + Decenas(decenas);
       case 9: return 'NOVECIENTOS ' + Decenas(decenas);
     }
     return Decenas(decenas);

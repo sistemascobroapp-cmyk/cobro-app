@@ -54,9 +54,11 @@ window.onload = function() {
 
         if (user.email && user.email.toLowerCase() === 'sistemas.cobroapp@gmail.com') {
           window.rolUsuarioActual = 'admin';
+          window.esAdmin = true;
           ocultarPantallaBloqueo();
         } else {
           window.rolUsuarioActual = 'prestamista';
+          window.esAdmin = false;
 
           try {
             window.unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
@@ -92,6 +94,7 @@ window.onload = function() {
         window.usuarioActual = null;
         window.datosUsuarioActual = null;
         window.rolUsuarioActual = 'prestamista';
+        window.esAdmin = false;
         ocultarPantallaBloqueo();
 
         const pantallaLogin = document.getElementById('pantalla-login');
@@ -217,6 +220,9 @@ function configurarInterfazPorRol() {
     if (btnSub) { btnSub.classList.add('hidden'); btnSub.classList.remove('flex'); }
     if (mBtnSub) { mBtnSub.classList.add('hidden'); mBtnSub.classList.remove('flex'); }
     if (panelSubAdmin) panelSubAdmin.classList.remove('hidden');
+
+    if (typeof adaptarInterfazAdmin === 'function') adaptarInterfazAdmin();
+    if (typeof cargarListaPrestamistasAdmin === 'function') cargarListaPrestamistasAdmin();
   } else {
     if (lblRol) lblRol.innerText = "Panel de Prestamista";
     if (btnUsrs) { btnUsrs.classList.add('hidden'); btnUsrs.classList.remove('flex'); }
@@ -323,8 +329,7 @@ function iniciarListenersFirestore() {
 
     if (window.rolUsuarioActual === 'admin') {
       db.collection('usuarios').onSnapshot(snapshot => {
-        const listaUsuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        if (typeof renderizarListaPrestamistasAdmin === 'function') renderizarListaPrestamistasAdmin(listaUsuarios);
+        if (typeof cargarListaPrestamistasAdmin === 'function') cargarListaPrestamistasAdmin();
       }, err => console.error("Error usuarios:", err));
     }
   } catch (error) {
@@ -348,7 +353,7 @@ function mostrarSeccion(idSeccion) {
   if (target) target.classList.remove('hidden');
 
   const btns = ['registrar', 'por-cobrar', 'resumen', 'estado', 'intereses', 'clientes', 'usuarios', 'suscripcion'];
-  
+
   btns.forEach(b => {
     const btnElem = document.getElementById('btn-sec-' + b);
     if (btnElem) {
@@ -375,8 +380,10 @@ function mostrarSeccion(idSeccion) {
     }
   });
 
+  const esAdmin = window.rolUsuarioActual === 'admin';
+
   const titulos = {
-    'sec-registrar': '💳 Registrar Préstamo',
+    'sec-registrar': esAdmin ? '💳 Registro de Pago' : '💳 Registrar Préstamo',
     'sec-por-cobrar': '📅 Préstamos a Cobrar & Calendario',
     'sec-resumen': '📊 Resumen de Préstamos & Ganancias',
     'sec-estado': '⚠️ Estado de Cuentas & Recargos',
@@ -385,18 +392,14 @@ function mostrarSeccion(idSeccion) {
     'sec-usuarios': '🔐 Habilitar Accesos Prestamistas',
     'sec-suscripcion': '💳 Mi Suscripción & Clave'
   };
-  
+
   if (document.getElementById('titulo-pantalla')) {
     document.getElementById('titulo-pantalla').innerText = titulos[idSeccion] || 'CobroApp';
   }
-function mostrarSeccion(idSec) {
-  // ... tu código existente de mostrarSeccion ...
-  
-  if (typeof adaptarInterfazSegunRol === 'function') {
-    adaptarInterfazSegunRol();
+
+  if (typeof adaptarInterfazAdmin === 'function') {
+    adaptarInterfazAdmin();
   }
-}
+
   window.scrollTo(0, 0);
-}if (typeof adaptarInterfazAdmin === 'function') {
-  adaptarInterfazAdmin();
 }
