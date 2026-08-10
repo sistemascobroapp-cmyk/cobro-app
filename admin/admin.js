@@ -34,6 +34,7 @@ async function cargarPanelAdmin() {
     if (window.esAdmin) {
       adaptarInterfazAdmin();
       escucharPrestamistasEnTiempoReal();
+      cargarConfigSuscripcionEnInputs();
     }
   } catch (error) {
     console.error("Error al cargar panel de admin:", error);
@@ -126,6 +127,18 @@ function escucharPrestamistasEnTiempoReal() {
       const nombreUser = u.nombre || 'Prestamista';
       const emailUser = u.email || 'Sin correo';
 
+      // BOTÓN INTELIGENTE: PAGO VS DESMARCAR PAGO
+      let btnPagoHTML = '';
+      if (pagadoEsteMes) {
+        btnPagoHTML = '<button onclick="desmarcarPagoMesPrestamista(\'' + u.id + '\', \'' + nombreUser + '\')" class="px-3 py-2 rounded-xl font-extrabold text-xs bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition flex items-center gap-1.5" title="Volver a poner en estado Pendiente de Pago">' +
+          '↩️ Marcar Pendiente' +
+        '</button>';
+      } else {
+        btnPagoHTML = '<button onclick="marcarPagoMesPrestamista(\'' + u.id + '\', \'' + nombreUser + '\')" class="px-3 py-2 rounded-xl font-extrabold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition flex items-center gap-1.5">' +
+          '💳 Marcar Cuota Pagada' +
+        '</button>';
+      }
+
       html += '<div class="p-4 bg-[#1E293B] border border-slate-700/80 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs shadow-lg">' +
         '<div class="space-y-1.5 flex-1">' +
           '<div class="flex items-center gap-2 flex-wrap">' +
@@ -138,9 +151,7 @@ function escucharPrestamistasEnTiempoReal() {
         '</div>' +
 
         '<div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800">' +
-          '<button onclick="marcarPagoMesPrestamista(\'' + u.id + '\', \'' + nombreUser + '\')" class="px-3 py-2 rounded-xl font-extrabold text-xs ' + (pagadoEsteMes ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg') + ' transition flex items-center gap-1.5">' +
-            '💳 ' + (pagadoEsteMes ? 'Re-Acreditar Pago' : 'Marcar Cuota Pagada') +
-          '</button>' +
+          btnPagoHTML +
 
           '<button onclick="toggleEstadoPrestamista(\'' + u.id + '\', \'' + estadoManual + '\')" class="px-3 py-2 rounded-xl font-bold text-xs ' + (estaSuspendido ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30') + ' transition flex items-center gap-1">' +
             (estaSuspendido ? '▶️ Activar' : '⏸️ Suspender') +
@@ -160,6 +171,7 @@ function escucharPrestamistasEnTiempoReal() {
   });
 }
 
+// MARCAR PAGO
 async function marcarPagoMesPrestamista(id, nombre) {
   const mesActualISO = obtenerMesActualISO();
   const nombreMes = obtenerNombreMesActual();
@@ -183,6 +195,31 @@ async function marcarPagoMesPrestamista(id, nombre) {
   } catch (error) {
     console.error("Error al acreditar pago:", error);
     if (typeof mostrarToast === 'function') mostrarToast("Error al registrar pago", "error");
+  }
+}
+
+// DESMARCAR PAGO (DESHACER / PONDER PENDIENTE)
+async function desmarcarPagoMesPrestamista(id, nombre) {
+  const mesActualISO = obtenerMesActualISO();
+  const nombreMes = obtenerNombreMesActual();
+
+  if (!confirm(`¿Querés volver a poner en "PENDIENTE DE PAGO" la cuota de ${nombreMes} para "${nombre}"?`)) return;
+
+  try {
+    const updateData = {
+      ultimoMesPagado: '',
+      estadoCuenta: 'activo'
+    };
+    updateData[`pagosMes.${mesActualISO}`] = false;
+
+    await db.collection('usuarios').doc(id).update(updateData);
+
+    if (typeof mostrarToast === 'function') {
+      mostrarToast(`⚠️ Cuota de ${nombreMes} marcada como Pendiente para ${nombre}`);
+    }
+  } catch (error) {
+    console.error("Error al desmarcar pago:", error);
+    if (typeof mostrarToast === 'function') mostrarToast("Error al modificar pago", "error");
   }
 }
 
@@ -289,6 +326,44 @@ async function crearUsuarioPrestamista(event) {
     console.error("Error al crear la cuenta:", error);
     if (typeof mostrarToast === 'function') mostrarToast("Error al crear la cuenta: " + error.message, "error");
   }
+}
+
+// GUARDAR CONFIGURACIÓN DE MERCADO PAGO / SUSCRIPCIÓN (ADMIN)
+async function guardarConfigSuscripcionAdmin(event) {
+  if (event && event.preventDefault) event.preventDefault();
+
+  const link = document.getElementById('cfg-sub-link')?.value.trim() || '';
+  const monto = parseFloat(document.getElementById('cfg-sub-monto')?.value) || 0;
+  const whatsapp = document.getElementById('cfg-sub-wsp')?.value.trim() || '';
+
+  try {
+    await db.collection('configuracion').doc('suscripcion').set({
+      link: link,
+      monto: monto,
+      whatsapp: whatsapp,
+      fechaActualizacion: new Date().toISOString()
+    }, { merge: true });
+
+    if (typeof mostrarToast === 'function') {
+      mostrarToast("💳 Configuración de Mercado Pago guardada con éxito");
+    }
+  } catch (error) {
+    console.error("Error al guardar suscripción:", error);
+    if (typeof mostrarToast === 'function') mostrarToast("Error al guardar configuración", "error");
+  }
+}
+
+// CARGAR LOS DATOS DE MERCADO PAGO EN LOS INPUTS DEL ADMIN
+function cargarConfigSuscripcionEnInputs() {
+  if (!window.configSuscripcion) return;
+
+  const inputLink = document.getElementById('cfg-sub-link');
+  const inputMonto = document.getElementById('cfg-sub-monto');
+  const inputWsp = document.getElementById('cfg-sub-wsp');
+
+  if (inputLink && window.configSuscripcion.link) inputLink.value = window.configSuscripcion.link;
+  if (inputMonto && window.configSuscripcion.monto) inputMonto.value = window.configSuscripcion.monto;
+  if (inputWsp && window.configSuscripcion.whatsapp) inputWsp.value = window.configSuscripcion.whatsapp;
 }
 
 async function cambiarMiContrasena(event) {

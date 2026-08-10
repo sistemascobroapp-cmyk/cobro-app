@@ -78,7 +78,7 @@
           <div class="flex items-center gap-3"><span>⚠️</span> Estado de Cuentas</div>
           <span id="badge-alertas-menu" class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold border border-red-500/30">0</span>
         </button>
-        <button id="btn-sec-intereses" onclick="mostrarSeccion('sec-intereses')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center gap-3"><span>⚙️</span> Config. de Intereses</button>
+        <button id="btn-sec-intereses" onclick="mostrarSeccion('sec-intereses')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center gap-3"><span>💳</span> Config. Mercado Pago</button>
         <button id="btn-sec-clientes" onclick="mostrarSeccion('sec-clientes')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-gray-400 hover:bg-slate-800/60 transition flex items-center gap-3"><span>👥</span> Registro de Clientes</button>
         <button id="btn-sec-usuarios" onclick="mostrarSeccion('sec-usuarios')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-fuchsia-400 hover:bg-slate-800/60 transition items-center gap-3 border border-fuchsia-500/30 hidden"><span>🔐</span> Accesos Prestamistas</button>
         <button id="btn-sec-suscripcion" onclick="mostrarSeccion('sec-suscripcion')" class="w-full text-left px-4 py-3 rounded-xl font-semibold text-sm text-indigo-400 hover:bg-slate-800/60 transition items-center gap-3 border border-indigo-500/30 hidden"><span>💳</span> Mi Suscripción & Clave</button>
@@ -268,27 +268,31 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 5: CONFIGURACIÓN DE TASAS (SIN OBLIGACIÓN EN MORA) -->
+      <!-- SECCIÓN 5: CONFIGURACIÓN DE MERCADO PAGO Y ALQUILER (ADMIN) -->
       <section id="sec-intereses" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
           <div class="border-b border-slate-800 pb-3">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>⚙️</span> Configuración de Tasas e Intereses</h3>
+            <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>💳</span> Configuración de Mercado Pago & Suscripción</h3>
+            <p class="text-xs text-slate-400 mt-1">Ingresá los datos de tu Mercado Pago para que los prestamistas te abonen el alquiler mensual de la aplicación.</p>
           </div>
-          <form onsubmit="guardarInteresesConfig(event)" class="space-y-6 max-w-md">
-            <div class="space-y-4">
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Diario (%)</label><input type="number" id="cfg-int-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Semanal (%)</label><input type="number" id="cfg-int-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Mensual (%)</label><input type="number" id="cfg-int-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+
+          <form onsubmit="guardarConfigSuscripcionAdmin(event)" class="space-y-4 max-w-md">
+            <div>
+              <label class="block text-xs font-bold uppercase mb-1 text-slate-300">Link de Cobro / CBU / Alias Mercado Pago *</label>
+              <input type="text" id="cfg-sub-link" required placeholder="https://mpago.la/... o tu-alias.mp" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
             </div>
 
-            <div class="border-t border-slate-800 pt-5 space-y-4">
-              <h3 class="text-lg font-bold text-red-400">🚨 Tasas por Retraso (Opcionales)</h3>
-              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Diario (%)</label><input type="number" id="cfg-retraso-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Semanal (%)</label><input type="number" id="cfg-retraso-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Mensual (%)</label><input type="number" id="cfg-retraso-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+            <div>
+              <label class="block text-xs font-bold uppercase mb-1 text-slate-300">Monto del Alquiler Mensual ($) *</label>
+              <input type="number" id="cfg-sub-monto" required min="0" placeholder="Ej: 15000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
             </div>
 
-            <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">💾 Guardar Ajustes de Tasas</button>
+            <div>
+              <label class="block text-xs font-bold uppercase mb-1 text-slate-300">WhatsApp de Contacto (con código de área) *</label>
+              <input type="tel" id="cfg-sub-wsp" required placeholder="Ej: 5491123456789" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm text-white">
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition">💾 Guardar Datos de Cobro</button>
           </form>
         </div>
       </section>
@@ -340,7 +344,7 @@
     <button onclick="mostrarSeccion('sec-resumen')" id="m-btn-resumen" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">📊</span><span>Resumen</span></button>
     <button onclick="mostrarSeccion('sec-estado')" id="m-btn-estado" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚠️</span><span>Estado</span></button>
     <button onclick="mostrarSeccion('sec-clientes')" id="m-btn-clientes" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">👥</span><span>Clientes</span></button>
-    <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Tasas</span></button>
+    <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">💳</span><span>Cobros MP</span></button>
   </nav>
 
   <!-- MODAL PARA SELECCIONAR O CREAR CLIENTE -->
@@ -626,7 +630,7 @@
           <strong id="bloqueo-monto" class="text-lg font-black text-emerald-400">$0 / mes</strong>
         </div>
         <div>
-          <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1">CBU / Alias:</span>
+          <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1">CBU / Alias / Link:</span>
           <div class="bg-[#0F172A] p-2.5 rounded-xl border border-slate-800 flex justify-between items-center">
             <span id="bloqueo-alias-cbu" class="text-xs font-mono text-fuchsia-300 truncate font-bold">Cargando datos...</span>
             <button onclick="copiarAliasBloqueo()" class="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-slate-700">📋 Copiar</button>

@@ -149,6 +149,21 @@ async function iniciarSesionUsuario(event) {
   }
 }
 
+function escucharConfigSuscripcion() {
+  if (!db) return;
+  db.collection('configuracion').doc('suscripcion').onSnapshot(doc => {
+    if (doc.exists) {
+      window.configSuscripcion = doc.data();
+      if (typeof actualizarVistaSuscripcionUsuario === 'function') {
+        actualizarVistaSuscripcionUsuario(window.datosUsuarioActual);
+      }
+      if (typeof cargarConfigSuscripcionEnInputs === 'function') {
+        cargarConfigSuscripcionEnInputs();
+      }
+    }
+  }, err => console.error("Error escuchando suscripción:", err));
+}
+
 function actualizarVistaSuscripcionUsuario(dataUsuario) {
   const txtMonto = document.getElementById('cli-sub-monto-txt');
   const btnPagarMp = document.getElementById('btn-pagar-sub-mp');
@@ -210,8 +225,10 @@ function configurarInterfazPorRol() {
   const btnSub = document.getElementById('btn-sec-suscripcion');
   const mBtnUsrs = document.getElementById('m-btn-usuarios');
   const mBtnSub = document.getElementById('m-btn-suscripcion');
-  const panelSubAdmin = document.getElementById('panel-cfg-suscripcion-admin');
   const lblRol = document.getElementById('lbl-rol-usuario');
+
+  const btnIntereses = document.getElementById('btn-sec-intereses');
+  const mBtnIntereses = document.getElementById('m-btn-intereses');
 
   if (window.rolUsuarioActual === 'admin') {
     if (lblRol) lblRol.innerText = "Panel Administrador Master";
@@ -219,7 +236,12 @@ function configurarInterfazPorRol() {
     if (mBtnUsrs) { mBtnUsrs.classList.remove('hidden'); mBtnUsrs.classList.add('flex'); }
     if (btnSub) { btnSub.classList.add('hidden'); btnSub.classList.remove('flex'); }
     if (mBtnSub) { mBtnSub.classList.add('hidden'); mBtnSub.classList.remove('flex'); }
-    if (panelSubAdmin) panelSubAdmin.classList.remove('hidden');
+
+    if (btnIntereses) btnIntereses.innerHTML = '<span>💳</span> Config. Mercado Pago';
+    if (mBtnIntereses) {
+      const spanTxt = mBtnIntereses.querySelector('span:last-child');
+      if (spanTxt) spanTxt.innerText = 'Cobros MP';
+    }
 
     if (typeof adaptarInterfazAdmin === 'function') adaptarInterfazAdmin();
     if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
@@ -229,7 +251,12 @@ function configurarInterfazPorRol() {
     if (mBtnUsrs) { mBtnUsrs.classList.add('hidden'); mBtnUsrs.classList.remove('flex'); }
     if (btnSub) { btnSub.classList.remove('hidden'); btnSub.classList.add('flex'); }
     if (mBtnSub) { mBtnSub.classList.remove('hidden'); mBtnSub.classList.add('flex'); }
-    if (panelSubAdmin) panelSubAdmin.classList.add('hidden');
+
+    if (btnIntereses) btnIntereses.innerHTML = '<span>⚙️</span> Config. de Intereses';
+    if (mBtnIntereses) {
+      const spanTxt = mBtnIntereses.querySelector('span:last-child');
+      if (spanTxt) spanTxt.innerText = 'Tasas';
+    }
 
     const secUsrs = document.getElementById('sec-usuarios');
     if (secUsrs && !secUsrs.classList.contains('hidden')) {
@@ -328,9 +355,7 @@ function iniciarListenersFirestore() {
     }, err => console.error("Error prestamos:", err));
 
     if (window.rolUsuarioActual === 'admin') {
-      db.collection('usuarios').onSnapshot(snapshot => {
-        if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
-      }, err => console.error("Error usuarios:", err));
+      if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
     }
   } catch (error) {
     console.error("Error iniciando listeners:", error);
@@ -387,7 +412,7 @@ function mostrarSeccion(idSeccion) {
     'sec-por-cobrar': '📅 Préstamos a Cobrar & Calendario',
     'sec-resumen': '📊 Resumen de Préstamos & Ganancias',
     'sec-estado': '⚠️ Estado de Cuentas & Recargos',
-    'sec-intereses': '⚙️ Configuración de Intereses & Alquiler',
+    'sec-intereses': esAdmin ? '💳 Configuración de Mercado Pago' : '⚙️ Configuración de Intereses',
     'sec-clientes': '👥 Registro de Clientes / Deudores',
     'sec-usuarios': '🔐 Habilitar Accesos Prestamistas',
     'sec-suscripcion': '💳 Mi Suscripción & Clave'
@@ -403,6 +428,10 @@ function mostrarSeccion(idSeccion) {
 
   if (idSeccion === 'sec-usuarios' && typeof escucharPrestamistasEnTiempoReal === 'function') {
     escucharPrestamistasEnTiempoReal();
+  }
+
+  if (idSeccion === 'sec-intereses' && esAdmin && typeof cargarConfigSuscripcionEnInputs === 'function') {
+    cargarConfigSuscripcionEnInputs();
   }
 
   window.scrollTo(0, 0);
