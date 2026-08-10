@@ -81,9 +81,14 @@ function adaptarInterfazSegunRol() {
       inputInteres.type = 'number';
       inputInteres.min = '0';
       inputInteres.step = '0.1';
-      alCambiarFrecuencia();
     }
+
+    // Inicializar predeterminado Mensual e Interés configurado
+    inicializarValoresPredeterminadosPrestamo();
   }
+
+  // Cargar configuración de Mercado Pago en la UI al iniciar
+  cargarConfigMercadoPagoUI();
 }
 
 // ==========================================
@@ -115,10 +120,11 @@ async function guardarConfigInteresesPrestamista(event) {
       }
     }, { merge: true });
 
-    if (window.datosUsuarioActual) {
-      window.datosUsuarioActual.tasasConfig = { intDiario, intSemanal, intMensual, retDiario, retSemanal, retMensual };
-      window.datosUsuarioActual.configIntereses = { intDiario, intSemanal, intMensual, retrasoDiario: retDiario, retrasoSemanal: retSemanal, retrasoMensual: retMensual };
-    }
+    if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+    window.datosUsuarioActual.tasasConfig = { intDiario, intSemanal, intMensual, retDiario, retSemanal, retMensual };
+    window.datosUsuarioActual.configIntereses = { intDiario, intSemanal, intMensual, retrasoDiario: retDiario, retrasoSemanal: retSemanal, retrasoMensual: retMensual };
+
+    inicializarValoresPredeterminadosPrestamo();
 
     if (typeof mostrarToast === 'function') {
       mostrarToast("⚙️ Tasas e intereses guardados con éxito");
@@ -136,6 +142,9 @@ async function cargarCamposConfigIntereses() {
     if (doc.exists) {
       const data = doc.data();
       const cfg = data.tasasConfig || data.configIntereses || {};
+
+      if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+      window.datosUsuarioActual.tasasConfig = cfg;
 
       const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
@@ -443,12 +452,23 @@ function cerrarModalInfoCliente() {
 // 3. SIMULADOR Y REGISTRO DE PAGO / PRÉSTAMO
 // ==========================================
 
+function inicializarValoresPredeterminadosPrestamo() {
+  const selectFrecuencia = document.getElementById('frecuencia-prestamo');
+  if (selectFrecuencia) {
+    selectFrecuencia.value = 'mensual';
+  }
+  alCambiarFrecuencia();
+}
+
 function alCambiarFrecuencia() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
   const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   if (esAdmin) return;
 
-  const frec = document.getElementById('frecuencia-prestamo')?.value || 'mensual';
+  const frecSelect = document.getElementById('frecuencia-prestamo');
+  if (!frecSelect) return;
+  const frec = frecSelect.value || 'mensual';
+
   const inputInt = document.getElementById('interes-prestamo');
   if (!inputInt) return;
 
@@ -659,6 +679,7 @@ async function guardarPrestamoFirestore() {
     mostrarToast("🎉 ¡Guardado con éxito!");
 
     document.getElementById('form-prestamo').reset();
+    inicializarValoresPredeterminadosPrestamo();
     document.getElementById('vista-simulacion').classList.add('hidden');
     simulacionActual = null;
     mostrarSeccion('sec-por-cobrar');
@@ -834,6 +855,9 @@ function renderizarPlanificadorSemanal() {
   const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const hoyISO = obtenerFechaLocalISO();
 
+  // VERIFICAR SI LA AUTOMATIZACIÓN DE MERCADO PAGO ESTÁ ACTIVADA
+  const esMPActivo = !!(window.datosUsuarioActual?.configMercadoPago?.activo);
+
   for (let i = 0; i < 7; i++) {
     const diaActual = new Date(inicioSemana);
     diaActual.setDate(diaActual.getDate() + i);
@@ -908,13 +932,15 @@ function renderizarPlanificadorSemanal() {
               </div>
 
               ${!estaPagado ? `
-                <div class="grid grid-cols-2 gap-2 pt-1">
+                <div class="grid ${esMPActivo ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-1">
                   <button onclick="abrirModalPago('${p.id}', '${c.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
                     💵 Registrar Pago
                   </button>
-                  <button onclick="enviarLinkPagoWhatsApp('${p.id}', '${c.id}', ${c.montoCuota}, '${nombreCliente}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
-                    📱 Link WhatsApp
-                  </button>
+                  ${esMPActivo ? `
+                    <button onclick="enviarLinkPagoWhatsApp('${p.id}', '${c.id}', ${c.montoCuota}, '${nombreCliente}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
+                      📱 Link WhatsApp
+                    </button>
+                  ` : ''}
                 </div>
               ` : ''}
 
@@ -1656,7 +1682,7 @@ function compartirComprobanteImagen() {
 }
 
 // ==========================================
-// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO
+// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO Y PERSISTENCIA
 // ==========================================
 
 async function guardarConfigMercadoPago() {
@@ -1674,15 +1700,26 @@ async function guardarConfigMercadoPago() {
   }
 
   try {
+    const configMP = {
+      accessToken: mpAccessToken,
+      activo: cobroAutomativoActivo,
+      fechaActualizacion: new Date().toISOString()
+    };
+
     await db.collection('usuarios').doc(window.usuarioActual.uid).set({
-      configMercadoPago: {
-        accessToken: mpAccessToken,
-        activo: cobroAutomativoActivo,
-        fechaActualizacion: new Date().toISOString()
-      }
+      configMercadoPago: configMP
     }, { merge: true });
 
+    // Mantener estado en memoria local inmediatamente
+    if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+    window.datosUsuarioActual.configMercadoPago = configMP;
+
     mostrarToast("🤖 Configuración de Mercado Pago guardada");
+
+    // Re-renderizar para reflejar o quitar el botón de WhatsApp inmediatamente
+    if (typeof renderizarPlanificadorSemanal === 'function') {
+      renderizarPlanificadorSemanal();
+    }
   } catch (error) {
     console.error("Error al guardar token MP:", error);
     mostrarToast("Error al guardar token de Mercado Pago", "error");
@@ -1697,6 +1734,10 @@ async function cargarConfigMercadoPagoUI() {
       const data = doc.data();
       const cfgMP = data.configMercadoPago || {};
 
+      // Guardar en variable global de memoria
+      if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+      window.datosUsuarioActual.configMercadoPago = cfgMP;
+
       const inputToken = document.getElementById('cfg-mp-access-token');
       const chkAuto = document.getElementById('chk-mp-auto-activo');
       const lblEstado = document.getElementById('lbl-mp-auto-estado');
@@ -1704,6 +1745,11 @@ async function cargarConfigMercadoPagoUI() {
       if (inputToken) inputToken.value = cfgMP.accessToken || '';
       if (chkAuto) chkAuto.checked = !!cfgMP.activo;
       if (lblEstado) lblEstado.innerText = cfgMP.activo ? 'Activado 🟢' : 'Desactivado 🔴';
+
+      // Actualizar vista del planificador
+      if (typeof renderizarPlanificadorSemanal === 'function') {
+        renderizarPlanificadorSemanal();
+      }
     }
   } catch (e) {
     console.error("Error al cargar config MP:", e);
