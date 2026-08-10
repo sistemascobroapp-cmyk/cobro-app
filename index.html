@@ -101,82 +101,88 @@
 
     <main class="p-4 md:p-8 max-w-5xl w-full mx-auto space-y-6 pb-28 md:pb-8">
 
-      <!-- SECCIÓN 1: REGISTRAR PRÉSTAMO / REGISTRO DE PAGO -->
-      <section id="sec-registrar" class="seccion-app space-y-6">
-        <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-          <div class="border-b border-slate-800/80 pb-4">
-            <h3 id="titulo-sec-registrar" class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
-            <p class="text-xs text-slate-400 mt-1">Podés calcular el plan libremente y asignar el cliente antes o después.</p>
-          </div>
+     <!-- SECCIÓN 1: REGISTRAR PRÉSTAMO / REGISTRO DE PAGO -->
+<section id="sec-registrar" class="seccion-app space-y-6">
+  <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+    <div class="border-b border-slate-800/80 pb-4">
+      <h3 id="titulo-sec-registrar" class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
+      <p class="text-xs text-slate-400 mt-1">Podés calcular el plan libremente y asignar el cliente antes o después.</p>
+    </div>
 
-          <form id="form-prestamo" onsubmit="generarSimulacion(event)" class="space-y-5">
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cliente Seleccionado (Opcional para Simular)</label>
-              <select id="input-cliente" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-fuchsia-500 cursor-pointer">
-                <option value="">-- Sin cliente seleccionado (Solo Simular) --</option>
-              </select>
-            </div>
+    <form id="form-prestamo" onsubmit="generarSimulacion(event)" class="space-y-5">
+      <!-- CLIENTE -->
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cliente Seleccionado (Opcional para Simular)</label>
+        <select id="input-cliente" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-fuchsia-500 cursor-pointer">
+          <option value="">-- Sin cliente seleccionado (Solo Simular) --</option>
+        </select>
+      </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label id="lbl-monto-prestamo" class="block text-xs font-bold uppercase tracking-wider mb-2">Monto a Prestar ($) *</label>
-                <input type="number" id="monto-prestamo" oninput="convertirMontoEnLetras(this.value)" placeholder="Ej: 1000000" required min="1000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                <p id="monto-en-letras" class="text-xs text-fuchsia-400 font-bold mt-1.5 italic min-h-[18px]"></p>
-              </div>
-              <div id="interes-prestamo-container">
-                <label id="lbl-interes-prestamo" class="block text-xs font-bold uppercase tracking-wider mb-2">Interés por Mes/Período (%) *</label>
-                <input type="number" id="interes-prestamo" placeholder="Ej: 30" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm [color-scheme:dark]">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cuotas *</label>
-                <input type="number" id="cuotas-prestamo" placeholder="Ej: 10" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-              </div>
-              <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Frecuencia *</label>
-                <select id="frecuencia-prestamo" onchange="alCambiarFrecuencia()" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
-                  <option value="diario">Diario</option>
-                  <option value="semanal">Semanal</option>
-                  <option value="mensual" selected>Mensual</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Primer Cobro *</label>
-                <input type="date" id="fecha-inicio" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm [color-scheme:dark]">
-              </div>
-            </div>
-
-            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-fuchsia-400 font-bold py-3.5 rounded-xl shadow-lg transition flex justify-center items-center gap-2">
-              <span>🔍</span> Calcular Plan & Generar Cuotas
-            </button>
-          </form>
-
-          <div id="vista-simulacion" class="hidden border-t border-slate-800 pt-6 space-y-5">
-            <div class="bg-[#1E293B]/70 border border-slate-700/60 p-5 rounded-2xl space-y-4">
-              <div class="flex justify-between items-center border-b border-slate-700/60 pb-3">
-                <h4 class="font-extrabold text-base">📊 Resumen del Plan</h4>
-                <span id="badge-cliente" class="text-xs font-bold px-3 py-1 rounded-full"></span>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Total Devolución</p><p id="sim-total" class="text-lg font-black text-fuchsia-400">$0</p></div>
-                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Ganancia Neta</p><p id="sim-ganancia" class="text-lg font-black text-emerald-400">$0</p></div>
-                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Valor Cuota</p><p id="sim-cuota" class="text-lg font-bold">$0</p></div>
-                <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Plan</p><p id="sim-plan" class="text-sm font-bold text-slate-300 mt-1">-</p></div>
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas & Calendario de Cobro:</h5>
-              <div id="sim-tabla-fechas" class="max-h-48 overflow-y-auto bg-[#1E293B]/40 border border-slate-800 rounded-xl divide-y divide-slate-800/60 text-sm"></div>
-            </div>
-
-            <div id="contenedor-acciones-prestamo" class="pt-2"></div>
-          </div>
+      <!-- MONTO Y FRECUENCIA (AHORA LA FRECUENCIA ESTÁ PRIMERO) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label id="lbl-monto-prestamo" class="block text-xs font-bold uppercase tracking-wider mb-2">Monto a Prestar ($) *</label>
+          <input type="number" id="monto-prestamo" oninput="convertirMontoEnLetras(this.value)" placeholder="Ej: 1000000" required min="1000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+          <p id="monto-en-letras" class="text-xs text-fuchsia-400 font-bold mt-1.5 italic min-h-[18px]"></p>
         </div>
-      </section>
 
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider mb-2">Frecuencia *</label>
+          <select id="frecuencia-prestamo" onchange="alCambiarFrecuencia()" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+            <option value="" selected>-- Seleccionar Frecuencia --</option>
+            <option value="diario">Diario</option>
+            <option value="semanal">Semanal</option>
+            <option value="mensual">Mensual</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- INTERÉS (AUTOCOMPLETA AL ELEGIR FRECUENCIA), CUOTAS Y PRIMER COBRO -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div id="interes-prestamo-container">
+          <label id="lbl-interes-prestamo" class="block text-xs font-bold uppercase tracking-wider mb-2">Interés por Mes/Período (%) *</label>
+          <input type="number" id="interes-prestamo" placeholder="Seleccioná frecuencia..." required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm [color-scheme:dark]">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider mb-2">Cuotas *</label>
+          <input type="number" id="cuotas-prestamo" placeholder="Ej: 10" required min="1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider mb-2">Primer Cobro *</label>
+          <input type="date" id="fecha-inicio" required class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm [color-scheme:dark]">
+        </div>
+      </div>
+
+      <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-fuchsia-400 font-bold py-3.5 rounded-xl shadow-lg transition flex justify-center items-center gap-2">
+        <span>🔍</span> Calcular Plan & Generar Cuotas
+      </button>
+    </form>
+
+    <div id="vista-simulacion" class="hidden border-t border-slate-800 pt-6 space-y-5">
+      <div class="bg-[#1E293B]/70 border border-slate-700/60 p-5 rounded-2xl space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-700/60 pb-3">
+          <h4 class="font-extrabold text-base">📊 Resumen del Plan</h4>
+          <span id="badge-cliente" class="text-xs font-bold px-3 py-1 rounded-full"></span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Total Devolución</p><p id="sim-total" class="text-lg font-black text-fuchsia-400">$0</p></div>
+          <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Ganancia Neta</p><p id="sim-ganancia" class="text-lg font-black text-emerald-400">$0</p></div>
+          <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Valor Cuota</p><p id="sim-cuota" class="text-lg font-bold">$0</p></div>
+          <div class="bg-[#0F172A] p-3 rounded-xl border border-slate-800"><p class="text-[10px] text-slate-400 uppercase font-bold">Plan</p><p id="sim-plan" class="text-sm font-bold text-slate-300 mt-1">-</p></div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas & Calendario de Cobro:</h5>
+        <div id="sim-tabla-fechas" class="max-h-48 overflow-y-auto bg-[#1E293B]/40 border border-slate-800 rounded-xl divide-y divide-slate-800/60 text-sm"></div>
+      </div>
+
+      <div id="contenedor-acciones-prestamo" class="pt-2"></div>
+    </div>
+  </div>
+</section>
       <!-- SECCIÓN 2: CALENDARIO VISUAL Y PLANIFICADOR DE COBROS -->
       <section id="sec-por-cobrar" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">

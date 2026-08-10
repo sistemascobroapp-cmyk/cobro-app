@@ -117,7 +117,7 @@ function adaptarInterfazSegunRol() {
       inputInteres.step = '0.1';
     }
 
-    // Inicializar predeterminado Mensual e Interés configurado
+    // Inicializar vacíos para obligar a seleccionar
     inicializarValoresPredeterminadosPrestamo();
   }
 
@@ -162,8 +162,6 @@ async function guardarConfigInteresesPrestamista(event) {
     if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
     window.datosUsuarioActual.tasasConfig = { intDiario, intSemanal, intMensual, retDiario, retSemanal, retMensual };
     window.datosUsuarioActual.configIntereses = { intDiario, intSemanal, intMensual, retrasoDiario: retDiario, retrasoSemanal: retSemanal, retrasoMensual: retMensual };
-
-    inicializarValoresPredeterminadosPrestamo();
 
     if (typeof mostrarToast === 'function') {
       mostrarToast("⚙️ Tasas e intereses guardados con éxito");
@@ -491,31 +489,56 @@ function cerrarModalInfoCliente() {
 // 3. SIMULADOR Y REGISTRO DE PAGO / PRÉSTAMO
 // ==========================================
 
-function inicializarValoresPredeterminadosPrestamo() {
+async function inicializarValoresPredeterminadosPrestamo() {
   const selectFrecuencia = document.getElementById('frecuencia-prestamo');
-  if (selectFrecuencia) {
-    selectFrecuencia.value = 'mensual';
-  }
-  alCambiarFrecuencia();
+  const inputInt = document.getElementById('interes-prestamo');
+  
+  if (selectFrecuencia) selectFrecuencia.value = '';
+  if (inputInt) inputInt.value = '';
 }
 
-function alCambiarFrecuencia() {
+async function alCambiarFrecuencia() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
   const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   if (esAdmin) return;
 
   const frecSelect = document.getElementById('frecuencia-prestamo');
-  if (!frecSelect) return;
-  const frec = frecSelect.value || 'mensual';
-
   const inputInt = document.getElementById('interes-prestamo');
-  if (!inputInt) return;
+  if (!frecSelect || !inputInt) return;
+
+  const frec = frecSelect.value;
+  
+  if (!frec) {
+    inputInt.value = '';
+    return;
+  }
+
+  const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth().currentUser);
+
+  if ((!window.datosUsuarioActual?.tasasConfig || window.datosUsuarioActual.tasasConfig.intMensual === undefined) && usuario) {
+    try {
+      const doc = await db.collection('usuarios').doc(usuario.uid).get();
+      if (doc.exists) {
+        const data = doc.data();
+        const cfg = data.tasasConfig || data.configIntereses || {};
+        if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+        window.datosUsuarioActual.tasasConfig = cfg;
+        window.datosUsuarioActual.configIntereses = cfg;
+      }
+    } catch (e) {
+      console.error("Error al cargar tasas:", e);
+    }
+  }
 
   const tasas = window.datosUsuarioActual?.tasasConfig || window.datosUsuarioActual?.configIntereses || {};
 
-  if (frec === 'diario') inputInt.value = tasas.intDiario ?? 1;
-  else if (frec === 'semanal') inputInt.value = tasas.intSemanal ?? 5;
-  else inputInt.value = tasas.intMensual ?? 20;
+  if (frec === 'diario') {
+    inputInt.value = tasas.intDiario ?? 1;
+  } else if (frec === 'semanal') {
+    inputInt.value = tasas.intSemanal ?? 5;
+  } else if (frec === 'mensual') {
+    inputInt.value = tasas.intMensual ?? 20;
+  }
 }
 
 function generarSimulacion(event) {
@@ -538,8 +561,12 @@ function generarSimulacion(event) {
   }
 
   const cuotas = parseInt(document.getElementById('cuotas-prestamo')?.value) || 1;
-  const frecuencia = document.getElementById('frecuencia-prestamo')?.value || 'mensual';
+  const frecuencia = document.getElementById('frecuencia-prestamo')?.value;
   const fechaInicioStr = document.getElementById('fecha-inicio')?.value;
+
+  if (!frecuencia) {
+    return mostrarToast("Por favor seleccioná una frecuencia de cobro", "error");
+  }
 
   if (monto <= 0 || cuotas <= 0 || !fechaInicioStr) {
     return mostrarToast("Completá todos los campos requeridos", "error");
