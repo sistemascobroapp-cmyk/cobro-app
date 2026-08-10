@@ -13,12 +13,20 @@ try {
   let rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 
   if (!rawServiceAccount) {
-    throw new Error("La variable FIREBASE_SERVICE_ACCOUNT está vacía o no existe en Render.");
+    throw new Error("La variable FIREBASE_SERVICE_ACCOUNT no existe en Render.");
   }
 
+  // Parsear JSON
   const serviceAccount = typeof rawServiceAccount === 'string' 
     ? JSON.parse(rawServiceAccount) 
     : rawServiceAccount;
+
+  // Corregir formato de los saltos de línea en la clave privada
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  } else {
+    throw new Error("El JSON cargado no contiene la propiedad 'private_key'.");
+  }
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -28,8 +36,6 @@ try {
 } catch (error) {
   console.error("❌ Error crítico al inicializar Firebase Admin:", error.message);
 }
-
-const db = admin.firestore();
 
 // ==========================================
 // 2. RUTA 1: CREAR LINK DE PAGO MERCADO PAGO
