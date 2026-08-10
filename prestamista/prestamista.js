@@ -12,7 +12,55 @@ let idPrestamoAFinalizar = null;
 let idPrestamoAEliminar = null;
 
 // ==========================================
-// 1. CONFIGURACIÓN DE INTERESES Y ROSQUITA ⚙️
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (ADMIN VS PRESTAMISTA)
+// ==========================================
+function adaptarInterfazSegunRol() {
+  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
+
+  const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
+  const mBtnRegistrar = document.getElementById('m-btn-registrar');
+  const tituloSec = document.getElementById('titulo-sec-registrar');
+  const lblMonto = document.getElementById('lbl-monto-prestamo');
+  const lblInteres = document.getElementById('lbl-interes-prestamo');
+  const inputInteres = document.getElementById('interes-prestamo');
+
+  if (esAdmin) {
+    if (btnMenuRegistrar) btnMenuRegistrar.innerHTML = '<span>💳</span> Registro de Pago';
+    if (mBtnRegistrar) {
+      const spanTxt = mBtnRegistrar.querySelector('span:last-child');
+      if (spanTxt) spanTxt.innerText = 'Registro Pago';
+    }
+    if (tituloSec) tituloSec.innerText = 'Registro de Pago';
+    if (lblMonto) lblMonto.innerText = 'Monto a Pagar ($) *';
+    if (lblInteres) lblInteres.innerText = 'Fecha en la que se registra *';
+    
+    if (inputInteres) {
+      inputInteres.type = 'date';
+      inputInteres.value = obtenerFechaLocalISO();
+      inputInteres.removeAttribute('min');
+      inputInteres.removeAttribute('step');
+    }
+  } else {
+    if (btnMenuRegistrar) btnMenuRegistrar.innerHTML = '<span>💳</span> Registrar Préstamo';
+    if (mBtnRegistrar) {
+      const spanTxt = mBtnRegistrar.querySelector('span:last-child');
+      if (spanTxt) spanTxt.innerText = 'Registrar';
+    }
+    if (tituloSec) tituloSec.innerText = 'Simulador & Registro de Préstamo';
+    if (lblMonto) lblMonto.innerText = 'Monto a Prestar ($) *';
+    if (lblInteres) lblInteres.innerText = 'Interés por Mes/Período (%) *';
+
+    if (inputInteres) {
+      inputInteres.type = 'number';
+      inputInteres.min = '0';
+      inputInteres.step = '0.1';
+      alCambiarFrecuencia();
+    }
+  }
+}
+
+// ==========================================
+// 1. CONFIGURACIÓN DE INTERESES Y TASAS ⚙️
 // ==========================================
 
 async function cargarCamposConfigIntereses() {
@@ -48,7 +96,7 @@ async function guardarInteresesConfig(event) {
 
   try {
     await db.collection('usuarios').doc(window.usuarioActual.uid).set({ configIntereses }, { merge: true });
-    mostrarToast("⚙️ Porcentajes de interés guardados correctamente");
+    mostrarToast("⚙️ Ajustes de tasas e intereses guardados correctamente");
     cargarCamposConfigIntereses();
   } catch (error) {
     mostrarToast("Error al guardar la configuración de intereses", "error");
@@ -209,7 +257,6 @@ async function guardarYVincularCliente(event) {
       const docRef = await db.collection('clientes').add(dataCliente);
       mostrarToast("¡Cliente registrado con éxito!");
 
-      // Si estábamos vinculando desde el simulador, autoseleccionar
       if (simulacionActual && !simulacionActual.clienteId) {
         simulacionActual.clienteId = docRef.id;
         simulacionActual.nombreCliente = nombre;
@@ -269,16 +316,19 @@ function abrirModalInfoCliente(id) {
     } else {
       prestamosCli.forEach(p => {
         let cobrado = 0;
-        (p.cuotasDetalle || []).forEach(c => { if (c.pagado) cobrado += parseFloat(c.montoCuota); });
-        const restante = Math.max(0, parseFloat(p.montoTotal) - cobrado);
+        (p.cuotasDetalle || []).forEach(c => {
+          const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+          if (estaPagado) cobrado += Math.round(parseFloat(c.montoCuota));
+        });
+        const restante = Math.max(0, Math.round(parseFloat(p.montoTotal) - cobrado));
 
         contHistorial.innerHTML += `
           <div class="bg-[#1E293B] p-3.5 rounded-xl text-xs space-y-2 border border-slate-700/80">
             <div class="flex justify-between items-center font-bold">
-              <span class="text-white">Monto: $${parseFloat(p.monto).toLocaleString('es-AR')}</span>
+              <span class="text-white">Monto: $${Math.round(parseFloat(p.monto)).toLocaleString('es-AR')}</span>
               <span class="${p.estado === 'finalizado' ? 'text-emerald-400' : 'text-amber-400'}">${p.estado === 'finalizado' ? '🏁 Finalizado' : '🟢 Activo'}</span>
             </div>
-            <p class="text-slate-300">Total a Devolver: <strong class="text-fuchsia-400">$${parseFloat(p.montoTotal).toLocaleString('es-AR')}</strong> | Cuotas: <strong>${p.cuotas} (${p.frecuencia})</strong></p>
+            <p class="text-slate-300">Total a Devolver: <strong class="text-fuchsia-400">$${Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR')}</strong> | Cuotas: <strong>${p.cuotas} (${p.frecuencia})</strong></p>
             <p class="text-xs text-slate-400">Cobrado: <strong class="text-emerald-400">$${cobrado.toLocaleString('es-AR')}</strong> | Cuánto Falta: <strong class="text-amber-400">$${restante.toLocaleString('es-AR')}</strong></p>
           </div>
         `;
@@ -294,10 +344,13 @@ function cerrarModalInfoCliente() {
 }
 
 // ==========================================
-// 3. SIMULADOR Y POPUP DE ASIGNACIÓN DE CLIENTE
+// 3. SIMULADOR Y REGISTRO DE PAGO / PRÉSTAMO
 // ==========================================
 
 function alCambiarFrecuencia() {
+  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
+  if (esAdmin) return; // En Admin no se aplican intereses por frecuencia
+
   const frec = document.getElementById('frecuencia-prestamo')?.value;
   const inputInt = document.getElementById('interes-prestamo');
   if (!inputInt) return;
@@ -309,15 +362,26 @@ function alCambiarFrecuencia() {
 
 function convertirMontoEnLetras(val) {
   const elem = document.getElementById('monto-en-letras');
-  if (elem) elem.innerText = numeroALetras(parseFloat(val) || 0);
+  if (elem) elem.innerText = numeroALetras(Math.round(parseFloat(val) || 0));
 }
 
 function generarSimulacion(event) {
   if (event) event.preventDefault();
 
+  const esAdmin = window.esAdmin || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
   const clienteId = document.getElementById('input-cliente').value;
-  const monto = parseFloat(document.getElementById('monto-prestamo').value) || 0;
-  const interesPorPeriodo = parseFloat(document.getElementById('interes-prestamo').value) || 0;
+  const monto = Math.round(parseFloat(document.getElementById('monto-prestamo').value) || 0);
+  
+  let interesPorPeriodo = 0;
+  let fechaRegistroAdmin = null;
+
+  if (esAdmin) {
+    interesPorPeriodo = 0; // Admin no cobra intereses
+    fechaRegistroAdmin = document.getElementById('interes-prestamo')?.value || obtenerFechaLocalISO();
+  } else {
+    interesPorPeriodo = parseFloat(document.getElementById('interes-prestamo')?.value) || 0;
+  }
+
   const cuotas = parseInt(document.getElementById('cuotas-prestamo').value) || 1;
   const frecuencia = document.getElementById('frecuencia-prestamo').value;
   const fechaInicioStr = document.getElementById('fecha-inicio').value;
@@ -327,9 +391,9 @@ function generarSimulacion(event) {
   }
 
   const porcentajeTotalInteres = interesPorPeriodo * cuotas;
-  const ganancia = (monto * (porcentajeTotalInteres / 100));
+  const ganancia = Math.round(monto * (porcentajeTotalInteres / 100));
   const montoTotal = monto + ganancia;
-  const valorCuota = montoTotal / cuotas;
+  const valorCuota = Math.round(montoTotal / cuotas);
 
   let clienteObj = window.clientes.find(c => c.id === clienteId);
   const nombreCliente = clienteObj ? clienteObj.nombre : 'Sin Cliente Seleccionado';
@@ -365,6 +429,7 @@ function generarSimulacion(event) {
     ganancia,
     valorCuota,
     fechaInicio: fechaInicioStr,
+    fechaRegistroAdmin: fechaRegistroAdmin,
     cuotasDetalle: fechasCuotas
   };
 
@@ -397,13 +462,13 @@ function generarSimulacion(event) {
   if (contAcciones) {
     contAcciones.innerHTML = `
       <button type="button" onclick="guardarPrestamoOficial()" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-extrabold py-3.5 rounded-xl shadow-lg flex justify-center items-center gap-2">
-        <span>✨</span> Otorgar Préstamo Oficialmente
+        <span>✨</span> ${esAdmin ? 'Guardar Registro de Pago' : 'Otorgar Préstamo Oficialmente'}
       </button>
     `;
   }
 
   document.getElementById('vista-simulacion').classList.remove('hidden');
-  mostrarToast("Simulación realizada con éxito");
+  mostrarToast(esAdmin ? "Registro de pago calculado" : "Simulación realizada con éxito");
 }
 
 function guardarPrestamoOficial() {
@@ -487,14 +552,14 @@ async function guardarPrestamoFirestore() {
     };
 
     await db.collection('prestamos').add(dataGuardar);
-    mostrarToast("🎉 ¡Préstamo guardado con éxito!");
+    mostrarToast("🎉 ¡Guardado con éxito!");
 
     document.getElementById('form-prestamo').reset();
     document.getElementById('vista-simulacion').classList.add('hidden');
     simulacionActual = null;
     mostrarSeccion('sec-por-cobrar');
   } catch (error) {
-    mostrarToast("Error al guardar el préstamo", "error");
+    mostrarToast("Error al guardar en el sistema", "error");
   }
 }
 
@@ -545,7 +610,8 @@ function renderizarGridCalendarioVisual() {
       (p.cuotasDetalle || []).forEach(c => {
         if (c.fecha === isoDia) {
           tieneCuotas = true;
-          if (!c.pagado) {
+          const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+          if (!estaPagado) {
             todoCobrado = false;
             if (isoDia <= hoyISO) tieneAtraso = true;
             else tienePendiente = true;
@@ -599,7 +665,10 @@ function renderizarDeudasPasadasBajoCalendario() {
     if (p.estado === 'finalizado') return;
 
     const cli = window.clientes.find(c => c.id === p.clienteId);
-    const cuotasVencidas = (p.cuotasDetalle || []).filter(c => !c.pagado && c.fecha < hoyISO);
+    const cuotasVencidas = (p.cuotasDetalle || []).filter(c => {
+      const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      return !pag && c.fecha < hoyISO;
+    });
 
     if (cuotasVencidas.length > 0) {
       cantidadDeudasPasadas += cuotasVencidas.length;
@@ -608,7 +677,8 @@ function renderizarDeudasPasadasBajoCalendario() {
       let diasMax = 0;
 
       cuotasVencidas.forEach(cv => {
-        sumaBaseDeuda += parseFloat(cv.montoPendiente || cv.montoCuota || 0);
+        const valPend = cv.montoPendiente !== undefined ? cv.montoPendiente : cv.montoCuota;
+        sumaBaseDeuda += Math.round(parseFloat(valPend || 0));
         const [y, m, d] = cv.fecha.split('-').map(Number);
         const fechaCuota = new Date(y, m - 1, d);
         const diff = Math.floor((new Date() - fechaCuota) / (1000 * 60 * 60 * 24));
@@ -675,13 +745,18 @@ function renderizarPlanificadorSemanal() {
       const cli = window.clientes.find(c => c.id === p.clienteId);
       const nombreCliente = cli ? cli.nombre : 'Cliente Desconocido';
 
-      const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => !c.pagado && c.fecha < isoDia);
+      const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
+        const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+        return !pag && c.fecha < isoDia;
+      });
+
       let totalMontoAtrasado = 0;
       let diasMaxAtraso = 0;
 
       if (cuotasAtrasadasAnteriores.length > 0) {
         cuotasAtrasadasAnteriores.forEach(ca => {
-          totalMontoAtrasado += parseFloat(ca.montoPendiente || ca.montoCuota || 0);
+          const valPend = ca.montoPendiente !== undefined ? ca.montoPendiente : ca.montoCuota;
+          totalMontoAtrasado += Math.round(parseFloat(valPend || 0));
           const [y, m, d] = ca.fecha.split('-').map(Number);
           const diffDias = Math.floor((new Date(diaActual) - new Date(y, m - 1, d)) / (1000 * 60 * 60 * 24));
           if (diffDias > diasMaxAtraso) diasMaxAtraso = diffDias;
@@ -692,7 +767,7 @@ function renderizarPlanificadorSemanal() {
         if (c.fecha === isoDia) {
           cobrosAgendadosCount++;
 
-          const estaPagado = c.pagado === true;
+          const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
           const esPasado = isoDia < hoyISO;
 
           let badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente</span>';
@@ -723,7 +798,7 @@ function renderizarPlanificadorSemanal() {
               <div class="flex justify-between items-start">
                 <div>
                   <h6 class="font-extrabold text-sm text-white">${nombreCliente}</h6>
-                  <p class="text-xs text-slate-400">Cuota #${c.numero} - <strong class="text-fuchsia-400">$${parseFloat(c.montoCuota).toLocaleString('es-AR')}</strong></p>
+                  <p class="text-xs text-slate-400">Cuota #${c.numero} - <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}</strong></p>
                 </div>
                 ${badgeEstado}
               </div>
@@ -801,8 +876,8 @@ function renderizarResumenYPrestamos() {
   let totalGanancia = 0;
 
   window.prestamos.filter(p => p.estado !== 'finalizado').forEach(p => {
-    totalCapital += parseFloat(p.monto || 0);
-    totalGanancia += parseFloat(p.ganancia || 0);
+    totalCapital += Math.round(parseFloat(p.monto || 0));
+    totalGanancia += Math.round(parseFloat(p.ganancia || 0));
   });
 
   if (elemCap) elemCap.innerText = '$' + totalCapital.toLocaleString('es-AR');
@@ -837,15 +912,18 @@ function renderizarResumenYPrestamos() {
     activos.forEach(p => {
       const cli = window.clientes.find(c => c.id === p.clienteId);
       let cobrado = 0;
-      (p.cuotasDetalle || []).forEach(c => { if (c.pagado) cobrado += parseFloat(c.montoCuota); });
-      const restante = Math.max(0, parseFloat(p.montoTotal) - cobrado);
+      (p.cuotasDetalle || []).forEach(c => {
+        const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+        if (estaPagado) cobrado += Math.round(parseFloat(c.montoCuota));
+      });
+      const restante = Math.max(0, Math.round(parseFloat(p.montoTotal) - cobrado));
 
       htmlTabla += `
         <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
           <td class="p-3 font-bold text-white">${cli ? cli.nombre : 'Cliente'}</td>
           <td class="p-3 text-slate-300">${p.fechaInicio}</td>
-          <td class="p-3 font-bold text-slate-200">$${parseFloat(p.monto).toLocaleString('es-AR')}</td>
-          <td class="p-3 font-extrabold text-fuchsia-400">$${parseFloat(p.montoTotal).toLocaleString('es-AR')}</td>
+          <td class="p-3 font-bold text-slate-200">$${Math.round(parseFloat(p.monto)).toLocaleString('es-AR')}</td>
+          <td class="p-3 font-extrabold text-fuchsia-400">$${Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR')}</td>
           <td class="p-3 font-bold text-amber-400">$${restante.toLocaleString('es-AR')}</td>
           <td class="p-3 text-slate-400">${p.cuotas} (${p.frecuencia})</td>
           <td class="p-3 flex gap-2">
@@ -861,7 +939,6 @@ function renderizarResumenYPrestamos() {
     contResumen.innerHTML = htmlTabla;
 
   } else {
-    // VISTA DE FINALIZADOS POR CARPETAS (MES Y AÑO)
     if (tituloTabla) tituloTabla.innerText = "Carpetas de Préstamos Finalizados";
     const finalizados = window.prestamos.filter(p => p.estado === 'finalizado');
 
@@ -916,8 +993,8 @@ function renderizarResumenYPrestamos() {
           <tr class="hover:bg-slate-800/30">
             <td class="p-2.5 font-bold text-white">${cli ? cli.nombre : 'Cliente'}</td>
             <td class="p-2.5 text-slate-300">${p.fechaInicio}</td>
-            <td class="p-2.5 font-bold text-slate-200">$${parseFloat(p.monto).toLocaleString('es-AR')}</td>
-            <td class="p-2.5 font-extrabold text-emerald-400">$${parseFloat(p.montoTotal).toLocaleString('es-AR')}</td>
+            <td class="p-2.5 font-bold text-slate-200">$${Math.round(parseFloat(p.monto)).toLocaleString('es-AR')}</td>
+            <td class="p-2.5 font-extrabold text-emerald-400">$${Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR')}</td>
             <td class="p-2.5 text-slate-400">${p.cuotas} (${p.frecuencia})</td>
             <td class="p-2.5 flex gap-2">
               <button onclick="verDetallePrestamoActivo('${p.id}')" class="px-2 py-1 text-xs bg-slate-800 text-fuchsia-400 rounded-lg border border-slate-700 font-bold">📊 Ficha</button>
@@ -947,13 +1024,16 @@ function verDetallePrestamoActivo(prestamoId) {
   const cli = window.clientes.find(c => c.id === p.clienteId);
   document.getElementById('det-act-cliente').innerText = cli ? cli.nombre : 'Cliente';
   document.getElementById('det-act-fechainicio').innerText = p.fechaInicio;
-  document.getElementById('det-act-monto').innerText = '$' + parseFloat(p.monto).toLocaleString('es-AR');
-  document.getElementById('det-act-total').innerText = '$' + parseFloat(p.montoTotal).toLocaleString('es-AR');
-  document.getElementById('det-act-ganancia').innerText = '+$' + parseFloat(p.ganancia).toLocaleString('es-AR');
+  document.getElementById('det-act-monto').innerText = '$' + Math.round(parseFloat(p.monto)).toLocaleString('es-AR');
+  document.getElementById('det-act-total').innerText = '$' + Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR');
+  document.getElementById('det-act-ganancia').innerText = '+$' + Math.round(parseFloat(p.ganancia)).toLocaleString('es-AR');
 
   let cobrado = 0;
-  (p.cuotasDetalle || []).forEach(c => { if (c.pagado) cobrado += parseFloat(c.montoCuota); });
-  const restante = Math.max(0, parseFloat(p.montoTotal) - cobrado);
+  (p.cuotasDetalle || []).forEach(c => {
+    const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+    if (estaPagado) cobrado += Math.round(parseFloat(c.montoCuota));
+  });
+  const restante = Math.max(0, Math.round(parseFloat(p.montoTotal) - cobrado));
 
   document.getElementById('det-act-falta').innerText = '$' + restante.toLocaleString('es-AR');
 
@@ -963,14 +1043,15 @@ function verDetallePrestamoActivo(prestamoId) {
     const hoyISO = obtenerFechaLocalISO();
 
     (p.cuotasDetalle || []).forEach(c => {
+      const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
       let estadoTxt = '<span class="text-amber-400 font-bold">🟡 Pendiente</span>';
-      if (c.pagado) estadoTxt = '<span class="text-emerald-400 font-bold">🟢 Cobrado</span>';
+      if (estaPagado) estadoTxt = '<span class="text-emerald-400 font-bold">🟢 Cobrado</span>';
       else if (c.fecha < hoyISO) estadoTxt = '<span class="text-red-400 font-bold">🔴 Atrasado</span>';
 
       listaCuotas.innerHTML += `
         <div class="flex justify-between items-center p-2 bg-slate-900/80 rounded-lg text-xs border border-slate-800">
           <span>Cuota #${c.numero} (${c.fecha})</span>
-          <strong>$${parseFloat(c.montoCuota).toLocaleString('es-AR')}</strong>
+          <strong>$${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}</strong>
           ${estadoTxt}
         </div>
       `;
@@ -990,7 +1071,7 @@ function solicitarFinalizarPrestamo(id) {
   const cli = window.clientes.find(c => c.id === (p ? p.clienteId : ''));
 
   document.getElementById('fin-prestamo-cliente').innerText = cli ? cli.nombre : 'Cliente';
-  document.getElementById('fin-prestamo-monto').innerText = '$' + (p ? parseFloat(p.montoTotal).toLocaleString('es-AR') : '0');
+  document.getElementById('fin-prestamo-monto').innerText = '$' + (p ? Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR') : '0');
   document.getElementById('modal-confirmar-finalizar-prestamo').classList.remove('hidden');
 }
 
@@ -1019,7 +1100,7 @@ function solicitarEliminarPrestamo(id) {
   const cli = window.clientes.find(c => c.id === (p ? p.clienteId : ''));
 
   document.getElementById('del-prestamo-cliente').innerText = cli ? cli.nombre : 'Cliente';
-  document.getElementById('del-prestamo-monto').innerText = '$' + (p ? parseFloat(p.montoTotal).toLocaleString('es-AR') : '0');
+  document.getElementById('del-prestamo-monto').innerText = '$' + (p ? Math.round(parseFloat(p.montoTotal)).toLocaleString('es-AR') : '0');
   document.getElementById('modal-confirmar-eliminar-prestamo').classList.remove('hidden');
 }
 
@@ -1057,12 +1138,18 @@ function renderizarEstadoCuentas() {
     if (p.estado === 'finalizado') return;
 
     const cli = window.clientes.find(c => c.id === p.clienteId);
-    const cuotasAtrasadas = (p.cuotasDetalle || []).filter(c => !c.pagado && c.fecha < hoyISO);
+    const cuotasAtrasadas = (p.cuotasDetalle || []).filter(c => {
+      const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      return !pag && c.fecha < hoyISO;
+    });
 
     if (cuotasAtrasadas.length > 0) {
       atrasosTotales += cuotasAtrasadas.length;
       let montoBaseAtraso = 0;
-      cuotasAtrasadas.forEach(ca => montoBaseAtraso += parseFloat(ca.montoPendiente || ca.montoCuota || 0));
+      cuotasAtrasadas.forEach(ca => {
+        const valPend = ca.montoPendiente !== undefined ? ca.montoPendiente : ca.montoCuota;
+        montoBaseAtraso += Math.round(parseFloat(valPend || 0));
+      });
 
       container.innerHTML += `
         <div class="p-4 rounded-2xl bg-red-950/20 border border-red-500/40 space-y-2">
@@ -1098,24 +1185,26 @@ function abrirModalPagoAtrasadoTotal(clienteId, montoBase, diasAtraso) {
   const prestamosCliente = window.prestamos.filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
   let saldoTotalDeuda = 0;
   prestamosCliente.forEach(p => {
-    (p.cuotasDetalle || []).forEach(c => { if (!c.pagado) saldoTotalDeuda += parseFloat(c.montoPendiente || c.montoCuota); });
+    (p.cuotasDetalle || []).forEach(c => {
+      const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      if (!pag) saldoTotalDeuda += Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+    });
   });
 
-  // CÁLCULO DE MORA ESCALONADA (DÍAS, SEMANAS, MESES)
   const recargoPct = calcularPorcentajeRecargoEscalonado(diasAtraso);
   const montoRecargo = Math.round(montoBase * (recargoPct / 100));
 
   datosPagoAtrasadoAgrupadoActual = {
     clienteId,
-    montoBase,
+    montoBase: Math.round(montoBase),
     montoRecargo,
     diasAtraso,
-    saldoTotalDeuda
+    saldoTotalDeuda: Math.round(saldoTotalDeuda)
   };
 
   document.getElementById('pago-atrasado-cliente-id').value = clienteId;
   document.getElementById('pago-atrasado-cli-nombre').innerText = cli.nombre;
-  document.getElementById('pago-atrasado-monto-base').innerText = '$' + montoBase.toLocaleString('es-AR');
+  document.getElementById('pago-atrasado-monto-base').innerText = '$' + Math.round(montoBase).toLocaleString('es-AR');
   document.getElementById('pago-atrasado-tiempo-txt').innerText = diasAtraso + ' días';
   document.getElementById('pago-atrasado-monto-recargo').innerText = montoRecargo.toLocaleString('es-AR');
   
@@ -1133,7 +1222,7 @@ function alternarRecargoAgrupado() {
   const aplicaRecargo = chk ? chk.checked : true;
 
   const recargoFinal = aplicaRecargo ? datosPagoAtrasadoAgrupadoActual.montoRecargo : 0;
-  const totalSugerido = datosPagoAtrasadoAgrupadoActual.montoBase + recargoFinal;
+  const totalSugerido = Math.round(datosPagoAtrasadoAgrupadoActual.montoBase + recargoFinal);
 
   document.getElementById('pago-atrasado-monto-total').innerText = '$' + totalSugerido.toLocaleString('es-AR');
   const inputMonto = document.getElementById('pago-atrasado-monto-ingresado');
@@ -1144,7 +1233,7 @@ function alternarRecargoAgrupado() {
 }
 
 function validarMontoPagoAtrasado(val) {
-  const montoNum = parseFloat(val) || 0;
+  const montoNum = Math.round(parseFloat(val) || 0);
   const elemHint = document.getElementById('pago-atrasado-max-hint');
   const btnSubmit = document.getElementById('btn-confirmar-pago-atrasado');
 
@@ -1152,9 +1241,9 @@ function validarMontoPagoAtrasado(val) {
 
   if (!datosPagoAtrasadoAgrupadoActual) return;
 
-  const maxPermitido = datosPagoAtrasadoAgrupadoActual.saldoTotalDeuda + datosPagoAtrasadoAgrupadoActual.montoRecargo;
+  const maxPermitido = Math.round(datosPagoAtrasadoAgrupadoActual.saldoTotalDeuda + datosPagoAtrasadoAgrupadoActual.montoRecargo);
 
-  if (montoNum > maxPermitido) {
+  if (montoNum > maxPermitido && maxPermitido > 0) {
     if (elemHint) elemHint.innerText = `⚠️ El monto no puede superar la deuda total de $${maxPermitido.toLocaleString('es-AR')}`;
     if (btnSubmit) btnSubmit.disabled = true;
   } else {
@@ -1170,13 +1259,13 @@ function cerrarModalPagoAtrasadoTotal() {
 
 function convertirMontoPagoAtrasadoEnLetras(val) {
   const elem = document.getElementById('pago-atrasado-monto-en-letras');
-  if (elem) elem.innerText = numeroALetras(parseFloat(val) || 0);
+  if (elem) elem.innerText = numeroALetras(Math.round(parseFloat(val) || 0));
 }
 
 async function confirmarPagoAtrasadoAgrupado(event) {
   event.preventDefault();
   const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
-  const montoPagado = parseFloat(document.getElementById('pago-atrasado-monto-ingresado').value) || 0;
+  const montoPagado = Math.round(parseFloat(document.getElementById('pago-atrasado-monto-ingresado').value) || 0);
 
   if (montoPagado <= 0) return mostrarToast("Ingresá un monto válido", "error");
 
@@ -1188,22 +1277,22 @@ async function confirmarPagoAtrasadoAgrupado(event) {
       if (saldoIngresado <= 0) break;
 
       let cuotasActualizadas = p.cuotasDetalle.map(c => {
-        if (!c.pagado && saldoIngresado > 0) {
-          const pendiente = c.montoPendiente || c.montoCuota;
-          if (saldoIngresado >= pendiente) {
+        const estaPagadoYa = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+        if (!estaPagadoYa && saldoIngresado > 0) {
+          const pendiente = Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+          if (saldoIngresado >= pendiente - 0.5) {
             saldoIngresado -= pendiente;
             return { ...c, pagado: true, montoPendiente: 0 };
           } else {
-            const nuevoPendiente = pendiente - saldoIngresado;
+            const nuevoPendiente = Math.max(0, Math.round(pendiente - saldoIngresado));
             saldoIngresado = 0;
-            return { ...c, montoPendiente: nuevoPendiente };
+            return { ...c, pagado: nuevoPendiente <= 0.5, montoPendiente: nuevoPendiente };
           }
         }
         return c;
       });
 
-      // VERIFICAR SI SE PAGÓ EL PRÉSTAMO COMPLETO PARA PASAR A FINALIZADO
-      const todasPagadas = cuotasActualizadas.every(c => c.pagado === true);
+      const todasPagadas = cuotasActualizadas.every(c => c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5));
       const dataUpdate = { cuotasDetalle: cuotasActualizadas };
 
       if (todasPagadas) {
@@ -1218,7 +1307,13 @@ async function confirmarPagoAtrasadoAgrupado(event) {
     cerrarModalPagoAtrasadoTotal();
 
     const cli = window.clientes.find(c => c.id === clienteId);
-    abrirModalComprobante(cli ? cli.nombre : 'Cliente', montoPagado, new Date().toLocaleString(), 'Pago de Deuda Atrasada', 0);
+    abrirModalComprobante(
+      cli ? cli.nombre : 'Cliente',
+      montoPagado,
+      new Date().toLocaleString(),
+      'Pago Agrupado de Deuda Atrasada',
+      0
+    );
   } catch (error) {
     mostrarToast("Error al registrar pago", "error");
   }
@@ -1238,18 +1333,29 @@ function abrirModalPago(prestamoId, cuotaId) {
   const cli = window.clientes.find(c => c.id === p.clienteId);
 
   let saldoTotalPrestamo = 0;
-  (p.cuotasDetalle || []).forEach(c => { if (!c.pagado) saldoTotalPrestamo += parseFloat(c.montoPendiente || c.montoCuota); });
+  (p.cuotasDetalle || []).forEach(c => {
+    const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+    if (!pag) {
+      saldoTotalPrestamo += Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+    }
+  });
 
   const hoyISO = obtenerFechaLocalISO();
   let diasAtraso = 0;
-  if (cuota.fecha < hoyISO) {
+  const estaPagadaYa = cuota.pagado === true || (cuota.montoPendiente !== undefined && cuota.montoPendiente <= 0.5);
+
+  if (cuota.fecha < hoyISO && !estaPagadaYa) {
     const [y, m, d] = cuota.fecha.split('-').map(Number);
     diasAtraso = Math.max(0, Math.floor((new Date() - new Date(y, m - 1, d)) / (1000 * 60 * 60 * 24)));
   }
 
-  // CÁLCULO DE MORA ESCALONADA (DÍAS, SEMANAS, MESES)
   const recargoPct = calcularPorcentajeRecargoEscalonado(diasAtraso);
-  const montoBaseCuota = parseFloat(cuota.montoPendiente || cuota.montoCuota);
+  
+  let montoBaseCuota = Math.round(cuota.montoPendiente !== undefined ? cuota.montoPendiente : cuota.montoCuota);
+  if (estaPagadaYa || montoBaseCuota <= 0.5) {
+    montoBaseCuota = Math.round(cuota.montoCuota || 0);
+  }
+
   const montoRecargo = Math.round(montoBaseCuota * (recargoPct / 100));
 
   datosPagoCuotaActual = {
@@ -1258,20 +1364,20 @@ function abrirModalPago(prestamoId, cuotaId) {
     montoBaseCuota,
     montoRecargo,
     diasAtraso,
-    saldoTotalPrestamo
+    saldoTotalPrestamo: Math.round(saldoTotalPrestamo)
   };
 
   document.getElementById('pago-prestamo-id').value = prestamoId;
   document.getElementById('pago-cuota-id').value = cuotaId;
   document.getElementById('pago-cli-nombre').innerText = cli ? cli.nombre : 'Cliente';
-  document.getElementById('pago-cuota-num').innerText = cuota.numero;
+  document.getElementById('pago-cuota-num').innerText = `${cuota.numero} de ${(p.cuotasDetalle ? p.cuotasDetalle.length : p.cuotas)}`;
   document.getElementById('pago-cuota-base').innerText = '$' + montoBaseCuota.toLocaleString('es-AR');
-  document.getElementById('pago-saldo-total-prestamo').innerText = '$' + saldoTotalPrestamo.toLocaleString('es-AR');
+  document.getElementById('pago-saldo-total-prestamo').innerText = '$' + Math.round(saldoTotalPrestamo).toLocaleString('es-AR');
 
   const boxRecargo = document.getElementById('box-recargo-cuota-indiv');
   const chkContainer = document.getElementById('contenedor-chk-recargo-cuota');
 
-  if (diasAtraso > 0) {
+  if (diasAtraso > 0 && !estaPagadaYa) {
     document.getElementById('pago-dias-atraso-txt').innerText = diasAtraso + ' días';
     document.getElementById('pago-monto-recargo-txt').innerText = montoRecargo.toLocaleString('es-AR');
     if (boxRecargo) boxRecargo.classList.remove('hidden');
@@ -1294,7 +1400,7 @@ function alternarRecargoCuota() {
   const aplicaRecargo = chk ? chk.checked : true;
 
   const recargoFinal = (datosPagoCuotaActual.diasAtraso > 0 && aplicaRecargo) ? datosPagoCuotaActual.montoRecargo : 0;
-  const totalSugerido = datosPagoCuotaActual.montoBaseCuota + recargoFinal;
+  const totalSugerido = Math.round(datosPagoCuotaActual.montoBaseCuota + recargoFinal);
 
   document.getElementById('pago-cuota-total-sugerido').innerText = '$' + totalSugerido.toLocaleString('es-AR');
   const inputMonto = document.getElementById('pago-monto-ingresado');
@@ -1305,7 +1411,7 @@ function alternarRecargoCuota() {
 }
 
 function validarMontoPagoCuota(val) {
-  const montoNum = parseFloat(val) || 0;
+  const montoNum = Math.round(parseFloat(val) || 0);
   const elemHint = document.getElementById('pago-monto-max-hint');
   const btnSubmit = document.getElementById('btn-confirmar-pago-cuota');
 
@@ -1313,9 +1419,9 @@ function validarMontoPagoCuota(val) {
 
   if (!datosPagoCuotaActual) return;
 
-  const maxPermitido = datosPagoCuotaActual.saldoTotalPrestamo + datosPagoCuotaActual.montoRecargo;
+  const maxPermitido = Math.round(datosPagoCuotaActual.saldoTotalPrestamo + datosPagoCuotaActual.montoRecargo);
 
-  if (montoNum > maxPermitido) {
+  if (montoNum > maxPermitido && maxPermitido > 0) {
     if (elemHint) elemHint.innerText = `⚠️ El monto no puede superar la deuda total de $${maxPermitido.toLocaleString('es-AR')}`;
     if (btnSubmit) btnSubmit.disabled = true;
   } else {
@@ -1331,37 +1437,41 @@ function cerrarModalPago() {
 
 function convertirMontoPagoEnLetras(val) {
   const elem = document.getElementById('pago-monto-en-letras');
-  if (elem) elem.innerText = numeroALetras(parseFloat(val) || 0);
+  if (elem) elem.innerText = numeroALetras(Math.round(parseFloat(val) || 0));
 }
 
 async function confirmarRegistroPago(event) {
   event.preventDefault();
   const prestamoId = document.getElementById('pago-prestamo-id').value;
   const cuotaId = document.getElementById('pago-cuota-id').value;
-  const montoIngresado = parseFloat(document.getElementById('pago-monto-ingresado').value) || 0;
+  const montoIngresado = Math.round(parseFloat(document.getElementById('pago-monto-ingresado').value) || 0);
 
   const p = window.prestamos.find(pr => pr.id === prestamoId);
   if (!p) return;
 
+  const cuotaPagadaObj = p.cuotasDetalle ? p.cuotasDetalle.find(c => c.id === cuotaId) : null;
+  const numeroCuotaPagada = cuotaPagadaObj ? cuotaPagadaObj.numero : '';
+  const totalCuotasNum = p.cuotas || (p.cuotasDetalle ? p.cuotasDetalle.length : 1);
+
   try {
     let cobroRestante = montoIngresado;
     const nuevasCuotas = p.cuotasDetalle.map(c => {
-      if (c.id === cuotaId || (cobroRestante > 0 && !c.pagado)) {
-        const pendiente = c.montoPendiente || c.montoCuota;
-        if (cobroRestante >= pendiente) {
+      const estaPagadoYa = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      if (c.id === cuotaId || (cobroRestante > 0 && !estaPagadoYa)) {
+        const pendiente = Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+        if (cobroRestante >= pendiente - 0.5) {
           cobroRestante -= pendiente;
           return { ...c, pagado: true, montoPendiente: 0 };
         } else if (cobroRestante > 0) {
-          const nuevoPendiente = pendiente - cobroRestante;
+          const nuevoPendiente = Math.max(0, Math.round(pendiente - cobroRestante));
           cobroRestante = 0;
-          return { ...c, montoPendiente: nuevoPendiente };
+          return { ...c, pagado: nuevoPendiente <= 0.5, montoPendiente: nuevoPendiente };
         }
       }
       return c;
     });
 
-    // PASAR A FINALIZADO AUTOMÁTICAMENTE SI TODAS LAS CUOTAS FUERON SALDADAS
-    const todasPagadas = nuevasCuotas.every(c => c.pagado === true);
+    const todasPagadas = nuevasCuotas.every(c => c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5));
     const dataUpdate = { cuotasDetalle: nuevasCuotas };
 
     if (todasPagadas) {
@@ -1381,9 +1491,22 @@ async function confirmarRegistroPago(event) {
 
     const cli = window.clientes.find(c => c.id === p.clienteId);
     let saldoPendiente = 0;
-    nuevasCuotas.forEach(c => { if (!c.pagado) saldoPendiente += parseFloat(c.montoPendiente || c.montoCuota); });
+    nuevasCuotas.forEach(c => {
+      const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      if (!estaPagado) {
+        saldoPendiente += Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+      }
+    });
 
-    abrirModalComprobante(cli ? cli.nombre : 'Cliente', montoIngresado, new Date().toLocaleString(), 'Pago de Cuota Préstamo', saldoPendiente);
+    const conceptoTexto = `Pago Cuota #${numeroCuotaPagada} de ${totalCuotasNum}`;
+
+    abrirModalComprobante(
+      cli ? cli.nombre : 'Cliente',
+      montoIngresado,
+      new Date().toLocaleString(),
+      conceptoTexto,
+      saldoPendiente
+    );
   } catch (error) {
     mostrarToast("Error al registrar pago", "error");
   }
@@ -1395,10 +1518,10 @@ async function confirmarRegistroPago(event) {
 
 function abrirModalComprobante(clienteNombre, monto, fecha, concepto, saldo) {
   document.getElementById('recibo-card-cliente').innerText = clienteNombre;
-  document.getElementById('recibo-card-monto').innerText = '$' + monto.toLocaleString('es-AR');
+  document.getElementById('recibo-card-monto').innerText = '$' + Math.round(monto).toLocaleString('es-AR');
   document.getElementById('recibo-card-fecha').innerText = fecha;
   document.getElementById('recibo-card-concepto').innerText = concepto;
-  document.getElementById('recibo-card-saldo').innerText = '$' + saldo.toLocaleString('es-AR');
+  document.getElementById('recibo-card-saldo').innerText = '$' + Math.round(saldo).toLocaleString('es-AR');
 
   document.getElementById('modal-comprobante-whatsapp').classList.remove('hidden');
 }

@@ -389,6 +389,12 @@ function mostrarSeccion(idSeccion) {
   if (document.getElementById('titulo-pantalla')) {
     document.getElementById('titulo-pantalla').innerText = titulos[idSeccion] || 'CobroApp';
   }
-
+function mostrarSeccion(idSec) {
+  // ... tu código existente de mostrarSeccion ...
+  
+  if (typeof adaptarInterfazSegunRol === 'function') {
+    adaptarInterfazSegunRol();
+  }
+}
   window.scrollTo(0, 0);
 }

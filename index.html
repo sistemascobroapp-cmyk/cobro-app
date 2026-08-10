@@ -102,19 +102,12 @@
 
     <main class="p-4 md:p-8 max-w-5xl w-full mx-auto space-y-6 pb-28 md:pb-8">
 
-      <!-- SECCIÓN 1: REGISTRAR PRÉSTAMO CON ROSQUITA CONFIG -->
+      <!-- SECCIÓN 1: REGISTRAR PRÉSTAMO / REGISTRO DE PAGO -->
       <section id="sec-registrar" class="seccion-app space-y-6">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-          <div class="border-b border-slate-800/80 pb-4 flex justify-between items-center flex-wrap gap-2">
-            <div>
-              <h3 class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
-              <p class="text-xs text-slate-400 mt-1">Podés simular libremente y asignar el cliente antes o después de calcular.</p>
-            </div>
-            <!-- ROSQUITA DE CONFIGURACIÓN DE INTERESES EN CELULAR Y COMPU -->
-            <button type="button" onclick="abrirModalConfigIntereses()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-fuchsia-400 border border-slate-700 rounded-xl flex items-center gap-2 text-xs font-bold shadow transition active:scale-95" title="Configurar Tasas e Intereses">
-              <span class="text-base">⚙️</span>
-              <span class="hidden sm:inline">Configurar Intereses</span>
-            </button>
+          <div class="border-b border-slate-800/80 pb-4">
+            <h3 id="titulo-sec-registrar" class="text-xl font-bold">Simulador & Registro de Préstamo</h3>
+            <p class="text-xs text-slate-400 mt-1">Podés calcular el plan libremente y asignar el cliente antes o después.</p>
           </div>
 
           <form id="form-prestamo" onsubmit="generarSimulacion(event)" class="space-y-5">
@@ -127,13 +120,13 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Monto a Prestar ($) *</label>
+                <label id="lbl-monto-prestamo" class="block text-xs font-bold uppercase tracking-wider mb-2">Monto a Prestar ($) *</label>
                 <input type="number" id="monto-prestamo" oninput="convertirMontoEnLetras(this.value)" placeholder="Ej: 1000000" required min="1000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
                 <p id="monto-en-letras" class="text-xs text-fuchsia-400 font-bold mt-1.5 italic min-h-[18px]"></p>
               </div>
-              <div>
-                <label class="block text-xs font-bold uppercase tracking-wider mb-2">Interés por Mes/Período (%) *</label>
-                <input type="number" id="interes-prestamo" placeholder="Ej: 30" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm">
+              <div id="interes-prestamo-container">
+                <label id="lbl-interes-prestamo" class="block text-xs font-bold uppercase tracking-wider mb-2">Interés por Mes/Período (%) *</label>
+                <input type="number" id="interes-prestamo" placeholder="Ej: 30" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm [color-scheme:dark]">
               </div>
             </div>
 
@@ -157,7 +150,7 @@
             </div>
 
             <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-fuchsia-400 font-bold py-3.5 rounded-xl shadow-lg transition flex justify-center items-center gap-2">
-              <span>🔍</span> Simular Cálculo de Préstamo
+              <span>🔍</span> Calcular Plan & Generar Cuotas
             </button>
           </form>
 
@@ -201,7 +194,6 @@
             <span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span>
           </div>
 
-          <!-- GRID DE DÍAS DEL CALENDARIO RESTAURADO CON DÍAS REALES -->
           <div id="cal-vis-grid-dias" class="grid grid-cols-7 gap-2 text-xs text-center"></div>
 
           <div class="border-t border-slate-800/80 pt-3 flex justify-between items-center text-xs text-slate-400 flex-wrap gap-2">
@@ -214,7 +206,7 @@
           </div>
         </div>
 
-        <!-- SECCIÓN DEUDAS PASADAS (RESTAURADA JUSTO DEBAJO DEL CALENDARIO) -->
+        <!-- SECCIÓN DEUDAS PASADAS -->
         <div id="sec-deudas-pasadas-contenedor" class="tarjeta-ui bg-[#0F172A] border-2 border-red-500/50 p-6 rounded-2xl shadow-2xl space-y-4 hidden">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <h3 class="text-lg font-extrabold text-red-400 flex items-center gap-2">
@@ -238,7 +230,7 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS (ACTIVOS Y FINALIZADOS EN CARPETAS) -->
+      <!-- SECCIÓN 3: RESUMEN DE PRÉSTAMOS -->
       <section id="sec-resumen" class="seccion-app space-y-6 hidden">
         <div class="flex justify-between items-center flex-wrap gap-3">
           <h3 class="text-xl font-bold">Resumen de Préstamos</h3>
@@ -276,7 +268,7 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 5: CONFIGURACIÓN DE TASAS -->
+      <!-- SECCIÓN 5: CONFIGURACIÓN DE TASAS (SIN OBLIGACIÓN EN MORA) -->
       <section id="sec-intereses" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
           <div class="border-b border-slate-800 pb-3">
@@ -284,16 +276,16 @@
           </div>
           <form onsubmit="guardarInteresesConfig(event)" class="space-y-6 max-w-md">
             <div class="space-y-4">
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Diario (%)</label><input type="number" id="cfg-int-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Semanal (%)</label><input type="number" id="cfg-int-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1">Interés Mensual (%)</label><input type="number" id="cfg-int-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1">Interés Diario (%)</label><input type="number" id="cfg-int-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1">Interés Semanal (%)</label><input type="number" id="cfg-int-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1">Interés Mensual (%)</label><input type="number" id="cfg-int-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
             </div>
 
             <div class="border-t border-slate-800 pt-5 space-y-4">
-              <h3 class="text-lg font-bold text-red-400">🚨 Tasas por Retraso</h3>
-              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Diario (%)</label><input type="number" id="cfg-retraso-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Semanal (%)</label><input type="number" id="cfg-retraso-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
-              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Mensual (%)</label><input type="number" id="cfg-retraso-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <h3 class="text-lg font-bold text-red-400">🚨 Tasas por Retraso (Opcionales)</h3>
+              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Diario (%)</label><input type="number" id="cfg-retraso-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Semanal (%)</label><input type="number" id="cfg-retraso-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
+              <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Mensual (%)</label><input type="number" id="cfg-retraso-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-3 text-sm"></div>
             </div>
 
             <button type="submit" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">💾 Guardar Ajustes de Tasas</button>
@@ -301,7 +293,7 @@
         </div>
       </section>
 
-      <!-- SECCIÓN 6: REGISTRO DE CLIENTES DEUDORES -->
+      <!-- SECCIÓN 6: REGISTRO DE CLIENTES -->
       <section id="sec-clientes" class="seccion-app space-y-6 hidden">
         <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -351,7 +343,7 @@
     <button onclick="mostrarSeccion('sec-intereses')" id="m-btn-intereses" class="flex flex-col items-center gap-1 text-slate-400 py-1 px-2"><span class="text-lg">⚙️</span><span>Tasas</span></button>
   </nav>
 
-  <!-- MODAL PARA SELECCIONAR O CREAR CLIENTE AL OTORGAR DESDE EL SIMULADOR -->
+  <!-- MODAL PARA SELECCIONAR O CREAR CLIENTE -->
   <div id="modal-vincular-cliente-simulacion" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/60 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-5">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -385,7 +377,7 @@
     </div>
   </div>
 
-  <!-- MODAL DE CONFIGURACIÓN DE TASAS E INTERESES (ACCESO RÁPIDO CON ROSQUITA ⚙️) -->
+  <!-- MODAL DE CONFIGURACIÓN DE TASAS E INTERESES -->
   <div id="modal-config-intereses" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-5 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -396,16 +388,16 @@
       <form onsubmit="guardarInteresesConfigDesdeModal(event)" class="space-y-4">
         <div class="space-y-3">
           <h4 class="text-xs font-bold uppercase text-fuchsia-400">Tasas de Interés Estándar:</h4>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Diario (%)</label><input type="number" id="modal-cfg-int-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Semanal (%)</label><input type="number" id="modal-cfg-int-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Mensual (%)</label><input type="number" id="modal-cfg-int-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
+          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Diario (%)</label><input type="number" id="modal-cfg-int-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
+          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Semanal (%)</label><input type="number" id="modal-cfg-int-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
+          <div><label class="block text-xs font-bold uppercase mb-1 text-slate-300">Interés Mensual (%)</label><input type="number" id="modal-cfg-int-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
         </div>
 
         <div class="border-t border-slate-800 pt-3 space-y-3">
-          <h4 class="text-xs font-bold uppercase text-red-400">🚨 Tasas por Retraso / Mora:</h4>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Diario (%)</label><input type="number" id="modal-cfg-retraso-diario" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Semanal (%)</label><input type="number" id="modal-cfg-retraso-semanal" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
-          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Mensual (%)</label><input type="number" id="modal-cfg-retraso-mensual" required min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
+          <h4 class="text-xs font-bold uppercase text-red-400">🚨 Tasas por Retraso / Mora (Opcionales):</h4>
+          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Diario (%)</label><input type="number" id="modal-cfg-retraso-diario" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
+          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Semanal (%)</label><input type="number" id="modal-cfg-retraso-semanal" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
+          <div><label class="block text-xs font-bold uppercase mb-1 text-red-300">Retraso Mensual (%)</label><input type="number" id="modal-cfg-retraso-mensual" min="0" step="0.1" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-sm text-white"></div>
         </div>
 
         <div class="flex gap-3 pt-2">
@@ -416,7 +408,7 @@
     </div>
   </div>
 
-  <!-- MODAL NUEVO CLIENTE (CON VALIDACIÓN DE 10 DÍGITOS) -->
+  <!-- MODAL NUEVO CLIENTE -->
   <div id="modal-nuevo-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-lg w-full space-y-5">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 id="modal-cliente-titulo" class="text-lg font-bold">👤 Registrar Nuevo Cliente</h3><button onclick="cerrarModalCliente()" class="text-slate-400 font-bold">✕</button></div>
@@ -440,7 +432,7 @@
     </div>
   </div>
 
-  <!-- MODAL COBRO CUOTA INDIVIDUAL (CON RECARGO OPCIONAL Y VALIDACIÓN DE MÁXIMO) -->
+  <!-- MODAL COBRO CUOTA INDIVIDUAL -->
   <div id="modal-pago-cuota" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 class="text-lg font-bold">💵 Registrar Cobro</h3><button onclick="cerrarModalPago()" class="text-slate-400 font-bold">✕</button></div>
@@ -456,7 +448,6 @@
         <p class="pt-1 text-sm border-t border-slate-700/60"><span class="text-slate-300 font-bold">Total Sugerido a Cobrar:</span> <strong id="pago-cuota-total-sugerido" class="text-emerald-400 text-base">$0</strong></p>
       </div>
 
-      <!-- CHECKBOX PARA RECARGO OPCIONAL -->
       <div id="contenedor-chk-recargo-cuota" class="hidden flex items-center gap-2 bg-slate-800/80 p-3 rounded-xl border border-red-500/30 text-xs">
         <input type="checkbox" id="chk-aplicar-retraso-cuota" onchange="alternarRecargoCuota()" checked class="w-4 h-4 accent-red-500 cursor-pointer">
         <label for="chk-aplicar-retraso-cuota" class="text-slate-200 font-bold cursor-pointer">Incluir recargo por días atrasados</label>
@@ -480,7 +471,7 @@
     </div>
   </div>
 
-  <!-- MODAL PAGO AGRUPADO (CON RECARGO OPCIONAL Y VALIDACIÓN DE MÁXIMO) -->
+  <!-- MODAL PAGO AGRUPADO -->
   <div id="modal-pago-atrasado-agrupado" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
     <div class="tarjeta-ui bg-[#0F172A] border border-red-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
       <div class="flex justify-between items-center border-b border-slate-800 pb-3"><h3 class="text-lg font-bold text-red-400">💵 Cobrar Deuda Atrasada</h3><button onclick="cerrarModalPagoAtrasadoTotal()" class="text-slate-400 font-bold">✕</button></div>
@@ -492,7 +483,6 @@
         <div class="border-t border-red-500/30 pt-1.5 text-sm"><span class="text-slate-300 font-bold">Total Sugerido:</span> <strong id="pago-atrasado-monto-total" class="text-red-400 text-base">$0</strong></div>
       </div>
 
-      <!-- CHECKBOX RECARGO OPCIONAL -->
       <div class="flex items-center gap-2 bg-slate-800/80 p-3 rounded-xl border border-red-500/30 text-xs">
         <input type="checkbox" id="chk-aplicar-retraso-agrupado" onchange="alternarRecargoAgrupado()" checked class="w-4 h-4 accent-red-500 cursor-pointer">
         <label for="chk-aplicar-retraso-agrupado" class="text-slate-200 font-bold cursor-pointer">Incluir recargo por retraso</label>
