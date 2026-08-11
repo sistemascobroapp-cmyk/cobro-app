@@ -489,6 +489,8 @@ function cerrarModalInfoCliente() {
 // 3. SIMULADOR Y REGISTRO DE PAGO / PRÉSTAMO
 // ==========================================
 
+let comprobantePrestamoReciente = null;
+
 async function inicializarValoresPredeterminadosPrestamo() {
   const selectFrecuencia = document.getElementById('frecuencia-prestamo');
   const inputInt = document.getElementById('interes-prestamo');
@@ -742,16 +744,125 @@ async function guardarPrestamoFirestore() {
     };
 
     await db.collection('prestamos').add(dataGuardar);
-    mostrarToast("🎉 ¡Guardado con éxito!");
+    mostrarToast("🎉 ¡Préstamo guardado correctamente!");
 
+    // Buscar el cliente para poder enviar el comprobante directamente
+    const cli = (window.clientes || []).find(c => c.id === simulacionActual.clienteId);
+
+    // Abrir automáticamente el comprobante digital oficial
+    abrirModalComprobantePrestamo(dataGuardar, cli);
+
+    // Limpiar formulario y vista
     document.getElementById('form-prestamo').reset();
     inicializarValoresPredeterminadosPrestamo();
     document.getElementById('vista-simulacion').classList.add('hidden');
     simulacionActual = null;
-    mostrarSeccion('sec-por-cobrar');
   } catch (error) {
     mostrarToast("Error al guardar en el sistema", "error");
   }
+}
+
+// ==========================================
+// FUNCIONES DEL COMPROBANTE DIGITAL DE PRÉSTAMO
+// ==========================================
+
+function abrirModalComprobantePrestamo(prestamo, cliente) {
+  comprobantePrestamoReciente = { prestamo, cliente };
+
+  document.getElementById('recibo-pres-cliente').innerText = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Sin Cliente');
+  document.getElementById('recibo-pres-tel').innerText = cliente ? cliente.telefono : 'Sin teléfono registrado';
+  document.getElementById('recibo-pres-fechainicio').innerText = prestamo.fechaInicio || '-';
+  document.getElementById('recibo-pres-monto').innerText = '$' + Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR');
+  document.getElementById('recibo-pres-total').innerText = '$' + Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR');
+  document.getElementById('recibo-pres-plan').innerText = `${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s de $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}`;
+
+  const contenedorCronograma = document.getElementById('recibo-pres-cronograma');
+  if (contenedorCronograma) {
+    contenedorCronograma.innerHTML = '';
+    (prestamo.cuotasDetalle || []).forEach(c => {
+      const fPartes = c.fecha.split('-');
+      const fechaFormateada = `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}`;
+      contenedorCronograma.innerHTML += `
+        <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
+          <span class="text-slate-300">Cuota #${c.numero} (${fechaFormateada})</span>
+          <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}</strong>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById('modal-comprobante-prestamo-otorgado').classList.remove('hidden');
+}
+
+function cerrarModalComprobantePrestamo() {
+  document.getElementById('modal-comprobante-prestamo-otorgado').classList.add('hidden');
+  comprobantePrestamoReciente = null;
+  if (typeof mostrarSeccion === 'function') {
+    mostrarSeccion('sec-por-cobrar');
+  }
+}
+
+function enviarComprobantePrestamoWhatsApp() {
+  if (!comprobantePrestamoReciente) return;
+
+  const { prestamo, cliente } = comprobantePrestamoReciente;
+  const nombreCli = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Cliente');
+  
+  let mensaje = `Hola ${nombreCli}! 👋 Te adjuntamos la *Ficha Oficial de tu Préstamo*:\n\n`;
+  mensaje += `💵 *Capital Entregado:* $${Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR')}\n`;
+  mensaje += `📈 *Total a Devolver:* $${Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR')}\n`;
+  mensaje += `📅 *Plan:* ${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s\n`;
+  mensaje += `💰 *Valor de Cuota:* $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}\n\n`;
+  mensaje += `📋 *CRONOGRAMA DE PAGOS:*\n`;
+
+  (prestamo.cuotasDetalle || []).forEach(c => {
+    const fPartes = c.fecha.split('-');
+    const fechaFormateada = `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}`;
+    mensaje += `- Cuota #${c.numero} (${fechaFormateada}): $${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}\n`;
+  });
+
+  mensaje += `\n¡Cualquier duda estamos a tu disposición!`;
+
+  let telLimpio = (cliente ? cliente.telefono : '').replace(/\D/g, '');
+  if (telLimpio && !telLimpio.startsWith('54')) {
+    telLimpio = '54' + telLimpio;
+  }
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  mostrarToast("📲 Redirigiendo a WhatsApp...");
+}
+
+function compartirComprobantePrestamoImagen() {
+  const card = document.getElementById('ticket-prestamo-otorgado-card');
+  if (!card) return;
+
+  if (typeof html2canvas !== 'function') {
+    return mostrarToast("Librería de captura no cargada", "error");
+  }
+
+  html2canvas(card).then(canvas => {
+    canvas.toBlob(blob => {
+      const file = new File([blob], 'comprobante-prestamo.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+          title: 'Comprobante de Préstamo',
+          text: 'Resumen Oficial de Préstamo - CobroApp',
+          files: [file]
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'comprobante-prestamo.png';
+        a.click();
+        mostrarToast("📸 Ficha descargada en tu dispositivo");
+      }
+    });
+  });
 }
 
 // ==========================================
