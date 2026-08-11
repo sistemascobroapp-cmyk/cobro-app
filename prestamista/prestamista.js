@@ -1009,9 +1009,14 @@ function renderizarPlanificadorSemanal() {
   const finSemana = new Date(inicioSemana);
   finSemana.setDate(finSemana.getDate() + 6);
 
-  // --- TÍTULO DINÁMICO ---
+  // --- TÍTULO DINÁMICO CORREGIDO (CON HORAS A CERO) ---
+  const lunesSeleccionado = new Date(inicioSemana);
+  lunesSeleccionado.setHours(0, 0, 0, 0);
+
   const lunesHoy = obtenerLunesSemana(new Date());
-  const diffTiempo = inicioSemana.getTime() - lunesHoy.getTime();
+  lunesHoy.setHours(0, 0, 0, 0);
+
+  const diffTiempo = lunesSeleccionado.getTime() - lunesHoy.getTime();
   const diffDias = Math.round(diffTiempo / (1000 * 60 * 60 * 24));
 
   let estadoSemanaTxt = "(Actual)";
@@ -1022,7 +1027,7 @@ function renderizarPlanificadorSemanal() {
   if (elemTituloPlanificador) {
     elemTituloPlanificador.innerText = `Planificador & Cobros de la Semana ${estadoSemanaTxt}`;
   }
-  // -----------------------
+  // ----------------------------------------------------
 
   const txtRango = document.getElementById('rango-semana-actual');
   if (txtRango) {
