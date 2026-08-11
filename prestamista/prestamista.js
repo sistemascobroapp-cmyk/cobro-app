@@ -496,7 +496,10 @@ async function inicializarValoresPredeterminadosPrestamo() {
   const inputInt = document.getElementById('interes-prestamo');
   
   if (selectFrecuencia) selectFrecuencia.value = '';
-  if (inputInt) inputInt.value = '';
+  if (inputInt) {
+    inputInt.value = '';
+    inputInt.placeholder = 'Seleccioná frecuencia...';
+  }
 }
 
 async function alCambiarFrecuencia() {
@@ -551,7 +554,18 @@ function generarSimulacion(event) {
 
   const clienteId = document.getElementById('input-cliente')?.value || '';
   const monto = Math.round(parseFloat(document.getElementById('monto-prestamo')?.value) || 0);
-  
+  const cuotas = parseInt(document.getElementById('cuotas-prestamo')?.value) || 1;
+  const frecuencia = document.getElementById('frecuencia-prestamo')?.value;
+  const fechaInicioStr = document.getElementById('fecha-inicio')?.value;
+
+  if (!frecuencia || frecuencia === '') {
+    return mostrarToast("Por favor seleccioná una frecuencia de cobro", "error");
+  }
+
+  if (monto <= 0 || cuotas <= 0 || !fechaInicioStr) {
+    return mostrarToast("Completá todos los campos requeridos", "error");
+  }
+
   let interesPorPeriodo = 0;
   let fechaRegistroAdmin = null;
 
@@ -560,18 +574,6 @@ function generarSimulacion(event) {
     fechaRegistroAdmin = document.getElementById('interes-prestamo')?.value || obtenerFechaLocalISO();
   } else {
     interesPorPeriodo = parseFloat(document.getElementById('interes-prestamo')?.value) || 0;
-  }
-
-  const cuotas = parseInt(document.getElementById('cuotas-prestamo')?.value) || 1;
-  const frecuencia = document.getElementById('frecuencia-prestamo')?.value;
-  const fechaInicioStr = document.getElementById('fecha-inicio')?.value;
-
-  if (!frecuencia) {
-    return mostrarToast("Por favor seleccioná una frecuencia de cobro", "error");
-  }
-
-  if (monto <= 0 || cuotas <= 0 || !fechaInicioStr) {
-    return mostrarToast("Completá todos los campos requeridos", "error");
   }
 
   const porcentajeTotalInteres = interesPorPeriodo * cuotas;
@@ -732,7 +734,7 @@ function aceptarPrestamoDuplicado() {
   guardarPrestamoFirestore();
 }
 
-// GUARDADO BLINDADO DE PRÉSTAMO
+// GUARDADO BLINDADO DE PRÉSTAMO Y APERTURA DE COMPROBANTE
 async function guardarPrestamoFirestore() {
   if (!simulacionActual || !window.usuarioActual) return;
 
@@ -744,20 +746,19 @@ async function guardarPrestamoFirestore() {
       fechaCreacion: new Date().toISOString()
     };
 
-    // 1. Guardar en Firestore primero
     await db.collection('prestamos').add(dataGuardar);
     mostrarToast("🎉 ¡Préstamo guardado con éxito!");
 
     const cli = (window.clientes || []).find(c => c.id === simulacionActual.clienteId);
     const copiaPrestamo = { ...dataGuardar };
 
-    // 2. Limpiar UI
+    // Limpiar campos del formulario
     document.getElementById('form-prestamo')?.reset();
     inicializarValoresPredeterminadosPrestamo();
     document.getElementById('vista-simulacion')?.classList.add('hidden');
     simulacionActual = null;
 
-    // 3. Abrir comprobante de forma aislada e infalible
+    // Abrir comprobante digital
     try {
       abrirModalComprobantePrestamo(copiaPrestamo, cli);
     } catch (eModal) {
@@ -771,7 +772,7 @@ async function guardarPrestamoFirestore() {
   }
 }
 
-// FUNCIONES DEL COMPROBANTE CON ASIGNACIÓN SEGURA (PREVIENE ERRORES NULL)
+// FUNCIONES DEL COMPROBANTE DIGITAL
 function abrirModalComprobantePrestamo(prestamo, cliente) {
   comprobantePrestamoReciente = { prestamo, cliente };
 
@@ -806,7 +807,6 @@ function abrirModalComprobantePrestamo(prestamo, cliente) {
   if (modal) {
     modal.classList.remove('hidden');
   } else {
-    console.warn("Modal #modal-comprobante-prestamo-otorgado no encontrado en el HTML.");
     if (typeof mostrarSeccion === 'function') mostrarSeccion('sec-por-cobrar');
   }
 }
@@ -836,109 +836,6 @@ function enviarComprobantePrestamoWhatsApp() {
   (prestamo.cuotasDetalle || []).forEach(c => {
     const fPartes = (c.fecha || '').split('-');
     const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
-    mensaje += `- Cuota #${c.numero} (${fechaFormateada}): $${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}\n`;
-  });
-
-  mensaje += `\n¡Cualquier duda estamos a tu disposición!`;
-
-  let telLimpio = (cliente ? cliente.telefono : '').replace(/\D/g, '');
-  if (telLimpio && !telLimpio.startsWith('54')) {
-    telLimpio = '54' + telLimpio;
-  }
-
-  const urlWhatsApp = telLimpio 
-    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
-    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
-
-  window.open(urlWhatsApp, '_blank');
-  mostrarToast("📲 Redirigiendo a WhatsApp...");
-}
-
-function compartirComprobantePrestamoImagen() {
-  const card = document.getElementById('ticket-prestamo-otorgado-card');
-  if (!card) return;
-
-  if (typeof html2canvas !== 'function') {
-    return mostrarToast("Librería de captura no cargada", "error");
-  }
-
-  html2canvas(card).then(canvas => {
-    canvas.toBlob(blob => {
-      const file = new File([blob], 'comprobante-prestamo.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({
-          title: 'Comprobante de Préstamo',
-          text: 'Resumen Oficial de Préstamo - CobroApp',
-          files: [file]
-        });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'comprobante-prestamo.png';
-        a.click();
-        mostrarToast("📸 Ficha descargada en tu dispositivo");
-      }
-    });
-  });
-}
-
-// ==========================================
-// FUNCIONES DEL COMPROBANTE DIGITAL DE PRÉSTAMO
-// ==========================================
-
-function abrirModalComprobantePrestamo(prestamo, cliente) {
-  comprobantePrestamoReciente = { prestamo, cliente };
-
-  document.getElementById('recibo-pres-cliente').innerText = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Sin Cliente');
-  document.getElementById('recibo-pres-tel').innerText = cliente ? cliente.telefono : 'Sin teléfono registrado';
-  document.getElementById('recibo-pres-fechainicio').innerText = prestamo.fechaInicio || '-';
-  document.getElementById('recibo-pres-monto').innerText = '$' + Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR');
-  document.getElementById('recibo-pres-total').innerText = '$' + Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR');
-  document.getElementById('recibo-pres-plan').innerText = `${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s de $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}`;
-
-  const contenedorCronograma = document.getElementById('recibo-pres-cronograma');
-  if (contenedorCronograma) {
-    contenedorCronograma.innerHTML = '';
-    (prestamo.cuotasDetalle || []).forEach(c => {
-      const fPartes = c.fecha.split('-');
-      const fechaFormateada = `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}`;
-      contenedorCronograma.innerHTML += `
-        <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
-          <span class="text-slate-300">Cuota #${c.numero} (${fechaFormateada})</span>
-          <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}</strong>
-        </div>
-      `;
-    });
-  }
-
-  document.getElementById('modal-comprobante-prestamo-otorgado').classList.remove('hidden');
-}
-
-function cerrarModalComprobantePrestamo() {
-  document.getElementById('modal-comprobante-prestamo-otorgado').classList.add('hidden');
-  comprobantePrestamoReciente = null;
-  if (typeof mostrarSeccion === 'function') {
-    mostrarSeccion('sec-por-cobrar');
-  }
-}
-
-function enviarComprobantePrestamoWhatsApp() {
-  if (!comprobantePrestamoReciente) return;
-
-  const { prestamo, cliente } = comprobantePrestamoReciente;
-  const nombreCli = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Cliente');
-  
-  let mensaje = `Hola ${nombreCli}! 👋 Te adjuntamos la *Ficha Oficial de tu Préstamo*:\n\n`;
-  mensaje += `💵 *Capital Entregado:* $${Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR')}\n`;
-  mensaje += `📈 *Total a Devolver:* $${Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR')}\n`;
-  mensaje += `📅 *Plan:* ${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s\n`;
-  mensaje += `💰 *Valor de Cuota:* $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}\n\n`;
-  mensaje += `📋 *CRONOGRAMA DE PAGOS:*\n`;
-
-  (prestamo.cuotasDetalle || []).forEach(c => {
-    const fPartes = c.fecha.split('-');
-    const fechaFormateada = `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}`;
     mensaje += `- Cuota #${c.numero} (${fechaFormateada}): $${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}\n`;
   });
 
