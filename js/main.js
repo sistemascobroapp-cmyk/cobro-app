@@ -1,4 +1,4 @@
-// PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN Y ENRUTAMIENTO
+/// PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN Y ENRUTAMIENTO
 
 window.usuarioActual = null;
 window.rolUsuarioActual = 'prestamista';
@@ -14,11 +14,16 @@ window.onload = function() {
     if (typeof aplicarTema === 'function') aplicarTema(window.temaActual);
     if (typeof cargarCamposConfigIntereses === 'function') cargarCamposConfigIntereses();
 
+    // Resetear Frecuencia para que arranque totalmente vacía
     const elemFrecuencia = document.getElementById('frecuencia-prestamo');
-    if (elemFrecuencia) elemFrecuencia.value = 'mensual';
+    if (elemFrecuencia) elemFrecuencia.value = '';
 
-    if (typeof alCambiarFrecuencia === 'function') alCambiarFrecuencia();
-    if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
+    if (typeof inicializarValoresPredeterminadosPrestamo === 'function') {
+      inicializarValoresPredeterminadosPrestamo();
+    }
+    if (typeof renderizarGridCalendarioVisual === 'function') {
+      renderizarGridCalendarioVisual();
+    }
   } catch (e) {
     console.error("Error en onload:", e);
   }
