@@ -109,7 +109,7 @@ function adaptarInterfazSegunRol() {
     }
     if (tituloSec) tituloSec.innerText = 'Simulador & Registro de Préstamo';
     if (lblMonto) lblMonto.innerText = 'Monto a Prestar ($) *';
-    if (lblInteres) lblInteres.innerText = 'Interés por Mes/Período (%) *';
+    if (lblInteres) lblInteres.innerText = 'Interés (%) *';
 
     if (inputInteres) {
       inputInteres.type = 'number';
@@ -117,7 +117,7 @@ function adaptarInterfazSegunRol() {
       inputInteres.step = '0.1';
     }
 
-    // Inicializar vacíos para obligar a seleccionar
+    // Inicializar totalmente limpios al arrancar
     inicializarValoresPredeterminadosPrestamo();
   }
 
@@ -537,7 +537,7 @@ async function alCambiarFrecuencia() {
   } else if (frec === 'semanal') {
     inputInt.value = tasas.intSemanal ?? 5;
   } else if (frec === 'mensual') {
-    inputInt.value = tasas.intMensual ?? 20;
+    inputInt.value = tasas.intMensual ?? 30;
   }
 }
 
