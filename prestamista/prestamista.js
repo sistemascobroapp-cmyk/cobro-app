@@ -732,6 +732,7 @@ function aceptarPrestamoDuplicado() {
   guardarPrestamoFirestore();
 }
 
+// GUARDADO BLINDADO DE PRÉSTAMO
 async function guardarPrestamoFirestore() {
   if (!simulacionActual || !window.usuarioActual) return;
 
@@ -743,23 +744,143 @@ async function guardarPrestamoFirestore() {
       fechaCreacion: new Date().toISOString()
     };
 
+    // 1. Guardar en Firestore primero
     await db.collection('prestamos').add(dataGuardar);
-    mostrarToast("🎉 ¡Préstamo guardado correctamente!");
+    mostrarToast("🎉 ¡Préstamo guardado con éxito!");
 
-    // Buscar el cliente para poder enviar el comprobante directamente
     const cli = (window.clientes || []).find(c => c.id === simulacionActual.clienteId);
+    const copiaPrestamo = { ...dataGuardar };
 
-    // Abrir automáticamente el comprobante digital oficial
-    abrirModalComprobantePrestamo(dataGuardar, cli);
-
-    // Limpiar formulario y vista
-    document.getElementById('form-prestamo').reset();
+    // 2. Limpiar UI
+    document.getElementById('form-prestamo')?.reset();
     inicializarValoresPredeterminadosPrestamo();
-    document.getElementById('vista-simulacion').classList.add('hidden');
+    document.getElementById('vista-simulacion')?.classList.add('hidden');
     simulacionActual = null;
+
+    // 3. Abrir comprobante de forma aislada e infalible
+    try {
+      abrirModalComprobantePrestamo(copiaPrestamo, cli);
+    } catch (eModal) {
+      console.warn("No se pudo abrir el modal de comprobante:", eModal);
+      if (typeof mostrarSeccion === 'function') mostrarSeccion('sec-por-cobrar');
+    }
+
   } catch (error) {
+    console.error("Error al guardar préstamo:", error);
     mostrarToast("Error al guardar en el sistema", "error");
   }
+}
+
+// FUNCIONES DEL COMPROBANTE CON ASIGNACIÓN SEGURA (PREVIENE ERRORES NULL)
+function abrirModalComprobantePrestamo(prestamo, cliente) {
+  comprobantePrestamoReciente = { prestamo, cliente };
+
+  const setTexto = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+  };
+
+  setTexto('recibo-pres-cliente', cliente ? cliente.nombre : (prestamo.nombreCliente || 'Sin Cliente'));
+  setTexto('recibo-pres-tel', cliente ? cliente.telefono : 'Sin teléfono registrado');
+  setTexto('recibo-pres-fechainicio', prestamo.fechaInicio || '-');
+  setTexto('recibo-pres-monto', '$' + Math.round(parseFloat(prestamo.monto || 0)).toLocaleString('es-AR'));
+  setTexto('recibo-pres-total', '$' + Math.round(parseFloat(prestamo.montoTotal || 0)).toLocaleString('es-AR'));
+  setTexto('recibo-pres-plan', `${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s de $${Math.round(parseFloat(prestamo.valorCuota || 0)).toLocaleString('es-AR')}`);
+
+  const contenedorCronograma = document.getElementById('recibo-pres-cronograma');
+  if (contenedorCronograma) {
+    contenedorCronograma.innerHTML = '';
+    (prestamo.cuotasDetalle || []).forEach(c => {
+      const fPartes = (c.fecha || '').split('-');
+      const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
+      contenedorCronograma.innerHTML += `
+        <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
+          <span class="text-slate-300">Cuota #${c.numero} (${fechaFormateada})</span>
+          <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota || 0)).toLocaleString('es-AR')}</strong>
+        </div>
+      `;
+    });
+  }
+
+  const modal = document.getElementById('modal-comprobante-prestamo-otorgado');
+  if (modal) {
+    modal.classList.remove('hidden');
+  } else {
+    console.warn("Modal #modal-comprobante-prestamo-otorgado no encontrado en el HTML.");
+    if (typeof mostrarSeccion === 'function') mostrarSeccion('sec-por-cobrar');
+  }
+}
+
+function cerrarModalComprobantePrestamo() {
+  const modal = document.getElementById('modal-comprobante-prestamo-otorgado');
+  if (modal) modal.classList.add('hidden');
+  comprobantePrestamoReciente = null;
+  if (typeof mostrarSeccion === 'function') {
+    mostrarSeccion('sec-por-cobrar');
+  }
+}
+
+function enviarComprobantePrestamoWhatsApp() {
+  if (!comprobantePrestamoReciente) return;
+
+  const { prestamo, cliente } = comprobantePrestamoReciente;
+  const nombreCli = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Cliente');
+  
+  let mensaje = `Hola ${nombreCli}! 👋 Te adjuntamos la *Ficha Oficial de tu Préstamo*:\n\n`;
+  mensaje += `💵 *Capital Entregado:* $${Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR')}\n`;
+  mensaje += `📈 *Total a Devolver:* $${Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR')}\n`;
+  mensaje += `📅 *Plan:* ${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s\n`;
+  mensaje += `💰 *Valor de Cuota:* $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}\n\n`;
+  mensaje += `📋 *CRONOGRAMA DE PAGOS:*\n`;
+
+  (prestamo.cuotasDetalle || []).forEach(c => {
+    const fPartes = (c.fecha || '').split('-');
+    const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
+    mensaje += `- Cuota #${c.numero} (${fechaFormateada}): $${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}\n`;
+  });
+
+  mensaje += `\n¡Cualquier duda estamos a tu disposición!`;
+
+  let telLimpio = (cliente ? cliente.telefono : '').replace(/\D/g, '');
+  if (telLimpio && !telLimpio.startsWith('54')) {
+    telLimpio = '54' + telLimpio;
+  }
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  mostrarToast("📲 Redirigiendo a WhatsApp...");
+}
+
+function compartirComprobantePrestamoImagen() {
+  const card = document.getElementById('ticket-prestamo-otorgado-card');
+  if (!card) return;
+
+  if (typeof html2canvas !== 'function') {
+    return mostrarToast("Librería de captura no cargada", "error");
+  }
+
+  html2canvas(card).then(canvas => {
+    canvas.toBlob(blob => {
+      const file = new File([blob], 'comprobante-prestamo.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+          title: 'Comprobante de Préstamo',
+          text: 'Resumen Oficial de Préstamo - CobroApp',
+          files: [file]
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'comprobante-prestamo.png';
+        a.click();
+        mostrarToast("📸 Ficha descargada en tu dispositivo");
+      }
+    });
+  });
 }
 
 // ==========================================

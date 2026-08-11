@@ -745,72 +745,83 @@
   <script src="admin/admin.js"></script>
   <script src="prestamista/prestamista.js"></script>
   <script src="js/main.js"></script>
-  <!-- MODAL COMPROBANTE DIGITAL DE PRÉSTAMO OTORGADO -->
-<div id="modal-comprobante-prestamo-otorgado" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-  <div class="bg-[#0F172A] border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 my-8">
-    
-    <!-- TICKET DE COMPROBANTE (ESTO ES LO QUE SE CAPTURA / REVISA) -->
-    <div id="ticket-prestamo-otorgado-card" class="bg-[#1E293B] border border-slate-700/80 rounded-2xl p-5 space-y-4 text-white">
-      <div class="text-center border-b border-slate-700/80 pb-3 space-y-1">
-        <div class="flex justify-center items-center gap-2 text-fuchsia-400 font-black text-lg">
-          <span>📄</span> COMPROBANTE DE PRÉSTAMO
+<!-- MODAL COMPROBANTE DIGITAL DE PRÉSTAMO OTORGADO -->
+  <div id="modal-comprobante-prestamo-otorgado" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-[#0F172A] border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 my-8">
+      
+      <!-- TICKET DE COMPROBANTE (ESTO ES LO QUE SE CAPTURA / REVISA) -->
+      <div id="ticket-prestamo-otorgado-card" class="bg-[#1E293B] border border-slate-700/80 rounded-2xl p-5 space-y-4 text-white">
+        <div class="text-center border-b border-slate-700/80 pb-3 space-y-1">
+          <div class="flex justify-center items-center gap-2 text-fuchsia-400 font-black text-lg">
+            <span>📄</span> COMPROBANTE DE PRÉSTAMO
+          </div>
+          <p class="text-[10px] text-slate-400 uppercase tracking-widest">Resumen Digital Oficial</p>
         </div>
-        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Resumen Digital Oficial</p>
+
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between border-b border-slate-800 pb-1.5">
+            <span class="text-slate-400">Cliente:</span>
+            <strong id="recibo-pres-cliente" class="text-white font-bold">-</strong>
+          </div>
+          <div class="flex justify-between border-b border-slate-800 pb-1.5">
+            <span class="text-slate-400">Teléfono:</span>
+            <span id="recibo-pres-tel" class="text-slate-200">-</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800 pb-1.5">
+            <span class="text-slate-400">Fecha de Inicio:</span>
+            <span id="recibo-pres-fechainicio" class="text-slate-200">-</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-800 pb-1.5">
+            <span class="text-slate-400">Monto Entregado:</span>
+            <strong id="recibo-pres-monto" class="text-emerald-400">$0</strong>
+          </div>
+          <div class="flex justify-between border-b border-slate-800 pb-1.5">
+            <span class="text-slate-400">Total a Devolver:</span>
+            <strong id="recibo-pres-total" class="text-fuchsia-400 font-extrabold text-sm">$0</strong>
+          </div>
+          <div class="flex justify-between border-b border-slate-800 pb-1.5">
+            <span class="text-slate-400">Plan de Pago:</span>
+            <span id="recibo-pres-plan" class="text-slate-200 font-bold">-</span>
+          </div>
+        </div>
+
+        <!-- CRONOGRAMA DETALLADO DE FECHAS Y CUOTAS -->
+        <div class="space-y-2 pt-1">
+          <p class="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider">📅 Cronograma de Cobros:</p>
+          <div id="recibo-pres-cronograma" class="max-h-40 overflow-y-auto bg-[#0F172A] border border-slate-800 rounded-xl p-2.5 space-y-1.5 text-xs">
+            <!-- Se completa dinámicamente -->
+          </div>
+        </div>
       </div>
 
-      <div class="space-y-2 text-xs">
-        <div class="flex justify-between border-b border-slate-800 pb-1.5">
-          <span class="text-slate-400">Cliente:</span>
-          <strong id="recibo-pres-cliente" class="text-white font-bold">-</strong>
-        </div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5">
-          <span class="text-slate-400">Teléfono:</span>
-          <span id="recibo-pres-tel" class="text-slate-200">-</span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5">
-          <span class="text-slate-400">Fecha de Inicio:</span>
-          <span id="recibo-pres-fechainicio" class="text-slate-200">-</span>
-        </div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5">
-          <span class="text-slate-400">Monto Entregado:</span>
-          <strong id="recibo-pres-monto" class="text-emerald-400">$0</strong>
-        </div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5">
-          <span class="text-slate-400">Total a Devolver:</span>
-          <strong id="recibo-pres-total" class="text-fuchsia-400 font-extrabold text-sm">$0</strong>
-        </div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5">
-          <span class="text-slate-400">Plan de Pago:</span>
-          <span id="recibo-pres-plan" class="text-slate-200 font-bold">-</span>
-        </div>
+      <!-- BOTONES DE ACCIÓN -->
+      <div class="space-y-2.5">
+        <button type="button" onclick="enviarComprobantePrestamoWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl shadow-lg transition flex justify-center items-center gap-2 text-xs">
+          <span>📱</span> Enviar Resumen al WhatsApp del Cliente
+        </button>
+
+        <button type="button" onclick="compartirComprobantePrestamoImagen()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl transition flex justify-center items-center gap-2 text-xs">
+          <span>📸</span> Compartir/Descargar Imagen
+        </button>
+
+        <button type="button" onclick="cerrarModalComprobantePrestamo()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition text-xs">
+          Cerrar & Ir a Cobros
+        </button>
       </div>
 
-      <!-- CRONOGRAMA DETALLADO DE FECHAS Y CUOTAS -->
-      <div class="space-y-2 pt-1">
-        <p class="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider">📅 Cronograma de Cobros:</p>
-        <div id="recibo-pres-cronograma" class="max-h-40 overflow-y-auto bg-[#0F172A] border border-slate-800 rounded-xl p-2.5 space-y-1.5 text-xs">
-          <!-- Se completa dinámicamente -->
-        </div>
-      </div>
     </div>
-
-    <!-- BOTONES DE ACCIÓN -->
-    <div class="space-y-2.5">
-      <button type="button" onclick="enviarComprobantePrestamoWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl shadow-lg transition flex justify-center items-center gap-2 text-xs">
-        <span>📱</span> Enviar Resumen al WhatsApp del Cliente
-      </button>
-
-      <button type="button" onclick="compartirComprobantePrestamoImagen()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl transition flex justify-center items-center gap-2 text-xs">
-        <span>📸</span> Compartir/Descargar Imagen
-      </button>
-
-      <button type="button" onclick="cerrarModalComprobantePrestamo()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition text-xs">
-        Cerrar & Ir a Cobros
-      </button>
-    </div>
-
   </div>
-</div>
+
+  <!-- LIBRERÍAS DE FIREBASE -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <!-- MÓDULOS JS EN ORDEN DE CARGA -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="admin/admin.js"></script>
+  <script src="prestamista/prestamista.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
-
