@@ -1627,21 +1627,31 @@ async function confirmarPagoAtrasadoAgrupado(event) {
 function enviarComprobantePagoWhatsApp() {
   if (!datosComprobantePagoReciente) return mostrarToast("Sin datos de comprobante", "error");
 
-  const { clienteNombre, monto, fecha, concepto, saldo, clienteTelefono } = datosComprobantePagoReciente;
+  const { clienteNombre, monto, fecha, concepto, saldo, saldoRestante, clienteTelefono, telefono } = datosComprobantePagoReciente;
 
-  let mensaje = `Hola ${clienteNombre}! 👋 Te adjuntamos el *Comprobante Oficial de Pago*:\n\n`;
-  mensaje += `💵 *Monto Abonado:* $${Math.round(monto).toLocaleString('es-AR')}\n`;
-  mensaje += `📅 *Fecha:* ${fecha}\n`;
-  mensaje += `📝 *Concepto:* ${concepto}\n`;
-  mensaje += `💰 *Saldo Restante:* $${Math.round(saldo).toLocaleString('es-AR')}\n\n`;
-  mensaje += `¡Muchas gracias!`;
+  // 1. Obtener el número y limpiar espacios/guiones
+  let telRaw = clienteTelefono || telefono || '';
+  let telLimpio = telRaw.toString().replace(/\D/g, '');
 
-  let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
-  if (telLimpio && !telLimpio.startsWith('54')) {
-    telLimpio = '54' + telLimpio;
+  // 2. Formato correcto para Argentina (549 + 10 dígitos)
+  if (telLimpio) {
+    if (telLimpio.length === 10) {
+      telLimpio = '549' + telLimpio; // Ej: 1123456789 -> 5491123456789
+    } else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) {
+      telLimpio = '549' + telLimpio.slice(2); // Agrega el 9 que exige WhatsApp
+    }
   }
 
-  const urlWhatsApp = telLimpio 
+  const saldoFinal = saldoRestante !== undefined ? saldoRestante : (saldo || 0);
+
+  let mensaje = `Hola ${clienteNombre || 'Cliente'}! 👋 Te adjuntamos el *Comprobante Oficial de Pago*:\n\n`;
+  mensaje += `💵 *Monto Abonado:* $${Math.round(parseFloat(monto || 0)).toLocaleString('es-AR')}\n`;
+  mensaje += `📅 *Fecha:* ${fecha || new Date().toLocaleDateString('es-AR')}\n`;
+  mensaje += `📝 *Concepto:* ${concepto || 'Pago de Cuota'}\n`;
+  mensaje += `💰 *Saldo Restante:* $${Math.round(parseFloat(saldoFinal)).toLocaleString('es-AR')}\n\n`;
+  mensaje += `¡Muchas gracias! 🙌`;
+
+  const urlWhatsApp = telLimpio
     ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
     : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
 
