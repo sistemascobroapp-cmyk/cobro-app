@@ -1053,11 +1053,11 @@ function renderizarPlanificadorSemanal() {
       const nombreCliente = cli ? cli.nombre : 'Cliente Desconocido';
       const telefonoCliente = cli ? cli.telefono : '';
 
-      const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
-        const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
-        return !pag && c.fecha < isoDia;
-      });
-
+const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
+  const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+  return !pag && c.fecha < isoDia && c.fecha < hoyISO; // <-- Solo muestra atrasos de días anteriores a HOY
+});
+     
       let totalMontoAtrasado = 0;
       let diasMaxAtraso = 0;
 
