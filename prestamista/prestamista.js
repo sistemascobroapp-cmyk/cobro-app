@@ -2185,22 +2185,62 @@ async function generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clien
 }
 
 async function enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono) {
-  const linkMP = await generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota);
-  if (!linkMP) return;
-
-  const mensaje = `Hola ${clienteNombre}! 👋 Le envío el enlace de pago seguro para la *Cuota #${numeroCuota}* por un monto de *$${Math.round(monto).toLocaleString('es-AR')}*:\n\n👉 ${linkMP}\n\nUna vez realizado el pago, su cuota se acreditará automáticamente en el sistema. ¡Muchas gracias!`;
-
-  let telLimpio = (clienteTelefono || '').replace(/\D/g, '');
-  if (telLimpio && !telLimpio.startsWith('54')) {
-    telLimpio = '54' + telLimpio;
+  // 1. Abrimos la pestaña INMEDIATAMENTE para que el navegador no bloquee el popup
+  const ventanaWS = window.open('', '_blank');
+  if (ventanaWS) {
+    ventanaWS.document.write(`
+      <html lang="es">
+        <body style="background:#090D16; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+          <div style="text-align:center;">
+            <h3 style="color:#e879f9;">CobroApp</h3>
+            <p style="color:#94a3b8; font-size:14px;">⏳ Generando enlace de Mercado Pago y abriendo WhatsApp...</p>
+          </div>
+        </body>
+      </html>
+    `);
   }
 
-  const urlWhatsApp = telLimpio 
-    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
-    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+  try {
+    if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando enlace de pago...");
 
-  window.open(urlWhatsApp, '_blank');
-  mostrarToast("📲 Enlace enviado a WhatsApp");
+    // 2. Generar el link con tu función existente
+    const linkMP = await generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota);
+    if (!linkMP) {
+      if (ventanaWS) ventanaWS.close();
+      if (typeof mostrarToast === 'function') mostrarToast("No se pudo generar el enlace", "error");
+      return;
+    }
+
+    // 3. Formatear el teléfono para Argentina (549 + 10 dígitos)
+    let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
+    if (telLimpio) {
+      if (telLimpio.length === 10) {
+        telLimpio = '549' + telLimpio;
+      } else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) {
+        telLimpio = '549' + telLimpio.slice(2);
+      }
+    }
+
+    // 4. Mensaje oficial
+    const mensaje = `Hola ${clienteNombre}! 👋 Le envío el enlace de pago seguro para la *Cuota #${numeroCuota}* por un monto de *$${Math.round(monto).toLocaleString('es-AR')}*:\n\n👉 ${linkMP}\n\nUna vez realizado el pago, su cuota se acreditará automáticamente en el sistema. ¡Muchas gracias!`;
+
+    const urlWhatsApp = telLimpio 
+      ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+    // 5. Redirigir la pestaña ya abierta
+    if (ventanaWS && !ventanaWS.closed) {
+      ventanaWS.location.href = urlWhatsApp;
+    } else {
+      window.open(urlWhatsApp, '_blank');
+    }
+
+    if (typeof mostrarToast === 'function') mostrarToast("📲 Enlace enviado a WhatsApp");
+
+  } catch (error) {
+    if (ventanaWS) ventanaWS.close();
+    if (typeof mostrarToast === 'function') mostrarToast("Error al generar el enlace de pago", "error");
+  }
 }
 
 async function copiarLinkPagoMP(prestamoId, cuotaId, monto, clienteNombre, numeroCuota) {
