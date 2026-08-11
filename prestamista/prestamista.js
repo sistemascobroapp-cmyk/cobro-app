@@ -1835,10 +1835,7 @@ async function confirmarRegistroPago(event) {
 // 10. COMPROBANTES Y WHATSAPP (AMBOS MODALES)
 // ==========================================
 
-// Declaración de datos de comprobantes
-if (typeof comprobantePrestamoReciente === 'undefined') {
-  var comprobantePrestamoReciente = null;
-}
+
 var datosComprobantePagoReciente = null;
 
 // ------------------------------------------
