@@ -822,36 +822,51 @@ function cerrarModalComprobantePrestamo() {
 
 function enviarComprobantePrestamoWhatsApp() {
   if (!comprobantePrestamoReciente) return;
+  const { cliente } = comprobantePrestamoReciente;
+  const card = document.getElementById('ticket-prestamo-otorgado-card');
 
-  const { prestamo, cliente } = comprobantePrestamoReciente;
-  const nombreCli = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Cliente');
-  
-  let mensaje = `Hola ${nombreCli}! 👋 Te adjuntamos la *Ficha Oficial de tu Préstamo*:\n\n`;
-  mensaje += `💵 *Capital Entregado:* $${Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR')}\n`;
-  mensaje += `📈 *Total a Devolver:* $${Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR')}\n`;
-  mensaje += `📅 *Plan:* ${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s\n`;
-  mensaje += `💰 *Valor de Cuota:* $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}\n\n`;
-  mensaje += `📋 *CRONOGRAMA DE PAGOS:*\n`;
+  if (!card) return mostrarToast("No se encontró la ficha visual", "error");
+  if (typeof html2canvas !== 'function') return mostrarToast("Librería de captura no cargada", "error");
 
-  (prestamo.cuotasDetalle || []).forEach(c => {
-    const fPartes = (c.fecha || '').split('-');
-    const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
-    mensaje += `- Cuota #${c.numero} (${fechaFormateada}): $${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}\n`;
+  mostrarToast("⏳ Generando imagen de la ficha...");
+
+  html2canvas(card, { scale: 2 }).then(canvas => {
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'Ficha-Prestamo-CobroApp.png', { type: 'image/png' });
+
+      // En Celular: Abre WhatsApp directo con la IMAGEN adjunta
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'Ficha Oficial de Préstamo - CobroApp',
+            text: `Hola ${cliente ? cliente.nombre : ''}! 👋 Te adjunto la Ficha Oficial de tu Préstamo:`,
+            files: [file]
+          });
+          mostrarToast("📲 Ficha enviada con éxito");
+        } catch (err) {
+          console.log("Compartir cancelado:", err);
+        }
+      } else {
+        // En PC: Descarga la imagen e inicia el chat de WhatsApp
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Ficha-Prestamo-${cliente ? cliente.nombre : 'Cliente'}.png`;
+        a.click();
+
+        let telLimpio = (cliente ? cliente.telefono : '').replace(/\D/g, '');
+        if (telLimpio && !telLimpio.startsWith('54')) telLimpio = '54' + telLimpio;
+
+        const msgText = encodeURIComponent(`Hola ${cliente ? cliente.nombre : ''}! 👋 Te adjunto la imagen de la Ficha Oficial de tu Préstamo (recién descargada).`);
+        const urlWA = telLimpio 
+          ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${msgText}`
+          : `https://api.whatsapp.com/send?text=${msgText}`;
+
+        window.open(urlWA, '_blank');
+        mostrarToast("📸 Imagen descargada. Adjuntala en el chat de WhatsApp que se abrió.");
+      }
+    }, 'image/png');
   });
-
-  mensaje += `\n¡Cualquier duda estamos a tu disposición!`;
-
-  let telLimpio = (cliente ? cliente.telefono : '').replace(/\D/g, '');
-  if (telLimpio && !telLimpio.startsWith('54')) {
-    telLimpio = '54' + telLimpio;
-  }
-
-  const urlWhatsApp = telLimpio 
-    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
-    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
-
-  window.open(urlWhatsApp, '_blank');
-  mostrarToast("📲 Redirigiendo a WhatsApp...");
 }
 
 function compartirComprobantePrestamoImagen() {
@@ -1593,7 +1608,7 @@ async function confirmarPagoAtrasadoAgrupado(event) {
   if (montoPagado <= 0) return mostrarToast("Ingresá un monto válido", "error");
 
   try {
-    const prestamosCliente = (window.prestamos || []).filter(p => p.clienteId === clienteId && p.estado !== 'finalizado');
+    const prestamosCliente = (window.prestamos || []).filter(p => String(p.clienteId) === String(clienteId) && p.estado !== 'finalizado');
     
     let saldoIngresado = montoPagado;
     for (let p of prestamosCliente) {
@@ -1629,17 +1644,46 @@ async function confirmarPagoAtrasadoAgrupado(event) {
     mostrarToast("💵 Deuda regularizada correctamente");
     cerrarModalPagoAtrasadoTotal();
 
-    const cli = (window.clientes || []).find(c => c.id === clienteId);
+    // Búsqueda flexible de ID de cliente para asegurar el teléfono
+    const cli = (window.clientes || []).find(c => String(c.id) === String(clienteId));
+    
     abrirModalComprobante(
       cli ? cli.nombre : 'Cliente',
       montoPagado,
-      new Date().toLocaleString(),
+      new Date().toLocaleString('es-AR'),
       'Pago Agrupado de Deuda Atrasada',
-      0
+      0,
+      cli ? cli.telefono : ''
     );
   } catch (error) {
+    console.error("Error en pago atrasado:", error);
     mostrarToast("Error al registrar pago", "error");
   }
+}
+
+function enviarComprobantePagoWhatsApp() {
+  if (!datosComprobantePagoReciente) return mostrarToast("Sin datos de comprobante", "error");
+
+  const { clienteNombre, monto, fecha, concepto, saldo, clienteTelefono } = datosComprobantePagoReciente;
+
+  let mensaje = `Hola ${clienteNombre}! 👋 Te adjuntamos el *Comprobante Oficial de Pago*:\n\n`;
+  mensaje += `💵 *Monto Abonado:* $${Math.round(monto).toLocaleString('es-AR')}\n`;
+  mensaje += `📅 *Fecha:* ${fecha}\n`;
+  mensaje += `📝 *Concepto:* ${concepto}\n`;
+  mensaje += `💰 *Saldo Restante:* $${Math.round(saldo).toLocaleString('es-AR')}\n\n`;
+  mensaje += `¡Muchas gracias!`;
+
+  let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
+  if (telLimpio && !telLimpio.startsWith('54')) {
+    telLimpio = '54' + telLimpio;
+  }
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo chat de WhatsApp...");
 }
 
 // ==========================================
