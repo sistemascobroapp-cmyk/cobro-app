@@ -1658,6 +1658,43 @@ function enviarComprobantePagoWhatsApp() {
   window.open(urlWhatsApp, '_blank');
   if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo chat de WhatsApp...");
 }
+async function compartirComprobanteImagen() {
+  const card = document.getElementById('ticket-recibo-card');
+  if (!card) return typeof mostrarToast === 'function' ? mostrarToast("No se encontró el recibo visual", "error") : null;
+
+  try {
+    if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando imagen...");
+
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#0F172A',
+      scale: 2,
+      useCORS: true
+    });
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const nombreArchivo = `Recibo_Pago_${Date.now()}.png`;
+      const file = new File([blob], nombreArchivo, { type: 'image/png' });
+
+      // En Celular: Abre el menú nativo para compartir (WhatsApp, Mail, etc.)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Recibo de Pago' });
+          return;
+        } catch (e) {}
+      }
+
+      // En PC: Descarga la imagen a la computadora
+      const link = document.createElement('a');
+      link.download = nombreArchivo;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      if (typeof mostrarToast === 'function') mostrarToast("📸 Recibo descargado correctamente");
+    }, 'image/png');
+  } catch (e) {
+    if (typeof mostrarToast === 'function') mostrarToast("Error al generar imagen", "error");
+  }
+}
 
 // ==========================================
 // 9. PAGO CUOTA INDIVIDUAL Y PASE AUTOMÁTICO A FINALIZADO
@@ -1837,9 +1874,10 @@ async function confirmarRegistroPago(event) {
     abrirModalComprobante(
       cli ? cli.nombre : 'Cliente',
       montoIngresado,
-      new Date().toLocaleString(),
+      new Date().toLocaleString('es-AR'),
       conceptoTexto,
-      saldoPendiente
+      saldoPendiente,
+      cli ? cli.telefono : '' // <--- Esta es la línea clave que le pasa el teléfono a WhatsApp
     );
   } catch (error) {
     mostrarToast("Error al registrar pago", "error");
