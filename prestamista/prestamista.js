@@ -1874,52 +1874,155 @@ async function confirmarRegistroPago(event) {
 }
 
 // ==========================================
-// 10. COMPROBANTES Y WHATSAPP
+// 10. COMPROBANTES Y WHATSAPP (AMBOS MODALES)
 // ==========================================
 
-function abrirModalComprobante(clienteNombre, monto, fecha, concepto, saldo) {
-  document.getElementById('recibo-card-cliente').innerText = clienteNombre;
-  document.getElementById('recibo-card-monto').innerText = '$' + Math.round(monto).toLocaleString('es-AR');
-  document.getElementById('recibo-card-fecha').innerText = fecha;
-  document.getElementById('recibo-card-concepto').innerText = concepto;
-  document.getElementById('recibo-card-saldo').innerText = '$' + Math.round(saldo).toLocaleString('es-AR');
+// Declaración de datos de comprobantes
+if (typeof comprobantePrestamoReciente === 'undefined') {
+  var comprobantePrestamoReciente = null;
+}
+var datosComprobantePagoReciente = null;
 
-  document.getElementById('modal-comprobante-whatsapp').classList.remove('hidden');
+// ------------------------------------------
+// A) RECIBO DE PAGO DE CUOTA O DEUDA ATRASADA
+// ------------------------------------------
+function abrirModalComprobante(clienteNombre, monto, fecha, concepto, saldo, clienteTelefono = '') {
+  datosComprobantePagoReciente = {
+    clienteNombre: clienteNombre || 'Cliente',
+    monto: monto || 0,
+    fecha: fecha || new Date().toLocaleString('es-AR'),
+    concepto: concepto || 'Pago de Cuota',
+    saldo: saldo || 0,
+    clienteTelefono: clienteTelefono || ''
+  };
+
+  const setTexto = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+  };
+
+  setTexto('recibo-card-cliente', clienteNombre);
+  setTexto('recibo-card-monto', '$' + Math.round(monto).toLocaleString('es-AR'));
+  setTexto('recibo-card-fecha', fecha);
+  setTexto('recibo-card-concepto', concepto);
+  setTexto('recibo-card-saldo', '$' + Math.round(saldo).toLocaleString('es-AR'));
+
+  const modal = document.getElementById('modal-comprobante-whatsapp');
+  if (modal) modal.classList.remove('hidden');
 }
 
 function cerrarModalComprobante() {
-  document.getElementById('modal-comprobante-whatsapp').classList.add('hidden');
+  const modal = document.getElementById('modal-comprobante-whatsapp');
+  if (modal) modal.classList.add('hidden');
 }
 
-function compartirComprobanteImagen() {
-  const card = document.getElementById('ticket-recibo-card');
-  if (!card) return;
-
-  if (typeof html2canvas !== 'function') {
-    return mostrarToast("Librería de captura no cargada", "error");
+function enviarComprobantePagoWhatsApp() {
+  if (!datosComprobantePagoReciente) {
+    if (typeof mostrarToast === 'function') mostrarToast("Sin datos de comprobante", "error");
+    return;
   }
 
-  html2canvas(card).then(canvas => {
-    canvas.toBlob(blob => {
-      const file = new File([blob], 'comprobante.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({
-          title: 'Comprobante de Pago',
-          text: 'Comprobante Oficial de Pago - CobroApp',
-          files: [file]
-        });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'comprobante-pago.png';
-        a.click();
-        mostrarToast("📸 Comprobante descargado en tu dispositivo");
-      }
-    });
-  });
+  const { clienteNombre, monto, fecha, concepto, saldo, clienteTelefono } = datosComprobantePagoReciente;
+
+  let mensaje = `Hola ${clienteNombre}! 👋 Te adjuntamos el *Comprobante Oficial de Pago*:\n\n`;
+  mensaje += `💵 *Monto Abonado:* $${Math.round(monto).toLocaleString('es-AR')}\n`;
+  mensaje += `📅 *Fecha:* ${fecha}\n`;
+  mensaje += `📝 *Concepto:* ${concepto}\n`;
+  mensaje += `💰 *Saldo Restante:* $${Math.round(saldo).toLocaleString('es-AR')}\n\n`;
+  mensaje += `¡Muchas gracias!`;
+
+  let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
+  if (telLimpio && !telLimpio.startsWith('54')) {
+    telLimpio = '54' + telLimpio;
+  }
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp...");
 }
 
+// ------------------------------------------
+// B) FICHA OFICIAL DE NUEVO PRÉSTAMO OTORGADO
+// ------------------------------------------
+function abrirModalComprobantePrestamo(prestamo, cliente) {
+  comprobantePrestamoReciente = { prestamo, cliente };
+
+  const setTexto = (id, txt) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+  };
+
+  setTexto('recibo-pres-cliente', cliente ? cliente.nombre : (prestamo.nombreCliente || 'Sin Cliente'));
+  setTexto('recibo-pres-tel', cliente ? cliente.telefono : 'Sin teléfono registrado');
+  setTexto('recibo-pres-fechainicio', prestamo.fechaInicio || '-');
+  setTexto('recibo-pres-monto', '$' + Math.round(parseFloat(prestamo.monto || 0)).toLocaleString('es-AR'));
+  setTexto('recibo-pres-total', '$' + Math.round(parseFloat(prestamo.montoTotal || 0)).toLocaleString('es-AR'));
+  setTexto('recibo-pres-plan', `${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s de $${Math.round(parseFloat(prestamo.valorCuota || 0)).toLocaleString('es-AR')}`);
+
+  const contenedorCronograma = document.getElementById('recibo-pres-cronograma');
+  if (contenedorCronograma) {
+    contenedorCronograma.innerHTML = '';
+    (prestamo.cuotasDetalle || []).forEach(c => {
+      const fPartes = (c.fecha || '').split('-');
+      const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
+      contenedorCronograma.innerHTML += `
+        <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
+          <span class="text-slate-300">Cuota #${c.numero} (${fechaFormateada})</span>
+          <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota || 0)).toLocaleString('es-AR')}</strong>
+        </div>
+      `;
+    });
+  }
+
+  const modal = document.getElementById('modal-comprobante-prestamo-otorgado');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function cerrarModalComprobantePrestamo() {
+  const modal = document.getElementById('modal-comprobante-prestamo-otorgado');
+  if (modal) modal.classList.add('hidden');
+  if (typeof mostrarSeccion === 'function') mostrarSeccion('sec-por-cobrar');
+}
+
+function enviarComprobantePrestamoWhatsApp() {
+  if (!comprobantePrestamoReciente) {
+    if (typeof mostrarToast === 'function') mostrarToast("Sin datos de préstamo", "error");
+    return;
+  }
+
+  const { prestamo, cliente } = comprobantePrestamoReciente;
+  const nombreCli = cliente ? cliente.nombre : (prestamo.nombreCliente || 'Cliente');
+
+  let mensaje = `Hola ${nombreCli}! 👋 Te adjuntamos la *Ficha Oficial de tu Préstamo*:\n\n`;
+  mensaje += `💵 *Capital Entregado:* $${Math.round(parseFloat(prestamo.monto)).toLocaleString('es-AR')}\n`;
+  mensaje += `📈 *Total a Devolver:* $${Math.round(parseFloat(prestamo.montoTotal)).toLocaleString('es-AR')}\n`;
+  mensaje += `📅 *Plan:* ${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s\n`;
+  mensaje += `💰 *Valor de Cuota:* $${Math.round(parseFloat(prestamo.valorCuota)).toLocaleString('es-AR')}\n\n`;
+  mensaje += `📋 *CRONOGRAMA DE PAGOS:*\n`;
+
+  (prestamo.cuotasDetalle || []).forEach(c => {
+    const fPartes = (c.fecha || '').split('-');
+    const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
+    mensaje += `- Cuota #${c.numero} (${fechaFormateada}): $${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}\n`;
+  });
+
+  mensaje += `\n¡Cualquier duda estamos a tu disposición!`;
+
+  let telLimpio = (cliente ? cliente.telefono : '').toString().replace(/\D/g, '');
+  if (telLimpio && !telLimpio.startsWith('54')) {
+    telLimpio = '54' + telLimpio;
+  }
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp...");
+}
 // ==========================================
 // 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO Y PERSISTENCIA FIJA
 // ==========================================
