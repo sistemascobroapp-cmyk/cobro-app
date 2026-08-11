@@ -820,54 +820,6 @@ function cerrarModalComprobantePrestamo() {
   }
 }
 
-function enviarComprobantePrestamoWhatsApp() {
-  if (!comprobantePrestamoReciente) return;
-  const { cliente } = comprobantePrestamoReciente;
-  const card = document.getElementById('ticket-prestamo-otorgado-card');
-
-  if (!card) return mostrarToast("No se encontró la ficha visual", "error");
-  if (typeof html2canvas !== 'function') return mostrarToast("Librería de captura no cargada", "error");
-
-  mostrarToast("⏳ Generando imagen de la ficha...");
-
-  html2canvas(card, { scale: 2 }).then(canvas => {
-    canvas.toBlob(async (blob) => {
-      const file = new File([blob], 'Ficha-Prestamo-CobroApp.png', { type: 'image/png' });
-
-      // En Celular: Abre WhatsApp directo con la IMAGEN adjunta
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            title: 'Ficha Oficial de Préstamo - CobroApp',
-            text: `Hola ${cliente ? cliente.nombre : ''}! 👋 Te adjunto la Ficha Oficial de tu Préstamo:`,
-            files: [file]
-          });
-          mostrarToast("📲 Ficha enviada con éxito");
-        } catch (err) {
-          console.log("Compartir cancelado:", err);
-        }
-      } else {
-        // En PC: Descarga la imagen e inicia el chat de WhatsApp
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Ficha-Prestamo-${cliente ? cliente.nombre : 'Cliente'}.png`;
-        a.click();
-
-        let telLimpio = (cliente ? cliente.telefono : '').replace(/\D/g, '');
-        if (telLimpio && !telLimpio.startsWith('54')) telLimpio = '54' + telLimpio;
-
-        const msgText = encodeURIComponent(`Hola ${cliente ? cliente.nombre : ''}! 👋 Te adjunto la imagen de la Ficha Oficial de tu Préstamo (recién descargada).`);
-        const urlWA = telLimpio 
-          ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${msgText}`
-          : `https://api.whatsapp.com/send?text=${msgText}`;
-
-        window.open(urlWA, '_blank');
-        mostrarToast("📸 Imagen descargada. Adjuntala en el chat de WhatsApp que se abrió.");
-      }
-    }, 'image/png');
-  });
-}
 
 function compartirComprobantePrestamoImagen() {
   const card = document.getElementById('ticket-prestamo-otorgado-card');
@@ -1057,6 +1009,21 @@ function renderizarPlanificadorSemanal() {
   const finSemana = new Date(inicioSemana);
   finSemana.setDate(finSemana.getDate() + 6);
 
+  // --- TÍTULO DINÁMICO ---
+  const lunesHoy = obtenerLunesSemana(new Date());
+  const diffTiempo = inicioSemana.getTime() - lunesHoy.getTime();
+  const diffDias = Math.round(diffTiempo / (1000 * 60 * 60 * 24));
+
+  let estadoSemanaTxt = "(Actual)";
+  if (diffDias > 0) estadoSemanaTxt = "(Siguiente)";
+  else if (diffDias < 0) estadoSemanaTxt = "(Anterior)";
+
+  const elemTituloPlanificador = document.getElementById('titulo-planificador-semanal');
+  if (elemTituloPlanificador) {
+    elemTituloPlanificador.innerText = `Planificador & Cobros de la Semana ${estadoSemanaTxt}`;
+  }
+  // -----------------------
+
   const txtRango = document.getElementById('rango-semana-actual');
   if (txtRango) {
     txtRango.innerText = `${inicioSemana.getDate()}/${inicioSemana.getMonth() + 1} al ${finSemana.getDate()}/${finSemana.getMonth() + 1}`;
@@ -1064,8 +1031,6 @@ function renderizarPlanificadorSemanal() {
 
   const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const hoyISO = obtenerFechaLocalISO();
-
-  // VERIFICAR SI LA AUTOMATIZACIÓN DE MERCADO PAGO ESTÁ ACTIVADA
   const esMPActivo = !!(window.datosUsuarioActual?.configMercadoPago?.activo);
 
   for (let i = 0; i < 7; i++) {
@@ -1095,7 +1060,6 @@ function renderizarPlanificadorSemanal() {
         cuotasAtrasadasAnteriores.forEach(ca => {
           const valPend = ca.montoPendiente !== undefined ? ca.montoPendiente : ca.montoCuota;
           totalMontoAtrasado += Math.round(parseFloat(valPend || 0));
-          
           const diffDias = calcularDiasDeDiferencia(ca.fecha, isoDia);
           if (diffDias > diasMaxAtraso) diasMaxAtraso = diffDias;
         });
@@ -1104,16 +1068,12 @@ function renderizarPlanificadorSemanal() {
       (p.cuotasDetalle || []).forEach(c => {
         if (c.fecha === isoDia) {
           cobrosAgendadosCount++;
-
           const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
           const esPasado = isoDia < hoyISO;
 
           let badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente</span>';
-          if (estaPagado) {
-            badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Cobrado</span>';
-          } else if (esPasado) {
-            badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">🔴 Atrasado</span>';
-          }
+          if (estaPagado) badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Cobrado</span>';
+          else if (esPasado) badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">🔴 Atrasado</span>';
 
           let htmlAlertaAtraso = '';
           if (!estaPagado && totalMontoAtrasado > 0) {
@@ -1599,7 +1559,6 @@ function cerrarModalPagoAtrasadoTotal() {
   document.getElementById('modal-pago-atrasado-agrupado').classList.add('hidden');
   datosPagoAtrasadoAgrupadoActual = null;
 }
-
 async function confirmarPagoAtrasadoAgrupado(event) {
   if (event && event.preventDefault) event.preventDefault();
   const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
@@ -1644,7 +1603,6 @@ async function confirmarPagoAtrasadoAgrupado(event) {
     mostrarToast("💵 Deuda regularizada correctamente");
     cerrarModalPagoAtrasadoTotal();
 
-    // Búsqueda flexible de ID de cliente para asegurar el teléfono
     const cli = (window.clientes || []).find(c => String(c.id) === String(clienteId));
     
     abrirModalComprobante(
