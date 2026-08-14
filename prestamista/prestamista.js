@@ -2545,8 +2545,80 @@ function enviarDatosBancoWhatsApp(cuentaId) {
 }
 
 // ==========================================
-// 16. GESTIÓN DE LINK ÚNICO Y MODO COBRADOR
+// 16. GESTIÓN DE LINK ÚNICO Y MODO COBRADOR (SISTEMA AUTÓNOMO)
 // ==========================================
+
+function iniciarModoCobradorDirecto(cobradorRef) {
+  window.usuarioPrestamistaDueno = cobradorRef;
+  window.rolUsuarioActual = 'cobrador';
+
+  // Asignamos el ID del prestamista como usuario activo para consultar sus datos
+  window.usuarioActual = {
+    uid: cobradorRef,
+    email: 'cobrador@modo.app'
+  };
+
+  // 1. Ocultar todos los posibles contenedores de Login
+  const selectoresLogin = ['#sec-login', '#vista-login', '#login-card', '#contenedor-login', 'form'];
+  selectoresLogin.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      // Si es la tarjeta de login, la ocultamos de forma forzada
+      if (el.querySelector('input[type="password"]') || el.id.includes('login')) {
+        el.style.display = 'none';
+        el.classList.add('hidden');
+      }
+    });
+  });
+
+  // 2. Mostrar la pantalla principal de la App
+  const selectoresApp = ['#app-principal', '#sec-por-cobrar', '#main-content', '.app-container'];
+  selectoresApp.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      el.style.display = 'block';
+      el.classList.remove('hidden');
+    });
+  });
+
+  // 3. Ocultar elementos privados de la interfaz
+  if (typeof adaptarInterfazSegunRol === 'function') {
+    adaptarInterfazSegunRol();
+  }
+
+  // 4. Descargar clientes y préstamos del prestamista dueño
+  cargarDatosCobradorDesdeFirestore(cobradorRef);
+}
+
+async function cargarDatosCobradorDesdeFirestore(prestamistaUid) {
+  if (typeof db === 'undefined') return;
+
+  try {
+    if (typeof mostrarToast === 'function') mostrarToast("⏳ Cargando lista de cobros...");
+
+    // Cargar Clientes
+    const snapClientes = await db.collection('clientes').where('usuarioId', '==', prestamistaUid).get();
+    window.clientes = snapClientes.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Cargar Préstamos
+    const snapPrestamos = await db.collection('prestamos').where('usuarioId', '==', prestamistaUid).get();
+    window.prestamos = snapPrestamos.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Cargar configuración de cuentas y tasas del Prestamista
+    const docUser = await db.collection('usuarios').doc(prestamistaUid).get();
+    if (docUser.exists) {
+      window.datosUsuarioActual = docUser.data();
+    }
+
+    // Actualizar vistas en pantalla
+    if (typeof renderizarPlanificadorSemanal === 'function') renderizarPlanificadorSemanal();
+    if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
+    if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
+
+    if (typeof mostrarToast === 'function') mostrarToast("🟢 Hoja de ruta cargada con éxito");
+  } catch (error) {
+    console.error("Error al cargar datos en Modo Cobrador:", error);
+    if (typeof mostrarToast === 'function') mostrarToast("Error al cargar los datos del prestamista", "error");
+  }
+}
 
 function generarLinkCobrador() {
   const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth()?.currentUser);
@@ -2588,28 +2660,27 @@ function detectarModoCobradorPorUrl() {
   const cobradorRef = urlParams.get('cobradorRef');
 
   if (cobradorRef) {
-    window.usuarioPrestamistaDueno = cobradorRef;
-    window.rolUsuarioActual = 'cobrador';
-
-    // FORZAR OCULTAMIENTO DE LOGIN Y MOSTRAR APP PRINCIPAL
-    const secLogin = document.getElementById('sec-login') || document.getElementById('vista-login');
-    if (secLogin) secLogin.classList.add('hidden');
-
-    const secApp = document.getElementById('app-principal') || document.getElementById('sec-por-cobrar');
-    if (secApp) secApp.classList.remove('hidden');
-
-    if (typeof mostrarSeccion === 'function') {
-      mostrarSeccion('sec-por-cobrar');
-    }
-
-    if (typeof adaptarInterfazSegunRol === 'function') {
-      adaptarInterfazSegunRol();
-    }
-
-    if (typeof mostrarToast === 'function') {
-      mostrarToast("🚶‍♂️ Acceso en Modo Cobrador activado");
-    }
+    iniciarModoCobradorDirecto(cobradorRef);
   }
+}
+
+// Escuchador de Firebase Auth modificado para no bloquear al Cobrador
+if (typeof firebase !== 'undefined' && firebase.auth) {
+  firebase.auth().onAuthStateChanged((user) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const cobradorRef = urlParams.get('cobradorRef');
+
+    if (cobradorRef) {
+      // Si la URL tiene cobradorRef, forzamos el modo cobrador e ignoramos el login
+      iniciarModoCobradorDirecto(cobradorRef);
+      return;
+    }
+
+    if (user) {
+      window.usuarioActual = user;
+      cargarConfigMercadoPagoUI();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
