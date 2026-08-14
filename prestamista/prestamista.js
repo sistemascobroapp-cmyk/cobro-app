@@ -1200,6 +1200,11 @@ function renderizarPlanificadorSemanal() {
           const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
           const esPasado = isoDia < hoyISO;
 
+          // CÁLCULO DEL MONTO PENDIENTE REAL DE LA CUOTA
+          const valMontoCobrar = (c.montoPendiente !== undefined && c.montoPendiente !== null) 
+            ? c.montoPendiente 
+            : c.montoCuota;
+
           let badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">🟡 Pendiente</span>';
           if (estaPagado) badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🟢 Cobrado</span>';
           else if (esPasado) badgeEstado = '<span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">🔴 Atrasado</span>';
@@ -1225,7 +1230,7 @@ function renderizarPlanificadorSemanal() {
               <div class="flex justify-between items-start">
                 <div>
                   <h6 class="font-extrabold text-sm text-white">${nombreCliente}</h6>
-                  <p class="text-xs text-slate-400">Cuota #${c.numero} - <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota)).toLocaleString('es-AR')}</strong></p>
+                  <p class="text-xs text-slate-400">Cuota #${c.numero} - <strong class="text-fuchsia-400">$${Math.round(parseFloat(valMontoCobrar)).toLocaleString('es-AR')}</strong></p>
                 </div>
                 ${badgeEstado}
               </div>
@@ -1235,7 +1240,7 @@ function renderizarPlanificadorSemanal() {
                   <button onclick="abrirModalPago('${p.id}', '${c.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
                     💵 Registrar
                   </button>
-                  <button onclick="abrirModalSeleccionarCobro('${p.id}', '${c.id}', ${c.montoCuota}, '${nombreCliente.replace(/'/g, "\\'")}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
+                  <button onclick="abrirModalSeleccionarCobro('${p.id}', '${c.id}', ${valMontoCobrar}, '${nombreCliente.replace(/'/g, "\\'")}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
                     📲 Enviar Cobro
                   </button>
                 </div>
