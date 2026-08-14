@@ -2549,42 +2549,62 @@ function enviarDatosBancoWhatsApp(cuentaId) {
 // ==========================================
 
 function iniciarModoCobradorDirecto(cobradorRef) {
+  // Guardas para evitar ejecuciones dobles
+  if (window.modoCobradorIniciado) return;
+  window.modoCobradorIniciado = true;
+
   window.usuarioPrestamistaDueno = cobradorRef;
   window.rolUsuarioActual = 'cobrador';
 
-  // Asignamos el ID del prestamista como usuario activo para consultar sus datos
+  // Asignamos sesión ficticia para las consultas de Firestore
   window.usuarioActual = {
     uid: cobradorRef,
     email: 'cobrador@modo.app'
   };
 
-  // 1. Ocultar todos los posibles contenedores de Login
-  const selectoresLogin = ['#sec-login', '#vista-login', '#login-card', '#contenedor-login', 'form'];
-  selectoresLogin.forEach(sel => {
+  // 1. Ocultar COMPLETAMENTE el bloque/card flotante de Login
+  const selectoresOcultar = [
+    '#sec-login', '#vista-login', '#login-card', '#contenedor-login',
+    '#pantalla-login', '#modal-login', 'form'
+  ];
+  
+  selectoresOcultar.forEach(sel => {
     document.querySelectorAll(sel).forEach(el => {
-      // Si es la tarjeta de login, la ocultamos de forma forzada
-      if (el.querySelector('input[type="password"]') || el.id.includes('login')) {
-        el.style.display = 'none';
-        el.classList.add('hidden');
-      }
+      el.style.setProperty('display', 'none', 'important');
+      el.classList.add('hidden');
     });
   });
 
-  // 2. Mostrar la pantalla principal de la App
-  const selectoresApp = ['#app-principal', '#sec-por-cobrar', '#main-content', '.app-container'];
-  selectoresApp.forEach(sel => {
+  // Ocultar cualquier contenedor hermano que tenga el texto de Login
+  document.querySelectorAll('div, section, main').forEach(el => {
+    if (el.innerText && el.innerText.includes('SISTEMA DE GESTIÓN PARA PRESTAMISTAS')) {
+      const tarjetaCentrada = el.closest('.flex') || el.closest('.grid') || el.closest('section') || el;
+      if (tarjetaCentrada && !tarjetaCentrada.id.includes('app')) {
+        tarjetaCentrada.style.setProperty('display', 'none', 'important');
+      }
+    }
+  });
+
+  // 2. Mostrar la estructura principal de la App y el menú
+  const selectoresMostrar = ['#app-principal', '#sec-por-cobrar', '#main-content', '#contenedor-app', 'header', 'nav'];
+  selectoresMostrar.forEach(sel => {
     document.querySelectorAll(sel).forEach(el => {
       el.style.display = 'block';
       el.classList.remove('hidden');
     });
   });
 
-  // 3. Ocultar elementos privados de la interfaz
+  // 3. Forzar cambio de vista con la función navegadora del sistema
+  if (typeof mostrarSeccion === 'function') {
+    mostrarSeccion('sec-por-cobrar');
+  }
+
+  // 4. Ocultar cajas privadas para el rol Cobrador
   if (typeof adaptarInterfazSegunRol === 'function') {
     adaptarInterfazSegunRol();
   }
 
-  // 4. Descargar clientes y préstamos del prestamista dueño
+  // 5. Cargar lista de cobros desde Firestore
   cargarDatosCobradorDesdeFirestore(cobradorRef);
 }
 
@@ -2671,7 +2691,6 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
     const cobradorRef = urlParams.get('cobradorRef');
 
     if (cobradorRef) {
-      // Si la URL tiene cobradorRef, forzamos el modo cobrador e ignoramos el login
       iniciarModoCobradorDirecto(cobradorRef);
       return;
     }
