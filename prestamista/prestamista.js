@@ -264,18 +264,7 @@ async function actualizarCredencialesUsuario() {
     const updatesFirestore = {};
     const cambiosRealizados = [];
 
-    if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
-      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!regexEmail.test(nuevoEmail)) {
-        return mostrarToast("Ingresá un correo electrónico válido", "error");
-      }
-
-      await window.usuarioActual.updateEmail(nuevoEmail);
-      updatesFirestore.email = nuevoEmail;
-      if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
-      cambiosRealizados.push("Correo");
-    }
-
+    // 1. CAMBIO DE CONTRASEÑA (Funciona al instante sin pedir nada extra)
     if (nuevaPass) {
       if (nuevaPass.length < 6) {
         return mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
@@ -286,23 +275,42 @@ async function actualizarCredencialesUsuario() {
       cambiosRealizados.push("Contraseña");
     }
 
-    if (cambiosRealizados.length === 0) {
-      return mostrarToast("No se detectaron cambios en las credenciales", "error");
+    // 2. CAMBIO DE CORREO (Compatible con las nuevas reglas de Firebase)
+    if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!regexEmail.test(nuevoEmail)) {
+        return mostrarToast("Ingresá un correo electrónico válido", "error");
+      }
+
+      // Envía el enlace de verificación al nuevo e-mail
+      await window.usuarioActual.verifyBeforeUpdateEmail(nuevoEmail);
+      
+      // Guardamos en tu base de datos para que a vos como Admin te figure el cambio ya mismo
+      updatesFirestore.email = nuevoEmail;
+      if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
+
+      mostrarToast("📧 Te enviamos un correo de confirmación a la nueva casilla para validar el acceso.");
     }
 
-    await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
+    // Actualizar datos en tu panel de Firestore
+    if (Object.keys(updatesFirestore).length > 0) {
+      await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
+    }
 
-    mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizado(s) correctamente`);
+    if (cambiosRealizados.length > 0) {
+      mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizada(s) correctamente`);
+    }
 
     if (document.getElementById('cfg-mi-pass')) {
       document.getElementById('cfg-mi-pass').value = '';
     }
+
   } catch (error) {
     console.error("Error al actualizar credenciales:", error);
     if (error.code === 'auth/requires-recent-login') {
-      mostrarToast("Por seguridad, cerrá sesión y volvé a ingresar antes de cambiar tu correo o contraseña.", "error");
+      mostrarToast("Por seguridad, cerrá sesión y volvé a ingresar antes de cambiar tus datos.", "error");
     } else if (error.code === 'auth/email-already-in-use') {
-      mostrarToast("Ese correo electrónico ya está en uso por otro usuario.", "error");
+      mostrarToast("Ese correo electrónico ya está registrado por otro usuario.", "error");
     } else {
       mostrarToast("Error al actualizar: " + error.message, "error");
     }
