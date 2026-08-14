@@ -77,7 +77,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (BLOQUEO CSS PARA PC Y MÓVIL)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (VERSIÓN DEFINITIVA Y COMPLETA)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
@@ -86,7 +86,7 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // 1. INYECTAR REGLA CSS PERMANENTE EN EL NAVEGADOR
+  // 1. INYECTAR REGLA CSS PERMANENTE EN EL NAVEGADOR (Para que no reaparezca el botón en PC)
   let styleTag = document.getElementById('css-bloqueo-admin');
   if (!styleTag) {
     styleTag = document.createElement('style');
@@ -95,9 +95,8 @@ function adaptarInterfazSegunRol() {
   }
 
   if (esAdmin) {
-    styleTag.innerHTML = ''; // Si es Admin Master, mostramos todo normalmente
+    styleTag.innerHTML = ''; 
   } else {
-    // Si es Prestamista o Cobrador, el navegador oculta el botón en la PC de forma continua
     styleTag.innerHTML = `
       #btn-sec-admin, 
       #btn-accesos-prestamistas, 
@@ -109,7 +108,7 @@ function adaptarInterfazSegunRol() {
     `;
   }
 
-  // 2. ETICUTAR EL BOTÓN EN EL MENÚ LATERAL DE LA PC
+  // 2. OCULTAR BOTÓN "ACCESOS PRESTAMISTAS" EN EL MENÚ LATERAL
   document.querySelectorAll('button, a, li').forEach(el => {
     if (el.textContent && el.textContent.trim().includes('Accesos Prestamistas')) {
       if (!esAdmin) {
@@ -143,7 +142,7 @@ function adaptarInterfazSegunRol() {
     }
   });
 
-  // 4. ADAPTACIÓN DE TEXTOS Y CAMPOS SEGÚN ROL
+  // 4. ADAPTACIÓN DE TEXTOS Y FORMULARIOS SEGÚN ROL
   const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
   const mBtnRegistrar = document.getElementById('m-btn-registrar');
   const tituloSec = document.getElementById('titulo-sec-registrar');
@@ -195,6 +194,16 @@ function adaptarInterfazSegunRol() {
   if (window.datosUsuarioActual) {
     verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
   }
+}
+
+// 5. PARCHE DE NAVEGACIÓN EN PC: Vuelve a ocultar el botón Admin en cada cambio de pestaña
+if (typeof window.mostrarSeccion === 'function' && !window.mostrarSeccionParchada) {
+  const funcionMostrarOriginal = window.mostrarSeccion;
+  window.mostrarSeccion = function(idSeccion) {
+    funcionMostrarOriginal(idSeccion);
+    adaptarInterfazSegunRol(); 
+  };
+  window.mostrarSeccionParchada = true;
 }
 
 // ==========================================
@@ -287,7 +296,28 @@ async function actualizarCredencialesUsuario() {
     const updatesFirestore = {};
     const cambiosRealizados = [];
 
-    // 1. CAMBIO DE CONTRASEÑA
+    // 1. CAMBIO DE CORREO DIRECTO (Soporta correos internos/ficticios)
+    if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
+      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!regexEmail.test(nuevoEmail)) {
+        return mostrarToast("Ingresá un formato de correo válido (ej: usuario@cobroapp.com)", "error");
+      }
+
+      try {
+        // Forzamos el cambio directo en Firebase Auth sin pedir verificaciones por casilla
+        await window.usuarioActual.updateEmail(nuevoEmail);
+        updatesFirestore.email = nuevoEmail;
+        if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
+        cambiosRealizados.push("Correo");
+      } catch (errEmail) {
+        if (errEmail.code === 'auth/requires-recent-login') {
+          return mostrarToast("🔒 Por seguridad, cerrá sesión y volvé a ingresar con tu clave actual para autorizar el cambio de correo.", "error");
+        }
+        throw errEmail;
+      }
+    }
+
+    // 2. CAMBIO DE CONTRASEÑA
     if (nuevaPass) {
       if (nuevaPass.length < 6) {
         return mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
@@ -297,28 +327,13 @@ async function actualizarCredencialesUsuario() {
       cambiosRealizados.push("Contraseña");
     }
 
-    // 2. CAMBIO DE CORREO DIRECTO (Sin esperar link de verificación)
-    if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
-      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!regexEmail.test(nuevoEmail)) {
-        return mostrarToast("Ingresá un correo electrónico válido", "error");
-      }
-
-      // Actualización directa en la autenticación de Firebase
-      await window.usuarioActual.updateEmail(nuevoEmail);
-      
-      updatesFirestore.email = nuevoEmail;
-      if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
-      cambiosRealizados.push("Correo");
-    }
-
-    // Guardar cambios en Firestore para el Panel Master
+    // Actualizamos los datos en Firestore para que lo veas en el Panel Master
     if (Object.keys(updatesFirestore).length > 0) {
       await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
     }
 
     if (cambiosRealizados.length > 0) {
-      mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizado(s) en tiempo real`);
+      mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizado(s) correctamente`);
     }
 
     if (document.getElementById('cfg-mi-pass')) {
@@ -327,22 +342,7 @@ async function actualizarCredencialesUsuario() {
 
   } catch (error) {
     console.error("Error al actualizar credenciales:", error);
-    
-    if (error.code === 'auth/requires-recent-login') {
-      mostrarToast("🔒 Por seguridad de Firebase, cerrá sesión y volvé a ingresar antes de cambiar tu correo.", "error");
-    } else if (error.code === 'auth/email-already-in-use') {
-      mostrarToast("⚠️ Ese correo electrónico ya está registrado en otra cuenta.", "error");
-    } else if (error.code === 'auth/operation-not-allowed') {
-      // Si Firebase bloquea el cambio directo, recurre al envío de enlace
-      try {
-        await window.usuarioActual.verifyBeforeUpdateEmail(nuevoEmail);
-        mostrarToast("📧 Revisa la bandeja de entrada del nuevo correo y hacé clic en el link para validar el cambio.");
-      } catch (err2) {
-        mostrarToast("Error al solicitar cambio de correo: " + error.message, "error");
-      }
-    } else {
-      mostrarToast("Error al actualizar: " + error.message, "error");
-    }
+    mostrarToast("Error al actualizar: " + error.message, "error");
   }
 }
 
