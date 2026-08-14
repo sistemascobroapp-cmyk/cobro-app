@@ -86,7 +86,25 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // Ocultar finanzas y configuración al cobrador
+  // 1. OCULTAR BOTÓN MASTER/ADMIN A PRESTAMISTAS Y COBRADORES
+  const elementosSoloAdmin = ['btn-sec-admin', 'btn-accesos-prestamistas', 'm-btn-admin', 'sec-admin-master'];
+  elementosSoloAdmin.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (esAdmin) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
+  });
+
+  // Ocultar por búsqueda de texto si el botón no tiene ID exacto
+  document.querySelectorAll('button, a').forEach(btn => {
+    if (btn.innerText && btn.innerText.includes('Accesos Prestamistas')) {
+      if (esAdmin) btn.classList.remove('hidden');
+      else btn.classList.add('hidden');
+    }
+  });
+
+  // 2. Ocultar finanzas y configuración al cobrador
   const elementosPrivados = [
     'resumen-capital-box',
     'resumen-ganancia-box',
@@ -142,10 +160,14 @@ function adaptarInterfazSegunRol() {
       inputInteres.step = '0.1';
     }
 
-    inicializarValoresPredeterminadosPrestamo();
+    if (typeof inicializarValoresPredeterminadosPrestamo === 'function') {
+      inicializarValoresPredeterminadosPrestamo();
+    }
   }
 
-  cargarConfigMercadoPagoUI();
+  if (typeof cargarConfigMercadoPagoUI === 'function') {
+    cargarConfigMercadoPagoUI();
+  }
 
   if (window.datosUsuarioActual) {
     verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
@@ -2610,21 +2632,29 @@ async function cargarDatosCobradorDesdeFirestore(prestamistaUid) {
   try {
     if (typeof mostrarToast === 'function') mostrarToast("⏳ Cargando lista de cobros...");
 
-    // Cargar Clientes
+    // 1. Verificación de Suspensión del Prestamista Dueño
+    const docUser = await db.collection('usuarios').doc(prestamistaUid).get();
+    if (docUser.exists) {
+      const uData = docUser.data();
+      window.datosUsuarioActual = uData;
+
+      if (uData.estadoCuenta === 'suspendido' || uData.suspendido === true) {
+        const modalSuspendido = document.getElementById('modal-cuenta-suspendida');
+        if (modalSuspendido) modalSuspendido.classList.remove('hidden');
+        if (typeof mostrarToast === 'function') mostrarToast("⛔ La cuenta del prestamista se encuentra suspendida", "error");
+        return; // Detiene la carga de datos inmediatamente
+      }
+    }
+
+    // 2. Cargar Clientes
     const snapClientes = await db.collection('clientes').where('usuarioId', '==', prestamistaUid).get();
     window.clientes = snapClientes.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // Cargar Préstamos
+    // 3. Cargar Préstamos
     const snapPrestamos = await db.collection('prestamos').where('usuarioId', '==', prestamistaUid).get();
     window.prestamos = snapPrestamos.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // Cargar configuración de cuentas y tasas del Prestamista
-    const docUser = await db.collection('usuarios').doc(prestamistaUid).get();
-    if (docUser.exists) {
-      window.datosUsuarioActual = docUser.data();
-    }
-
-    // Actualizar vistas en pantalla
+    // 4. Actualizar vistas en pantalla
     if (typeof renderizarPlanificadorSemanal === 'function') renderizarPlanificadorSemanal();
     if (typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
     if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
