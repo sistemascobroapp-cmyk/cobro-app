@@ -77,7 +77,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (VERSIÓN CORREGIDA Y SEGURA)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (BLOQUEO CSS PARA PC Y MÓVIL)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
@@ -86,35 +86,43 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // 1. OCULTAR ÚNICAMENTE EL BOTÓN "ACCESOS PRESTAMISTAS"
-  // Buscamos estrictamente botones o enlaces (sin tocar los div contenedores)
-  document.querySelectorAll('button, a').forEach(el => {
-    if (el.textContent && el.textContent.includes('Accesos Prestamistas')) {
-      if (esAdmin) {
-        el.style.removeProperty('display');
-        el.classList.remove('hidden');
-      } else {
+  // 1. INYECTAR REGLA CSS PERMANENTE EN EL NAVEGADOR
+  let styleTag = document.getElementById('css-bloqueo-admin');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = 'css-bloqueo-admin';
+    document.head.appendChild(styleTag);
+  }
+
+  if (esAdmin) {
+    styleTag.innerHTML = ''; // Si es Admin Master, mostramos todo normalmente
+  } else {
+    // Si es Prestamista o Cobrador, el navegador oculta el botón en la PC de forma continua
+    styleTag.innerHTML = `
+      #btn-sec-admin, 
+      #btn-accesos-prestamistas, 
+      #m-btn-admin, 
+      #sec-admin-master, 
+      .solo-admin {
+        display: none !important;
+      }
+    `;
+  }
+
+  // 2. ETICUTAR EL BOTÓN EN EL MENÚ LATERAL DE LA PC
+  document.querySelectorAll('button, a, li').forEach(el => {
+    if (el.textContent && el.textContent.trim().includes('Accesos Prestamistas')) {
+      if (!esAdmin) {
+        el.classList.add('solo-admin');
         el.style.setProperty('display', 'none', 'important');
-        el.classList.add('hidden');
+      } else {
+        el.classList.remove('solo-admin');
+        el.style.removeProperty('display');
       }
     }
   });
 
-  // Ocultar también por IDs específicos de Admin si existen
-  ['btn-sec-admin', 'btn-accesos-prestamistas', 'm-btn-admin', 'sec-admin-master'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      if (esAdmin) {
-        el.style.removeProperty('display');
-        el.classList.remove('hidden');
-      } else {
-        el.style.setProperty('display', 'none', 'important');
-        el.classList.add('hidden');
-      }
-    }
-  });
-
-  // 2. OCULTAR FINANZAS Y CONFIGURACIÓN AL COBRADOR
+  // 3. OCULTAR FINANZAS Y CONFIGURACIÓN AL COBRADOR
   const elementosPrivados = [
     'resumen-capital-box',
     'resumen-ganancia-box',
@@ -135,7 +143,7 @@ function adaptarInterfazSegunRol() {
     }
   });
 
-  // 3. ADAPTACIÓN DE TEXTOS SEGÚN ROL
+  // 4. ADAPTACIÓN DE TEXTOS Y CAMPOS SEGÚN ROL
   const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
   const mBtnRegistrar = document.getElementById('m-btn-registrar');
   const tituloSec = document.getElementById('titulo-sec-registrar');
