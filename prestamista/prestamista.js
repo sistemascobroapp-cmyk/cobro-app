@@ -77,7 +77,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (APUNTANDO A ID REAL: btn-sec-usuarios)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (SISTEMA BLINDADO POR BODY CLASS)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
@@ -86,28 +86,12 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // 1. OCULTAR O MOSTRAR EL BOTÓN ADMIN EN EL MENÚ LATERAL (#btn-sec-usuarios)
-  const btnUsuariosAdmin = document.getElementById('btn-sec-usuarios');
-  if (btnUsuariosAdmin) {
-    if (esAdmin) {
-      btnUsuariosAdmin.classList.remove('hidden');
-      btnUsuariosAdmin.style.removeProperty('display');
-    } else {
-      btnUsuariosAdmin.classList.add('hidden');
-      btnUsuariosAdmin.style.setProperty('display', 'none', 'important');
-    }
+  // 1. MARCAR EL ROL EN EL BODY (CSS se encarga de ocultar #btn-sec-usuarios sin importar los clics)
+  if (esAdmin) {
+    document.body.classList.add('es-admin');
+  } else {
+    document.body.classList.remove('es-admin');
   }
-
-  // Ocultar también en móviles o contenedores adicionales
-  document.querySelectorAll('#btn-sec-usuarios, #m-btn-usuarios, #sec-usuarios').forEach(el => {
-    if (esAdmin) {
-      el.classList.remove('hidden');
-      el.style.removeProperty('display');
-    } else {
-      el.classList.add('hidden');
-      el.style.setProperty('display', 'none', 'important');
-    }
-  });
 
   // 2. OCULTAR FINANZAS Y CONFIGURACIÓN AL COBRADOR
   const elementosPrivados = [

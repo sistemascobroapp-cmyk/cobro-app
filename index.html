@@ -31,6 +31,12 @@
     body.light-mode .text-white, body.light-mode .text-gray-100, body.light-mode .text-slate-100, body.light-mode .text-slate-200, body.light-mode .text-slate-300 { color: #0f172a !important; }
     body.light-mode .text-slate-400, body.light-mode .text-slate-500 { color: #475569 !important; }
     body.light-mode .bg-slate-800, body.light-mode .bg-slate-900, body.light-mode .bg-\[\#1E293B\], body.light-mode .bg-\[\#0F172A\] { background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+    /* REGLA BLINDADA PARA OCULTAR BOTÓN ADMIN A PRESTAMISTAS */
+body:not(.es-admin) #btn-sec-usuarios,
+body:not(.es-admin) #m-btn-usuarios,
+body:not(.es-admin) #sec-usuarios {
+  display: none !important;
+}
   </style>
 </head>
 <body id="cuerpo-app" class="bg-[#090D16] text-gray-100 min-h-screen flex flex-col md:flex-row pb-24 md:pb-0">
