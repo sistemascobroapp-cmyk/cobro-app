@@ -2403,12 +2403,20 @@ function enviarDatosBancoWhatsApp(cuentaId) {
     else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) telLimpio = '549' + telLimpio.slice(2);
   }
 
-  let mensaje = `Hola ${clienteNombre}! 👋 Te paso los datos para realizar la transferencia correspondiente a la *Cuota #${numeroCuota}* ($${Math.round(monto).toLocaleString('es-AR')}):\n\n`;
+  // 🟢 Formato de mensaje optimizado para selección limpia (doble toque)
+  let mensaje = `Hola ${clienteNombre}! 👋 Te paso los datos de transferencia para la *Cuota #${numeroCuota}* ($${Math.round(monto).toLocaleString('es-AR')}):\n\n`;
   mensaje += `🏦 *Banco:* ${cuenta.banco}\n`;
-  mensaje += `👤 *Titular:* ${cuenta.titular}\n`;
-  mensaje += `📌 *Alias:* \`${cuenta.alias}\`\n`;
-  if (cuenta.cbu) mensaje += `🔢 *CBU/CVU:* \`${cuenta.cbu}\`\n`;
-  mensaje += `\nUna vez realizada la transferencia, enviame el comprobante por este medio. ¡Muchas gracias! 🙌`;
+  mensaje += `👤 *Titular:* ${cuenta.titular}\n\n`;
+  
+  mensaje += `👇 *ALIAS PARA COPIAR* (doble toque para seleccionar):\n`;
+  mensaje += `${cuenta.alias}\n\n`;
+
+  if (cuenta.cbu) {
+    mensaje += `👇 *CBU/CVU PARA COPIAR*:\n`;
+    mensaje += `${cuenta.cbu}\n\n`;
+  }
+
+  mensaje += `Una vez realizada la transferencia, enviame el comprobante por acá. ¡Muchas gracias! 🙌`;
 
   const urlWhatsApp = telLimpio 
     ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
@@ -2416,5 +2424,5 @@ function enviarDatosBancoWhatsApp(cuentaId) {
 
   window.open(urlWhatsApp, '_blank');
   cerrarModalSeleccionarCobro();
-  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp con los datos de cobro...");
+  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp con datos de cobro...");
 }
