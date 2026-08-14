@@ -77,11 +77,31 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (ADMIN VS PRESTAMISTA)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (ADMIN VS PRESTAMISTA VS COBRADOR)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
-  const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com' || (window.datosUsuarioActual && window.datosUsuarioActual.rol === 'admin');
+  const rol = window.rolUsuarioActual || window.datosUsuarioActual?.rol || 'prestamista';
+
+  const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
+  const esCobrador = rol === 'cobrador';
+
+  // Ocultar finanzas y configuración al cobrador
+  const elementosPrivados = [
+    'resumen-capital-box',
+    'resumen-ganancia-box',
+    'btn-sec-configuracion',
+    'm-btn-configuracion',
+    'sec-config-intereses-card'
+  ];
+
+  elementosPrivados.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (esCobrador) el.classList.add('hidden');
+      else el.classList.remove('hidden');
+    }
+  });
 
   const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
   const mBtnRegistrar = document.getElementById('m-btn-registrar');
@@ -184,7 +204,6 @@ async function cargarCamposConfigIntereses() {
 
       if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
       window.datosUsuarioActual.tasasConfig = cfg;
-      // Sincronizamos las cuentas bancarias y Mercado Pago en la memoria local
       window.datosUsuarioActual.cuentasCobro = data.cuentasCobro || [];
       window.datosUsuarioActual.configMercadoPago = data.configMercadoPago || {};
 
@@ -336,11 +355,8 @@ function calcularReputacionCliente(clienteId) {
     (p.cuotasDetalle || []).forEach(c => {
       const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
       
-      // Evaluamos cuotas que ya vencerían o que ya se pagaron
       if (estaPagado || c.fecha < hoyISO) {
         totalCuotasEvaluadas++;
-        
-        // Si está actualmente vencida sin pagar o se pagó fuera de término
         if (!estaPagado && c.fecha < hoyISO) {
           cuotasAtrasadasCount++;
         }
@@ -348,7 +364,6 @@ function calcularReputacionCliente(clienteId) {
     });
   });
 
-  // Si no tiene cuotas evaluadas aún
   if (totalCuotasEvaluadas === 0) {
     return {
       etiqueta: '⚪ Sin Historial',
@@ -399,8 +414,6 @@ function renderizarDirectorioClientes() {
   clientes.forEach(c => {
     const prestamosCliente = prestamos.filter(p => p.clienteId === c.id && p.estado !== 'finalizado');
     const tieneActivo = prestamosCliente.length > 0;
-
-    // 🟢 Calculamos la reputación histórica
     const reputacion = calcularReputacionCliente(c.id);
 
     container.innerHTML += `
@@ -826,13 +839,11 @@ async function guardarPrestamoFirestore() {
     const cli = (window.clientes || []).find(c => c.id === simulacionActual.clienteId);
     const copiaPrestamo = { ...dataGuardar };
 
-    // Limpiar campos del formulario
     document.getElementById('form-prestamo')?.reset();
     inicializarValoresPredeterminadosPrestamo();
     document.getElementById('vista-simulacion')?.classList.add('hidden');
     simulacionActual = null;
 
-    // Abrir comprobante digital
     try {
       abrirModalComprobantePrestamo(copiaPrestamo, cli);
     } catch (eModal) {
@@ -1467,6 +1478,11 @@ async function confirmarFinalizacionPrestamo() {
 }
 
 function solicitarEliminarPrestamo(id) {
+  const rol = window.rolUsuarioActual || window.datosUsuarioActual?.rol;
+  if (rol === 'cobrador') {
+    return mostrarToast("⛔ Opción no permitida para perfil Cobrador", "error");
+  }
+
   idPrestamoAEliminar = id;
   const p = (window.prestamos || []).find(pr => pr.id === id);
   const cli = (window.clientes || []).find(c => c.id === (p ? p.clienteId : ''));
@@ -1629,6 +1645,7 @@ function cerrarModalPagoAtrasadoTotal() {
   datosPagoAtrasadoAgrupadoActual = null;
 }
 
+// PAGO AGRUPADO (SEPARA RECARGO DE CAPITAL)
 async function confirmarPagoAtrasadoAgrupado(event) {
   if (event && event.preventDefault) event.preventDefault();
   const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
@@ -1637,9 +1654,18 @@ async function confirmarPagoAtrasadoAgrupado(event) {
   if (montoPagado <= 0) return mostrarToast("Ingresá un monto válido", "error");
 
   try {
+    const chkRecargo = document.getElementById('chk-aplicar-retraso-agrupado');
+    const aplicaRecargo = chkRecargo ? chkRecargo.checked : false;
+
+    let recargoAplicado = 0;
+    if (aplicaRecargo && datosPagoAtrasadoAgrupadoActual && datosPagoAtrasadoAgrupadoActual.montoRecargo > 0) {
+      recargoAplicado = datosPagoAtrasadoAgrupadoActual.montoRecargo;
+    }
+
+    let saldoIngresado = Math.max(0, montoPagado - recargoAplicado);
+
     const prestamosCliente = (window.prestamos || []).filter(p => String(p.clienteId) === String(clienteId) && p.estado !== 'finalizado');
     
-    let saldoIngresado = montoPagado;
     for (let p of prestamosCliente) {
       if (saldoIngresado <= 0) break;
 
@@ -1689,8 +1715,91 @@ async function confirmarPagoAtrasadoAgrupado(event) {
   }
 }
 
+// PAGO INDIVIDUAL DE CUOTA (SEPARA RECARGO DE CAPITAL)
+async function confirmarRegistroPago(event) {
+  if (event && event.preventDefault) event.preventDefault();
+  const prestamoId = document.getElementById('pago-prestamo-id').value;
+  const cuotaId = document.getElementById('pago-cuota-id').value;
+  const montoIngresado = Math.round(parseFloat(document.getElementById('pago-monto-ingresado').value) || 0);
+
+  const p = (window.prestamos || []).find(pr => pr.id === prestamoId);
+  if (!p) return;
+
+  const cuotaPagadaObj = p.cuotasDetalle ? p.cuotasDetalle.find(c => c.id === cuotaId) : null;
+  const numeroCuotaPagada = cuotaPagadaObj ? cuotaPagadaObj.numero : '';
+  const totalCuotasNum = p.cuotas || (p.cuotasDetalle ? p.cuotasDetalle.length : 1);
+
+  try {
+    const chkRecargo = document.getElementById('chk-aplicar-retraso-cuota');
+    const aplicaRecargo = chkRecargo ? chkRecargo.checked : false;
+
+    let recargoAplicado = 0;
+    if (aplicaRecargo && datosPagoCuotaActual && datosPagoCuotaActual.montoRecargo > 0) {
+      recargoAplicado = datosPagoCuotaActual.montoRecargo;
+    }
+
+    let cobroRestante = Math.max(0, montoIngresado - recargoAplicado);
+
+    const nuevasCuotas = p.cuotasDetalle.map(c => {
+      const estaPagadoYa = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      if (c.id === cuotaId || (cobroRestante > 0 && !estaPagadoYa)) {
+        const pendiente = Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+        if (cobroRestante >= pendiente - 0.5) {
+          cobroRestante -= pendiente;
+          return { ...c, pagado: true, montoPendiente: 0 };
+        } else if (cobroRestante > 0) {
+          const nuevoPendiente = Math.max(0, Math.round(pendiente - cobroRestante));
+          cobroRestante = 0;
+          return { ...c, pagado: nuevoPendiente <= 0.5, montoPendiente: nuevoPendiente };
+        }
+      }
+      return c;
+    });
+
+    const todasPagadas = nuevasCuotas.every(c => c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5));
+    const dataUpdate = { cuotasDetalle: nuevasCuotas };
+
+    if (todasPagadas) {
+      dataUpdate.estado = 'finalizado';
+      dataUpdate.fechaFinalizacion = obtenerFechaLocalISO();
+    }
+
+    await db.collection('prestamos').doc(prestamoId).update(dataUpdate);
+
+    if (todasPagadas) {
+      mostrarToast("🎉 ¡Préstamo pagado al 100% y enviado a Finalizados!");
+    } else {
+      mostrarToast("✅ Pago de cuota registrado");
+    }
+
+    cerrarModalPago();
+
+    const cli = (window.clientes || []).find(c => c.id === p.clienteId);
+    let saldoPendiente = 0;
+    nuevasCuotas.forEach(c => {
+      const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      if (!estaPagado) {
+        saldoPendiente += Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
+      }
+    });
+
+    const conceptoTexto = `Pago Cuota #${numeroCuotaPagada} de ${totalCuotasNum}`;
+
+    abrirModalComprobante(
+      cli ? cli.nombre : 'Cliente',
+      montoIngresado,
+      new Date().toLocaleString('es-AR'),
+      conceptoTexto,
+      saldoPendiente,
+      cli ? cli.telefono : ''
+    );
+  } catch (error) {
+    mostrarToast("Error al registrar pago", "error");
+  }
+}
+
 // ==========================================
-// 9. PAGO CUOTA INDIVIDUAL Y PASE AUTOMÁTICO A FINALIZADO
+// 9. PAGO CUOTA INDIVIDUAL Y MODAL CONTROL
 // ==========================================
 
 function abrirModalPago(prestamoId, cuotaId) {
@@ -1802,79 +1911,6 @@ function validarMontoPagoCuota(val) {
 function cerrarModalPago() {
   document.getElementById('modal-pago-cuota').classList.add('hidden');
   datosPagoCuotaActual = null;
-}
-
-async function confirmarRegistroPago(event) {
-  if (event && event.preventDefault) event.preventDefault();
-  const prestamoId = document.getElementById('pago-prestamo-id').value;
-  const cuotaId = document.getElementById('pago-cuota-id').value;
-  const montoIngresado = Math.round(parseFloat(document.getElementById('pago-monto-ingresado').value) || 0);
-
-  const p = (window.prestamos || []).find(pr => pr.id === prestamoId);
-  if (!p) return;
-
-  const cuotaPagadaObj = p.cuotasDetalle ? p.cuotasDetalle.find(c => c.id === cuotaId) : null;
-  const numeroCuotaPagada = cuotaPagadaObj ? cuotaPagadaObj.numero : '';
-  const totalCuotasNum = p.cuotas || (p.cuotasDetalle ? p.cuotasDetalle.length : 1);
-
-  try {
-    let cobroRestante = montoIngresado;
-    const nuevasCuotas = p.cuotasDetalle.map(c => {
-      const estaPagadoYa = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
-      if (c.id === cuotaId || (cobroRestante > 0 && !estaPagadoYa)) {
-        const pendiente = Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
-        if (cobroRestante >= pendiente - 0.5) {
-          cobroRestante -= pendiente;
-          return { ...c, pagado: true, montoPendiente: 0 };
-        } else if (cobroRestante > 0) {
-          const nuevoPendiente = Math.max(0, Math.round(pendiente - cobroRestante));
-          cobroRestante = 0;
-          return { ...c, pagado: nuevoPendiente <= 0.5, montoPendiente: nuevoPendiente };
-        }
-      }
-      return c;
-    });
-
-    const todasPagadas = nuevasCuotas.every(c => c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5));
-    const dataUpdate = { cuotasDetalle: nuevasCuotas };
-
-    if (todasPagadas) {
-      dataUpdate.estado = 'finalizado';
-      dataUpdate.fechaFinalizacion = obtenerFechaLocalISO();
-    }
-
-    await db.collection('prestamos').doc(prestamoId).update(dataUpdate);
-
-    if (todasPagadas) {
-      mostrarToast("🎉 ¡Préstamo pagado al 100% y enviado a Finalizados!");
-    } else {
-      mostrarToast("✅ Pago de cuota registrado");
-    }
-
-    cerrarModalPago();
-
-    const cli = (window.clientes || []).find(c => c.id === p.clienteId);
-    let saldoPendiente = 0;
-    nuevasCuotas.forEach(c => {
-      const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
-      if (!estaPagado) {
-        saldoPendiente += Math.round(c.montoPendiente !== undefined ? c.montoPendiente : c.montoCuota);
-      }
-    });
-
-    const conceptoTexto = `Pago Cuota #${numeroCuotaPagada} de ${totalCuotasNum}`;
-
-    abrirModalComprobante(
-      cli ? cli.nombre : 'Cliente',
-      montoIngresado,
-      new Date().toLocaleString('es-AR'),
-      conceptoTexto,
-      saldoPendiente,
-      cli ? cli.telefono : ''
-    );
-  } catch (error) {
-    mostrarToast("Error al registrar pago", "error");
-  }
 }
 
 // ==========================================
@@ -2400,7 +2436,6 @@ function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, n
 
   let htmlOps = '';
 
-  // 1. Opción Mercado Pago (Solo si está configurado y activo)
   const esMPActivo = !!(window.datosUsuarioActual?.configMercadoPago?.activo);
   if (esMPActivo) {
     htmlOps += `
@@ -2411,7 +2446,6 @@ function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, n
     `;
   }
 
-  // 2. Opción Cuentas Bancarias / Billeteras
   const cuentas = window.datosUsuarioActual?.cuentasCobro || [];
   if (cuentas.length > 0) {
     cuentas.forEach(c => {
@@ -2436,7 +2470,6 @@ function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, n
     `;
   }
 
-  // Renderizar el HTML dinámico dentro del contenedor
   containerOps.innerHTML = htmlOps;
 
   document.getElementById('modal-seleccionar-metodo-cobro').classList.remove('hidden');
@@ -2470,7 +2503,6 @@ function enviarDatosBancoWhatsApp(cuentaId) {
     else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) telLimpio = '549' + telLimpio.slice(2);
   }
 
-  // 🟢 Formato de mensaje optimizado para selección limpia (doble toque)
   let mensaje = `Hola ${clienteNombre}! 👋 Te paso los datos de transferencia para la *Cuota #${numeroCuota}* ($${Math.round(monto).toLocaleString('es-AR')}):\n\n`;
   mensaje += `🏦 *Banco:* ${cuenta.banco}\n`;
   mensaje += `👤 *Titular:* ${cuenta.titular}\n\n`;
@@ -2493,3 +2525,74 @@ function enviarDatosBancoWhatsApp(cuentaId) {
   cerrarModalSeleccionarCobro();
   if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp con datos de cobro...");
 }
+
+// ==========================================
+// 16. GESTIÓN DE LINK ÚNICO Y MODO COBRADOR
+// ==========================================
+
+function generarLinkCobrador() {
+  if (!window.usuarioActual) return mostrarToast("Iniciá sesión para generar el link", "error");
+
+  const baseUrl = window.location.origin + window.location.pathname;
+  const linkCobrador = `${baseUrl}?cobradorRef=${window.usuarioActual.uid}`;
+
+  const inputLink = document.getElementById('input-link-cobrador');
+  const boxLink = document.getElementById('box-link-cobrador');
+
+  if (inputLink && boxLink) {
+    inputLink.value = linkCobrador;
+    boxLink.classList.remove('hidden');
+  }
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(linkCobrador);
+    mostrarToast("🔗 Link de cobrador generado y copiado");
+  } else {
+    mostrarToast("🔗 Link de cobrador generado");
+  }
+}
+
+function copiarLinkCobrador() {
+  const inputLink = document.getElementById('input-link-cobrador');
+  if (!inputLink || !inputLink.value) return;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(inputLink.value).then(() => {
+      mostrarToast("📋 Link copiado al portapapeles");
+    });
+  } else {
+    inputLink.select();
+    document.execCommand('copy');
+    mostrarToast("📋 Link copiado");
+  }
+}
+
+function enviarLinkCobradorWhatsApp() {
+  const inputLink = document.getElementById('input-link-cobrador');
+  if (!inputLink || !inputLink.value) return;
+
+  const mensaje = `Hola! 👋 Te comparto el enlace de acceso directo para la ruta de cobros del día:\n\n👉 ${inputLink.value}\n\nIngresando ahí vas a poder ver el planificador y registrar los pagos de los clientes.`;
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+  
+  window.open(url, '_blank');
+}
+
+function detectarModoCobradorPorUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const cobradorRef = urlParams.get('cobradorRef');
+
+  if (cobradorRef) {
+    window.usuarioPrestamistaDueno = cobradorRef;
+    window.rolUsuarioActual = 'cobrador';
+
+    if (typeof adaptarInterfazSegunRol === 'function') {
+      adaptarInterfazSegunRol();
+    }
+
+    mostrarToast("🚶‍♂️ Acceso en Modo Cobrador detectado", "info");
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  detectarModoCobradorPorUrl();
+});

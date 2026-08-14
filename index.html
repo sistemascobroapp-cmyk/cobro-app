@@ -452,6 +452,36 @@
     </div>
   </div>
 </div>
+<!-- 🚶‍♂️ SECCIÓN ACCESO COBRADOR -->
+<div class="p-4 bg-[#0F172A] border border-slate-700/80 rounded-2xl space-y-3 mb-4">
+  <div class="flex justify-between items-center">
+    <div>
+      <h5 class="text-sm font-extrabold text-white flex items-center gap-2">
+        🚶‍♂️ Acceso para Cobrador de Calle
+      </h5>
+      <p class="text-[11px] text-slate-400">Generá un enlace para que tu cobrador gestione la ruta del día sin ver tus finanzas ni configuración.</p>
+    </div>
+  </div>
+
+  <div class="pt-2">
+    <button type="button" onclick="generarLinkCobrador()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-2.5 rounded-xl text-xs shadow transition flex justify-center items-center gap-2">
+      <span>🔗</span> Generar / Copiar Link de Cobrador
+    </button>
+  </div>
+
+  <!-- Campo donde aparece el link generado -->
+  <div id="box-link-cobrador" class="hidden space-y-2 pt-2 border-t border-slate-800">
+    <input type="text" id="input-link-cobrador" readonly class="w-full bg-slate-900 border border-slate-700 text-slate-300 text-xs p-2.5 rounded-xl font-mono select-all">
+    <div class="grid grid-cols-2 gap-2">
+      <button type="button" onclick="copiarLinkCobrador()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition">
+        📋 Copiar Link
+      </button>
+      <button type="button" onclick="enviarLinkCobradorWhatsApp()" class="bg-emerald-600 hover:bg-emerald-500 text-white py-1.5 rounded-lg text-xs font-bold transition shadow">
+        📲 Enviar por WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
 
           <!-- 4. CAMBIAR CORREO Y CONTRASEÑA -->
           <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
