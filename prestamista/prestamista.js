@@ -1,15 +1,20 @@
+// ==========================================
 // LÓGICA COMPLETA DE PRESTAMISTAS, DÍAS, SIMULACIONES, CALENDARIO, ATRASOS Y COBROS
+// ==========================================
 
 let fechaSemanaSeleccionada = new Date();
 let fechaMesCalendarioVisual = new Date();
 let simulacionActual = null;
 let pestanaResumenActual = 'activos';
 
-// VARIABLES AUXILIARES DE COBRO CON RECARGO
+// VARIABLES AUXILIARES DE COBRO CON RECARGO Y MODALES
 let datosPagoCuotaActual = null;
 let datosPagoAtrasadoAgrupadoActual = null;
 let idPrestamoAFinalizar = null;
 let idPrestamoAEliminar = null;
+let comprobantePrestamoReciente = null;
+var datosComprobantePagoReciente = null;
+let datosCuotaSeleccionadaWhatsApp = null;
 
 // FUNCIÓN AUXILIAR PARA CÁLCULO EXACTO DE DÍAS ENTRE FECHAS ISO
 function calcularDiasDeDiferencia(fechaISOInicial, fechaISOFinal) {
@@ -54,7 +59,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 
   // 2. CALCULAR FECHA Y PERÍODO ACTUAL (AÑO-MES)
   const hoy = new Date();
-  const diaDelMes = hoy.getDate(); // Día del mes (1 al 31)
+  const diaDelMes = hoy.getDate();
   const mesActual = String(hoy.getMonth() + 1).padStart(2, '0');
   const anioActual = hoy.getFullYear();
   const periodoActual = `${anioActual}-${mesActual}`;
@@ -63,7 +68,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
   const ultimoAbonado = usuarioData ? (usuarioData.ultimoPeriodoAbonado || usuarioData.ultimoPago) : null;
   const estaAlDia = ultimoAbonado === periodoActual;
 
-  // 3. REGLA DÍA 5: Mostrar cartelito SOLO si NO pagó Y YA ES DÍA 5 O MÁS
+  // 3. REGLA DÍA 5: Mostrar aviso SOLO si NO pagó Y YA ES DÍA 5 O MÁS
   if (!estaAlDia && diaDelMes >= 5) {
     if (bannerAviso) bannerAviso.classList.remove('hidden');
   } else {
@@ -117,14 +122,11 @@ function adaptarInterfazSegunRol() {
       inputInteres.step = '0.1';
     }
 
-    // Inicializar totalmente limpios al arrancar
     inicializarValoresPredeterminadosPrestamo();
   }
 
-  // Cargar configuración de Mercado Pago en la UI al iniciar
   cargarConfigMercadoPagoUI();
 
-  // Evaluar aviso de alquiler (partiendo del día 5) y estado de cuenta
   if (window.datosUsuarioActual) {
     verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
   }
@@ -182,6 +184,9 @@ async function cargarCamposConfigIntereses() {
 
       if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
       window.datosUsuarioActual.tasasConfig = cfg;
+      // Sincronizamos las cuentas bancarias y Mercado Pago en la memoria local
+      window.datosUsuarioActual.cuentasCobro = data.cuentasCobro || [];
+      window.datosUsuarioActual.configMercadoPago = data.configMercadoPago || {};
 
       const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
@@ -199,7 +204,6 @@ async function cargarCamposConfigIntereses() {
     console.error("Error al cargar configuración de intereses:", error);
   }
 
-  // Renderizar las cuentas bancarias configuradas
   if (typeof renderizarCuentasBancariasConfig === 'function') {
     renderizarCuentasBancariasConfig();
   }
@@ -493,8 +497,6 @@ function cerrarModalInfoCliente() {
 // ==========================================
 // 3. SIMULADOR Y REGISTRO DE PAGO / PRÉSTAMO
 // ==========================================
-
-let comprobantePrestamoReciente = null;
 
 async function inicializarValoresPredeterminadosPrestamo() {
   const selectFrecuencia = document.getElementById('frecuencia-prestamo');
@@ -825,7 +827,6 @@ function cerrarModalComprobantePrestamo() {
   }
 }
 
-
 function compartirComprobantePrestamoImagen() {
   const card = document.getElementById('ticket-prestamo-otorgado-card');
   if (!card) return;
@@ -1014,7 +1015,6 @@ function renderizarPlanificadorSemanal() {
   const finSemana = new Date(inicioSemana);
   finSemana.setDate(finSemana.getDate() + 6);
 
-  // --- TÍTULO DINÁMICO (CON HORAS A CERO) ---
   const lunesSeleccionado = new Date(inicioSemana);
   lunesSeleccionado.setHours(0, 0, 0, 0);
 
@@ -1126,7 +1126,6 @@ function renderizarPlanificadorSemanal() {
       });
     });
 
-    // Renderizar la columna del día
     const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const esHoy = isoDia === hoyISO;
 
@@ -1562,6 +1561,7 @@ function cerrarModalPagoAtrasadoTotal() {
   document.getElementById('modal-pago-atrasado-agrupado').classList.add('hidden');
   datosPagoAtrasadoAgrupadoActual = null;
 }
+
 async function confirmarPagoAtrasadoAgrupado(event) {
   if (event && event.preventDefault) event.preventDefault();
   const clienteId = document.getElementById('pago-atrasado-cliente-id').value;
@@ -1619,78 +1619,6 @@ async function confirmarPagoAtrasadoAgrupado(event) {
   } catch (error) {
     console.error("Error en pago atrasado:", error);
     mostrarToast("Error al registrar pago", "error");
-  }
-}
-
-function enviarComprobantePagoWhatsApp() {
-  if (!datosComprobantePagoReciente) return mostrarToast("Sin datos de comprobante", "error");
-
-  const { clienteNombre, monto, fecha, concepto, saldo, saldoRestante, clienteTelefono, telefono } = datosComprobantePagoReciente;
-
-  // 1. Obtener el número y limpiar espacios/guiones
-  let telRaw = clienteTelefono || telefono || '';
-  let telLimpio = telRaw.toString().replace(/\D/g, '');
-
-  // 2. Formato correcto para Argentina (549 + 10 dígitos)
-  if (telLimpio) {
-    if (telLimpio.length === 10) {
-      telLimpio = '549' + telLimpio; // Ej: 1123456789 -> 5491123456789
-    } else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) {
-      telLimpio = '549' + telLimpio.slice(2); // Agrega el 9 que exige WhatsApp
-    }
-  }
-
-  const saldoFinal = saldoRestante !== undefined ? saldoRestante : (saldo || 0);
-
-  let mensaje = `Hola ${clienteNombre || 'Cliente'}! 👋 Te adjuntamos el *Comprobante Oficial de Pago*:\n\n`;
-  mensaje += `💵 *Monto Abonado:* $${Math.round(parseFloat(monto || 0)).toLocaleString('es-AR')}\n`;
-  mensaje += `📅 *Fecha:* ${fecha || new Date().toLocaleDateString('es-AR')}\n`;
-  mensaje += `📝 *Concepto:* ${concepto || 'Pago de Cuota'}\n`;
-  mensaje += `💰 *Saldo Restante:* $${Math.round(parseFloat(saldoFinal)).toLocaleString('es-AR')}\n\n`;
-  mensaje += `¡Muchas gracias! 🙌`;
-
-  const urlWhatsApp = telLimpio
-    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
-    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
-
-  window.open(urlWhatsApp, '_blank');
-  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo chat de WhatsApp...");
-}
-async function compartirComprobanteImagen() {
-  const card = document.getElementById('ticket-recibo-card');
-  if (!card) return typeof mostrarToast === 'function' ? mostrarToast("No se encontró el recibo visual", "error") : null;
-
-  try {
-    if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando imagen...");
-
-    const canvas = await html2canvas(card, {
-      backgroundColor: '#0F172A',
-      scale: 2,
-      useCORS: true
-    });
-
-    canvas.toBlob(async (blob) => {
-      if (!blob) return;
-      const nombreArchivo = `Recibo_Pago_${Date.now()}.png`;
-      const file = new File([blob], nombreArchivo, { type: 'image/png' });
-
-      // En Celular: Abre el menú nativo para compartir (WhatsApp, Mail, etc.)
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: 'Recibo de Pago' });
-          return;
-        } catch (e) {}
-      }
-
-      // En PC: Descarga la imagen a la computadora
-      const link = document.createElement('a');
-      link.download = nombreArchivo;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      if (typeof mostrarToast === 'function') mostrarToast("📸 Recibo descargado correctamente");
-    }, 'image/png');
-  } catch (e) {
-    if (typeof mostrarToast === 'function') mostrarToast("Error al generar imagen", "error");
   }
 }
 
@@ -1875,7 +1803,7 @@ async function confirmarRegistroPago(event) {
       new Date().toLocaleString('es-AR'),
       conceptoTexto,
       saldoPendiente,
-      cli ? cli.telefono : '' // <--- Esta es la línea clave que le pasa el teléfono a WhatsApp
+      cli ? cli.telefono : ''
     );
   } catch (error) {
     mostrarToast("Error al registrar pago", "error");
@@ -1883,15 +1811,9 @@ async function confirmarRegistroPago(event) {
 }
 
 // ==========================================
-// 10. COMPROBANTES Y WHATSAPP (AMBOS MODALES)
+// 10. COMPROBANTES Y WHATSAPP MODAL
 // ==========================================
 
-
-var datosComprobantePagoReciente = null;
-
-// ------------------------------------------
-// A) RECIBO DE PAGO DE CUOTA O DEUDA ATRASADA
-// ------------------------------------------
 function abrirModalComprobante(clienteNombre, monto, fecha, concepto, saldo, clienteTelefono = '') {
   datosComprobantePagoReciente = {
     clienteNombre: clienteNombre || 'Cliente',
@@ -1930,17 +1852,23 @@ function enviarComprobantePagoWhatsApp() {
 
   const { clienteNombre, monto, fecha, concepto, saldo, clienteTelefono } = datosComprobantePagoReciente;
 
+  let telRaw = clienteTelefono || '';
+  let telLimpio = telRaw.toString().replace(/\D/g, '');
+
+  if (telLimpio) {
+    if (telLimpio.length === 10) {
+      telLimpio = '549' + telLimpio;
+    } else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) {
+      telLimpio = '549' + telLimpio.slice(2);
+    }
+  }
+
   let mensaje = `Hola ${clienteNombre}! 👋 Te adjuntamos el *Comprobante Oficial de Pago*:\n\n`;
   mensaje += `💵 *Monto Abonado:* $${Math.round(monto).toLocaleString('es-AR')}\n`;
   mensaje += `📅 *Fecha:* ${fecha}\n`;
   mensaje += `📝 *Concepto:* ${concepto}\n`;
   mensaje += `💰 *Saldo Restante:* $${Math.round(saldo).toLocaleString('es-AR')}\n\n`;
-  mensaje += `¡Muchas gracias!`;
-
-  let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
-  if (telLimpio && !telLimpio.startsWith('54')) {
-    telLimpio = '54' + telLimpio;
-  }
+  mensaje += `¡Muchas gracias! 🙌`;
 
   const urlWhatsApp = telLimpio 
     ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
@@ -1950,47 +1878,40 @@ function enviarComprobantePagoWhatsApp() {
   if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp...");
 }
 
-// ------------------------------------------
-// B) FICHA OFICIAL DE NUEVO PRÉSTAMO OTORGADO
-// ------------------------------------------
-function abrirModalComprobantePrestamo(prestamo, cliente) {
-  comprobantePrestamoReciente = { prestamo, cliente };
+async function compartirComprobanteImagen() {
+  const card = document.getElementById('ticket-recibo-card');
+  if (!card) return typeof mostrarToast === 'function' ? mostrarToast("No se encontró el recibo visual", "error") : null;
 
-  const setTexto = (id, txt) => {
-    const el = document.getElementById(id);
-    if (el) el.innerText = txt;
-  };
+  try {
+    if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando imagen...");
 
-  setTexto('recibo-pres-cliente', cliente ? cliente.nombre : (prestamo.nombreCliente || 'Sin Cliente'));
-  setTexto('recibo-pres-tel', cliente ? cliente.telefono : 'Sin teléfono registrado');
-  setTexto('recibo-pres-fechainicio', prestamo.fechaInicio || '-');
-  setTexto('recibo-pres-monto', '$' + Math.round(parseFloat(prestamo.monto || 0)).toLocaleString('es-AR'));
-  setTexto('recibo-pres-total', '$' + Math.round(parseFloat(prestamo.montoTotal || 0)).toLocaleString('es-AR'));
-  setTexto('recibo-pres-plan', `${prestamo.cuotas} cuota(s) ${prestamo.frecuencia}s de $${Math.round(parseFloat(prestamo.valorCuota || 0)).toLocaleString('es-AR')}`);
-
-  const contenedorCronograma = document.getElementById('recibo-pres-cronograma');
-  if (contenedorCronograma) {
-    contenedorCronograma.innerHTML = '';
-    (prestamo.cuotasDetalle || []).forEach(c => {
-      const fPartes = (c.fecha || '').split('-');
-      const fechaFormateada = fPartes.length === 3 ? `${fPartes[2]}/${fPartes[1]}/${fPartes[0]}` : c.fecha;
-      contenedorCronograma.innerHTML += `
-        <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
-          <span class="text-slate-300">Cuota #${c.numero} (${fechaFormateada})</span>
-          <strong class="text-fuchsia-400">$${Math.round(parseFloat(c.montoCuota || 0)).toLocaleString('es-AR')}</strong>
-        </div>
-      `;
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#0F172A',
+      scale: 2,
+      useCORS: true
     });
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const nombreArchivo = `Recibo_Pago_${Date.now()}.png`;
+      const file = new File([blob], nombreArchivo, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Recibo de Pago' });
+          return;
+        } catch (e) {}
+      }
+
+      const link = document.createElement('a');
+      link.download = nombreArchivo;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      if (typeof mostrarToast === 'function') mostrarToast("📸 Recibo descargado correctamente");
+    }, 'image/png');
+  } catch (e) {
+    if (typeof mostrarToast === 'function') mostrarToast("Error al generar imagen", "error");
   }
-
-  const modal = document.getElementById('modal-comprobante-prestamo-otorgado');
-  if (modal) modal.classList.remove('hidden');
-}
-
-function cerrarModalComprobantePrestamo() {
-  const modal = document.getElementById('modal-comprobante-prestamo-otorgado');
-  if (modal) modal.classList.add('hidden');
-  if (typeof mostrarSeccion === 'function') mostrarSeccion('sec-por-cobrar');
 }
 
 function enviarComprobantePrestamoWhatsApp() {
@@ -2018,8 +1939,9 @@ function enviarComprobantePrestamoWhatsApp() {
   mensaje += `\n¡Cualquier duda estamos a tu disposición!`;
 
   let telLimpio = (cliente ? cliente.telefono : '').toString().replace(/\D/g, '');
-  if (telLimpio && !telLimpio.startsWith('54')) {
-    telLimpio = '54' + telLimpio;
+  if (telLimpio) {
+    if (telLimpio.length === 10) telLimpio = '549' + telLimpio;
+    else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) telLimpio = '549' + telLimpio.slice(2);
   }
 
   const urlWhatsApp = telLimpio 
@@ -2029,11 +1951,11 @@ function enviarComprobantePrestamoWhatsApp() {
   window.open(urlWhatsApp, '_blank');
   if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp...");
 }
+
 // ==========================================
-// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO Y PERSISTENCIA FIJA
+// 11. CONFIGURACIÓN DE MERCADO PAGO AUTOMÁTICO
 // ==========================================
 
-// Actualiza el texto visual del interruptor
 function actualizarEstadoToggleMP() {
   const chkAuto = document.getElementById('chk-mp-auto-activo');
   const lblEstado = document.getElementById('lbl-mp-auto-estado');
@@ -2062,7 +1984,6 @@ async function guardarConfigMercadoPago() {
     const userDoc = await userRef.get();
     const datosActuales = userDoc.exists ? (userDoc.data().configMercadoPago || {}) : {};
 
-    // Mantiene el token anterior si el campo actual está vacío al tocar la palanca
     const configMP = {
       accessToken: mpAccessToken || datosActuales.accessToken || '',
       activo: cobroAutomativoActivo,
@@ -2091,7 +2012,6 @@ async function cargarConfigMercadoPagoUI() {
   const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth().currentUser);
   
   if (!usuario) {
-    // Si Firebase aún no reconoció al usuario al refrescar, reintenta en 400ms
     setTimeout(cargarConfigMercadoPagoUI, 400);
     return;
   }
@@ -2109,12 +2029,10 @@ async function cargarConfigMercadoPagoUI() {
       const chkAuto = document.getElementById('chk-mp-auto-activo');
       const lblEstado = document.getElementById('lbl-mp-auto-estado');
 
-      // 1. Cargar el Token guardado en el casillero de texto
       if (inputToken && cfgMP.accessToken) {
         inputToken.value = cfgMP.accessToken;
       }
 
-      // 2. Encender o apagar la palanca según lo guardado en Firestore
       const estaActivo = cfgMP.activo === true || cfgMP.activo === 'true';
 
       if (chkAuto) {
@@ -2134,7 +2052,6 @@ async function cargarConfigMercadoPagoUI() {
   }
 }
 
-// Ejecutar automáticamente apenas Firebase confirme la sesión activa al recargar la página
 if (typeof firebase !== 'undefined' && firebase.auth) {
   firebase.auth().onAuthStateChanged((user) => {
     if (user) {
@@ -2183,7 +2100,6 @@ async function generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clien
 }
 
 async function enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono) {
-  // 1. Abrimos la pestaña INMEDIATAMENTE para que el navegador no bloquee el popup
   const ventanaWS = window.open('', '_blank');
   if (ventanaWS) {
     ventanaWS.document.write(`
@@ -2201,7 +2117,6 @@ async function enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre,
   try {
     if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando enlace de pago...");
 
-    // 2. Generar el link con tu función existente
     const linkMP = await generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota);
     if (!linkMP) {
       if (ventanaWS) ventanaWS.close();
@@ -2209,7 +2124,6 @@ async function enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre,
       return;
     }
 
-    // 3. Formatear el teléfono para Argentina (549 + 10 dígitos)
     let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
     if (telLimpio) {
       if (telLimpio.length === 10) {
@@ -2219,14 +2133,12 @@ async function enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre,
       }
     }
 
-    // 4. Mensaje oficial
     const mensaje = `Hola ${clienteNombre}! 👋 Le envío el enlace de pago seguro para la *Cuota #${numeroCuota}* por un monto de *$${Math.round(monto).toLocaleString('es-AR')}*:\n\n👉 ${linkMP}\n\nUna vez realizado el pago, su cuota se acreditará automáticamente en el sistema. ¡Muchas gracias!`;
 
     const urlWhatsApp = telLimpio 
       ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
 
-    // 5. Redirigir la pestaña ya abierta
     if (ventanaWS && !ventanaWS.closed) {
       ventanaWS.location.href = urlWhatsApp;
     } else {
@@ -2291,11 +2203,11 @@ async function pagarSuscripcionMercadoPago() {
     console.error("Error al obtener datos de suscripción:", error);
     mostrarToast("Error al conectar con la base de datos", "error");
   }
-}// ==========================================
-// GESTIÓN DE MÚLTIPLES CUENTAS BANCARIAS Y ALIAS
-// ==========================================
+}
 
-let datosCuotaSeleccionadaWhatsApp = null;
+// ==========================================
+// 14. GESTIÓN DE MÚLTIPLES CUENTAS BANCARIAS Y ALIAS
+// ==========================================
 
 async function guardarNuevaCuentaBancaria(event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -2330,7 +2242,6 @@ async function guardarNuevaCuentaBancaria(event) {
     if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
     window.datosUsuarioActual.cuentasCobro = cuentasActuales;
 
-    // Limpiar formulario
     document.getElementById('cfg-cuenta-banco').value = '';
     document.getElementById('cfg-cuenta-titular').value = '';
     document.getElementById('cfg-cuenta-alias').value = '';
@@ -2382,7 +2293,7 @@ function renderizarCuentasBancariasConfig() {
   let html = '';
   cuentas.forEach(c => {
     html += `
-      <div class="p-3 bg-[#1E293B] border border-slate-700/80 rounded-xl flex justify-between items-center text-xs">
+      <div class="p-3 bg-[#1E293B] border border-slate-700/80 rounded-xl flex justify-between items-center text-xs my-1">
         <div>
           <h5 class="font-bold text-white text-sm">${c.banco}</h5>
           <p class="text-slate-300">👤 Titular: <strong>${c.titular}</strong></p>
@@ -2400,7 +2311,7 @@ function renderizarCuentasBancariasConfig() {
 }
 
 // ==========================================
-// MODAL SELECTOR DE COBRO
+// 15. MODAL SELECTOR DE COBRO
 // ==========================================
 
 function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono) {
@@ -2426,7 +2337,7 @@ function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, n
   const esMPActivo = !!(window.datosUsuarioActual?.configMercadoPago?.activo);
   if (esMPActivo) {
     htmlOps += `
-      <button onclick="enviarLinkMPDesdeModal()" class="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white p-3 rounded-xl shadow font-bold text-xs flex justify-between items-center transition">
+      <button onclick="enviarLinkMPDesdeModal()" class="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white p-3 rounded-xl shadow font-bold text-xs flex justify-between items-center transition my-1.5">
         <span class="flex items-center gap-2">🤖 Mercado Pago (Automático)</span>
         <span class="text-[10px] bg-sky-950 px-2 py-0.5 rounded-full border border-sky-400/30">Se acredita solo</span>
       </button>
@@ -2438,7 +2349,7 @@ function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, n
   if (cuentas.length > 0) {
     cuentas.forEach(c => {
       htmlOps += `
-        <button onclick="enviarDatosBancoWhatsApp('${c.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl border border-slate-700 font-bold text-xs flex justify-between items-center transition text-left">
+        <button onclick="enviarDatosBancoWhatsApp('${c.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl border border-slate-700 font-bold text-xs flex justify-between items-center transition text-left my-1.5">
           <div>
             <p class="text-fuchsia-300 font-extrabold">🏦 ${c.banco}</p>
             <p class="text-[11px] text-slate-300 font-mono">Alias: ${c.alias}</p>
@@ -2457,6 +2368,9 @@ function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, n
       </div>
     `;
   }
+
+  // Renderizar el HTML dinámico dentro del contenedor
+  containerOps.innerHTML = htmlOps;
 
   document.getElementById('modal-seleccionar-metodo-cobro').classList.remove('hidden');
 }
@@ -2489,7 +2403,7 @@ function enviarDatosBancoWhatsApp(cuentaId) {
     else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) telLimpio = '549' + telLimpio.slice(2);
   }
 
-  let mensaje = `Hola ${clienteNombre}! 👋 Te paso los datos para realizar la transferencia correspondente a la *Cuota #${numeroCuota}* ($${Math.round(monto).toLocaleString('es-AR')}):\n\n`;
+  let mensaje = `Hola ${clienteNombre}! 👋 Te paso los datos para realizar la transferencia correspondiente a la *Cuota #${numeroCuota}* ($${Math.round(monto).toLocaleString('es-AR')}):\n\n`;
   mensaje += `🏦 *Banco:* ${cuenta.banco}\n`;
   mensaje += `👤 *Titular:* ${cuenta.titular}\n`;
   mensaje += `📌 *Alias:* \`${cuenta.alias}\`\n`;
