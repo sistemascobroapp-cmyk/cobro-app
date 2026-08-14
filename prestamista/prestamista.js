@@ -322,6 +322,67 @@ function renderizarClientesSelect() {
   select.value = valActual;
 }
 
+// ==========================================
+// CÁLCULO DE REPUTACIÓN / SCORING DEL CLIENTE
+// ==========================================
+function calcularReputacionCliente(clienteId) {
+  const prestamosCli = (window.prestamos || []).filter(p => p.clienteId === clienteId);
+  const hoyISO = typeof obtenerFechaLocalISO === 'function' ? obtenerFechaLocalISO() : new Date().toISOString().split('T')[0];
+
+  let totalCuotasEvaluadas = 0;
+  let cuotasAtrasadasCount = 0;
+
+  prestamosCli.forEach(p => {
+    (p.cuotasDetalle || []).forEach(c => {
+      const estaPagado = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+      
+      // Evaluamos cuotas que ya vencerían o que ya se pagaron
+      if (estaPagado || c.fecha < hoyISO) {
+        totalCuotasEvaluadas++;
+        
+        // Si está actualmente vencida sin pagar o se pagó fuera de término
+        if (!estaPagado && c.fecha < hoyISO) {
+          cuotasAtrasadasCount++;
+        }
+      }
+    });
+  });
+
+  // Si no tiene cuotas evaluadas aún
+  if (totalCuotasEvaluadas === 0) {
+    return {
+      etiqueta: '⚪ Sin Historial',
+      badgeClass: 'bg-slate-800 text-slate-400 border-slate-700',
+      cardClass: 'bg-[#1E293B]/60 border-slate-700/80'
+    };
+  }
+
+  const porcentajeAtrasos = (cuotasAtrasadasCount / totalCuotasEvaluadas) * 100;
+
+  if (porcentajeAtrasos === 0) {
+    return {
+      etiqueta: '🟢 Excelente Pagador',
+      badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+      cardClass: 'bg-emerald-950/20 border-emerald-500/50'
+    };
+  } else if (porcentajeAtrasos <= 30) {
+    return {
+      etiqueta: '🟡 Demora Ocasional',
+      badgeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
+      cardClass: 'bg-amber-950/20 border-amber-500/50'
+    };
+  } else {
+    return {
+      etiqueta: '🔴 Atrasador Frecuente',
+      badgeClass: 'bg-red-500/20 text-red-400 border-red-500/40',
+      cardClass: 'bg-red-950/30 border-red-500/70'
+    };
+  }
+}
+
+// ==========================================
+// DIRECTORIO DE CLIENTES CON COLORES DE REPUTACIÓN
+// ==========================================
 function renderizarDirectorioClientes() {
   const container = document.getElementById('grid-clientes-directorio');
   if (!container) return;
@@ -339,20 +400,26 @@ function renderizarDirectorioClientes() {
     const prestamosCliente = prestamos.filter(p => p.clienteId === c.id && p.estado !== 'finalizado');
     const tieneActivo = prestamosCliente.length > 0;
 
+    // 🟢 Calculamos la reputación histórica
+    const reputacion = calcularReputacionCliente(c.id);
+
     container.innerHTML += `
-      <div class="p-4 rounded-2xl border bg-[#1E293B]/60 border-slate-700/80 space-y-3">
-        <div class="flex justify-between items-start">
+      <div class="p-4 rounded-2xl border ${reputacion.cardClass} space-y-3 transition shadow-md">
+        <div class="flex justify-between items-start gap-2">
           <div>
             <h5 class="font-extrabold text-white text-base">${c.nombre}</h5>
             <p class="text-xs text-slate-300">📞 ${c.telefono} | 🚨 ${c.emergencia || 'S/E'}</p>
             <p class="text-xs text-slate-400">📍 ${c.direccion}</p>
           </div>
-          <span class="text-[10px] px-2.5 py-1 rounded-full font-extrabold ${tieneActivo ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-800 text-slate-400'}">
-            ${tieneActivo ? '💳 Con Préstamo' : '🟢 Al Día'}
-          </span>
+          <div class="flex flex-col items-end gap-1">
+            <span class="text-[10px] px-2.5 py-0.5 rounded-full font-extrabold border ${reputacion.badgeClass}">
+              ${reputacion.etiqueta}
+            </span>
+            ${tieneActivo ? '<span class="text-[9px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">💳 Con Préstamo</span>' : ''}
+          </div>
         </div>
-        <div class="flex justify-end gap-2 border-t border-slate-800 pt-2">
-          <button onclick="abrirModalInfoCliente('${c.id}')" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-fuchsia-400 rounded-lg border border-slate-700 font-bold">📜 Ficha</button>
+        <div class="flex justify-end gap-2 border-t border-slate-800/80 pt-2">
+          <button onclick="abrirModalInfoCliente('${c.id}')" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-fuchsia-400 rounded-lg border border-slate-700 font-bold">📜 Ficha & Historial</button>
           <button onclick="editarCliente('${c.id}')" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 font-bold">✏️ Editar</button>
           <button onclick="eliminarCliente('${c.id}')" class="px-2.5 py-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 font-bold">🗑️</button>
         </div>
