@@ -77,7 +77,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (VERSIÓN BLINDADA PARA OCULTAR BOTÓN ADMIN)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (VERSIÓN CORREGIDA Y SEGURA)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
@@ -86,11 +86,10 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // 1. OCULTAR BOTÓN "ACCESOS PRESTAMISTAS" POR ID Y POR TEXTO
-  const selectoresAdmin = ['#btn-sec-admin', '#btn-accesos-prestamistas', '#m-btn-admin', '#sec-admin-master', '.btn-admin-only'];
-  
-  selectoresAdmin.forEach(sel => {
-    document.querySelectorAll(sel).forEach(el => {
+  // 1. OCULTAR ÚNICAMENTE EL BOTÓN "ACCESOS PRESTAMISTAS"
+  // Buscamos estrictamente botones o enlaces (sin tocar los div contenedores)
+  document.querySelectorAll('button, a').forEach(el => {
+    if (el.textContent && el.textContent.includes('Accesos Prestamistas')) {
       if (esAdmin) {
         el.style.removeProperty('display');
         el.classList.remove('hidden');
@@ -98,24 +97,24 @@ function adaptarInterfazSegunRol() {
         el.style.setProperty('display', 'none', 'important');
         el.classList.add('hidden');
       }
-    });
+    }
   });
 
-  // Escaneo directo de texto por si el botón del menú lateral no tiene ID exacto
-  document.querySelectorAll('button, a, div, li, span').forEach(el => {
-    if (el.innerText && el.innerText.trim().includes('Accesos Prestamistas')) {
-      const contenedorBoton = el.closest('button') || el.closest('a') || el.closest('li') || el;
+  // Ocultar también por IDs específicos de Admin si existen
+  ['btn-sec-admin', 'btn-accesos-prestamistas', 'm-btn-admin', 'sec-admin-master'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
       if (esAdmin) {
-        contenedorBoton.style.removeProperty('display');
-        contenedorBoton.classList.remove('hidden');
+        el.style.removeProperty('display');
+        el.classList.remove('hidden');
       } else {
-        contenedorBoton.style.setProperty('display', 'none', 'important');
-        contenedorBoton.classList.add('hidden');
+        el.style.setProperty('display', 'none', 'important');
+        el.classList.add('hidden');
       }
     }
   });
 
-  // 2. Ocultar finanzas y configuración al cobrador
+  // 2. OCULTAR FINANZAS Y CONFIGURACIÓN AL COBRADOR
   const elementosPrivados = [
     'resumen-capital-box',
     'resumen-ganancia-box',
@@ -127,11 +126,16 @@ function adaptarInterfazSegunRol() {
   elementosPrivados.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      if (esCobrador) el.style.setProperty('display', 'none', 'important');
-      else el.classList.remove('hidden');
+      if (esCobrador) {
+        el.style.setProperty('display', 'none', 'important');
+      } else {
+        el.style.removeProperty('display');
+        el.classList.remove('hidden');
+      }
     }
   });
 
+  // 3. ADAPTACIÓN DE TEXTOS SEGÚN ROL
   const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
   const mBtnRegistrar = document.getElementById('m-btn-registrar');
   const tituloSec = document.getElementById('titulo-sec-registrar');
@@ -184,11 +188,6 @@ function adaptarInterfazSegunRol() {
     verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
   }
 }
-
-// ESCUCHADOR GLOBAL: Si el usuario hace clic en cualquier botón del menú lateral, vuelve a forzar el ocultamiento
-document.addEventListener('click', () => {
-  setTimeout(adaptarInterfazSegunRol, 30);
-});
 
 // ==========================================
 // 1. CONFIGURACIÓN DE INTERESES, TASAS Y CREDENCIALES ⚙️
