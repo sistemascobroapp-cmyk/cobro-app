@@ -2165,12 +2165,41 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
 }
 
 // ==========================================
+// FUNCIONES AUXILIARES DE COPIADO COMPATIBLE (PC Y MÓVIL)
+// ==========================================
+function copiarTextoAlPortapapeles(texto, mensajeExito) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto)
+      .then(() => mostrarToast(mensajeExito || "📋 Copiado al portapapeles"))
+      .catch(() => fallbackCopiarTexto(texto, mensajeExito));
+  } else {
+    fallbackCopiarTexto(texto, mensajeExito);
+  }
+}
+
+function fallbackCopiarTexto(texto, mensajeExito) {
+  const inputTemp = document.createElement('input');
+  inputTemp.value = texto;
+  document.body.appendChild(inputTemp);
+  inputTemp.select();
+  try {
+    document.execCommand('copy');
+    mostrarToast(mensajeExito || "📋 Copiado al portapapeles");
+  } catch (err) {
+    prompt("Copiá este enlace manualmente:", texto);
+  }
+  document.body.removeChild(inputTemp);
+}
+
+// ==========================================
 // 12. INTEGRACIÓN MERCADO PAGO + WHATSAPP AUTOMÁTICO
 // ==========================================
 
 const RENDER_BACKEND_URL = "https://cobroapp-backend.onrender.com";
 
 async function generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota) {
+  const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth()?.currentUser);
+  
   try {
     if (typeof mostrarToast === 'function') mostrarToast("⏳ Generando enlace de Mercado Pago...");
 
@@ -2180,7 +2209,7 @@ async function generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clien
       body: JSON.stringify({
         prestamoId,
         cuotaId,
-        usuarioId: window.usuarioActual.uid,
+        usuarioId: usuario ? usuario.uid : (window.usuarioPrestamistaDueno || ''),
         monto,
         clienteNombre,
         numeroCuota
@@ -2260,13 +2289,7 @@ async function copiarLinkPagoMP(prestamoId, cuotaId, monto, clienteNombre, numer
   const linkMP = await generarLinkPagoCuotaMercadoPago(prestamoId, cuotaId, monto, clienteNombre, numeroCuota);
   if (!linkMP) return;
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(linkMP).then(() => {
-      mostrarToast("📋 Link de Mercado Pago copiado al portapapeles");
-    });
-  } else {
-    prompt("Copiá el enlace de pago:", linkMP);
-  }
+  copiarTextoAlPortapapeles(linkMP, "📋 Link de Mercado Pago copiado al portapapeles");
 }
 
 // ==========================================
@@ -2290,12 +2313,7 @@ async function pagarSuscripcionMercadoPago() {
       if (linkCobro && linkCobro.startsWith('http')) {
         window.open(linkCobro, '_blank');
       } else if (linkCobro) {
-        if (navigator.clipboard) {
-          await navigator.clipboard.writeText(linkCobro);
-          mostrarToast(`📋 Datos de cobro copiados: ${linkCobro}`);
-        } else {
-          alert(`Datos de cobro del Administrador:\n${linkCobro}`);
-        }
+        copiarTextoAlPortapapeles(linkCobro, `📋 Datos de cobro copiados: ${linkCobro}`);
       } else {
         mostrarToast("El Administrador no ha configurado un link de cobro aún.", "error");
       }
@@ -2531,40 +2549,28 @@ function enviarDatosBancoWhatsApp(cuentaId) {
 // ==========================================
 
 function generarLinkCobrador() {
-  if (!window.usuarioActual) return mostrarToast("Iniciá sesión para generar el link", "error");
+  const usuario = window.usuarioActual || (typeof firebase !== 'undefined' && firebase.auth()?.currentUser);
+  if (!usuario) return mostrarToast("Iniciá sesión para generar el link", "error");
 
   const baseUrl = window.location.origin + window.location.pathname;
-  const linkCobrador = `${baseUrl}?cobradorRef=${window.usuarioActual.uid}`;
+  const linkCobrador = `${baseUrl}?cobradorRef=${usuario.uid}`;
 
   const inputLink = document.getElementById('input-link-cobrador');
   const boxLink = document.getElementById('box-link-cobrador');
 
-  if (inputLink && boxLink) {
-    inputLink.value = linkCobrador;
-    boxLink.classList.remove('hidden');
-  }
+  if (inputLink) inputLink.value = linkCobrador;
+  if (boxLink) boxLink.classList.remove('hidden');
 
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(linkCobrador);
-    mostrarToast("🔗 Link de cobrador generado y copiado");
-  } else {
-    mostrarToast("🔗 Link de cobrador generado");
-  }
+  copiarTextoAlPortapapeles(linkCobrador, "🔗 Link de cobrador generado y copiado");
 }
 
 function copiarLinkCobrador() {
   const inputLink = document.getElementById('input-link-cobrador');
-  if (!inputLink || !inputLink.value) return;
-
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(inputLink.value).then(() => {
-      mostrarToast("📋 Link copiado al portapapeles");
-    });
-  } else {
-    inputLink.select();
-    document.execCommand('copy');
-    mostrarToast("📋 Link copiado");
+  if (!inputLink || !inputLink.value) {
+    return mostrarToast("⚠️ Primero debés generar el link", "error");
   }
+
+  copiarTextoAlPortapapeles(inputLink.value, "📋 Link copiado al portapapeles");
 }
 
 function enviarLinkCobradorWhatsApp() {
@@ -2585,11 +2591,24 @@ function detectarModoCobradorPorUrl() {
     window.usuarioPrestamistaDueno = cobradorRef;
     window.rolUsuarioActual = 'cobrador';
 
+    // FORZAR OCULTAMIENTO DE LOGIN Y MOSTRAR APP PRINCIPAL
+    const secLogin = document.getElementById('sec-login') || document.getElementById('vista-login');
+    if (secLogin) secLogin.classList.add('hidden');
+
+    const secApp = document.getElementById('app-principal') || document.getElementById('sec-por-cobrar');
+    if (secApp) secApp.classList.remove('hidden');
+
+    if (typeof mostrarSeccion === 'function') {
+      mostrarSeccion('sec-por-cobrar');
+    }
+
     if (typeof adaptarInterfazSegunRol === 'function') {
       adaptarInterfazSegunRol();
     }
 
-    mostrarToast("🚶‍♂️ Acceso en Modo Cobrador detectado", "info");
+    if (typeof mostrarToast === 'function') {
+      mostrarToast("🚶‍♂️ Acceso en Modo Cobrador activado");
+    }
   }
 }
 
