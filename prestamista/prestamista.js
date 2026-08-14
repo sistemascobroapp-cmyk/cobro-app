@@ -77,7 +77,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (VERSIÓN DEFINITIVA Y COMPLETA)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (APUNTANDO A ID REAL: btn-sec-usuarios)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
@@ -86,42 +86,30 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // 1. INYECTAR REGLA CSS PERMANENTE EN EL NAVEGADOR (Para que no reaparezca el botón en PC)
-  let styleTag = document.getElementById('css-bloqueo-admin');
-  if (!styleTag) {
-    styleTag = document.createElement('style');
-    styleTag.id = 'css-bloqueo-admin';
-    document.head.appendChild(styleTag);
+  // 1. OCULTAR O MOSTRAR EL BOTÓN ADMIN EN EL MENÚ LATERAL (#btn-sec-usuarios)
+  const btnUsuariosAdmin = document.getElementById('btn-sec-usuarios');
+  if (btnUsuariosAdmin) {
+    if (esAdmin) {
+      btnUsuariosAdmin.classList.remove('hidden');
+      btnUsuariosAdmin.style.removeProperty('display');
+    } else {
+      btnUsuariosAdmin.classList.add('hidden');
+      btnUsuariosAdmin.style.setProperty('display', 'none', 'important');
+    }
   }
 
-  if (esAdmin) {
-    styleTag.innerHTML = ''; 
-  } else {
-    styleTag.innerHTML = `
-      #btn-sec-admin, 
-      #btn-accesos-prestamistas, 
-      #m-btn-admin, 
-      #sec-admin-master, 
-      .solo-admin {
-        display: none !important;
-      }
-    `;
-  }
-
-  // 2. OCULTAR BOTÓN "ACCESOS PRESTAMISTAS" EN EL MENÚ LATERAL
-  document.querySelectorAll('button, a, li').forEach(el => {
-    if (el.textContent && el.textContent.trim().includes('Accesos Prestamistas')) {
-      if (!esAdmin) {
-        el.classList.add('solo-admin');
-        el.style.setProperty('display', 'none', 'important');
-      } else {
-        el.classList.remove('solo-admin');
-        el.style.removeProperty('display');
-      }
+  // Ocultar también en móviles o contenedores adicionales
+  document.querySelectorAll('#btn-sec-usuarios, #m-btn-usuarios, #sec-usuarios').forEach(el => {
+    if (esAdmin) {
+      el.classList.remove('hidden');
+      el.style.removeProperty('display');
+    } else {
+      el.classList.add('hidden');
+      el.style.setProperty('display', 'none', 'important');
     }
   });
 
-  // 3. OCULTAR FINANZAS Y CONFIGURACIÓN AL COBRADOR
+  // 2. OCULTAR FINANZAS Y CONFIGURACIÓN AL COBRADOR
   const elementosPrivados = [
     'resumen-capital-box',
     'resumen-ganancia-box',
@@ -142,7 +130,7 @@ function adaptarInterfazSegunRol() {
     }
   });
 
-  // 4. ADAPTACIÓN DE TEXTOS Y FORMULARIOS SEGÚN ROL
+  // 3. ADAPTACIÓN DE TEXTOS Y FORMULARIOS SEGÚN ROL
   const btnMenuRegistrar = document.getElementById('btn-sec-registrar');
   const mBtnRegistrar = document.getElementById('m-btn-registrar');
   const tituloSec = document.getElementById('titulo-sec-registrar');
@@ -194,6 +182,19 @@ function adaptarInterfazSegunRol() {
   if (window.datosUsuarioActual) {
     verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
   }
+}
+
+// 4. VIGILANTE EN TIEMPO REAL (MutationObserver)
+// Si la PC redibuja el menú o cambia clases al hacer clic, esto frena la reaparición al instante.
+if (typeof window !== 'undefined' && !window.observadorMenuActivo) {
+  window.observadorMenuActivo = true;
+  const observador = new MutationObserver(() => {
+    ocultarBotonAdminForzado();
+  });
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    observador.observe(document.body, { childList: true, subtree: true, attributes: true });
+  });
 }
 
 // 5. PARCHE DE NAVEGACIÓN EN PC: Vuelve a ocultar el botón Admin en cada cambio de pestaña
