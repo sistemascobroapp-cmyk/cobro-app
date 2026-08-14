@@ -2549,7 +2549,6 @@ function enviarDatosBancoWhatsApp(cuentaId) {
 // ==========================================
 
 function iniciarModoCobradorDirecto(cobradorRef) {
-  // Guardas para evitar ejecuciones dobles
   if (window.modoCobradorIniciado) return;
   window.modoCobradorIniciado = true;
 
@@ -2562,10 +2561,10 @@ function iniciarModoCobradorDirecto(cobradorRef) {
     email: 'cobrador@modo.app'
   };
 
-  // 1. Ocultar COMPLETAMENTE el bloque/card flotante de Login
+  // 1. Ocultar COMPLETAMENTE la pantalla/tarjeta de Login
   const selectoresOcultar = [
     '#sec-login', '#vista-login', '#login-card', '#contenedor-login',
-    '#pantalla-login', '#modal-login', 'form'
+    '#pantalla-login', '#modal-login'
   ];
   
   selectoresOcultar.forEach(sel => {
@@ -2575,31 +2574,28 @@ function iniciarModoCobradorDirecto(cobradorRef) {
     });
   });
 
-  // Ocultar cualquier contenedor hermano que tenga el texto de Login
+  // Ocultar cualquier contenedor residual con textos de Login
   document.querySelectorAll('div, section, main').forEach(el => {
-    if (el.innerText && el.innerText.includes('SISTEMA DE GESTIÓN PARA PRESTAMISTAS')) {
-      const tarjetaCentrada = el.closest('.flex') || el.closest('.grid') || el.closest('section') || el;
-      if (tarjetaCentrada && !tarjetaCentrada.id.includes('app')) {
-        tarjetaCentrada.style.setProperty('display', 'none', 'important');
-      }
+    if (el.innerText && el.innerText.includes('SISTEMA DE GESTIÓN PARA PRESTAMISTAS') && !el.id.includes('app')) {
+      el.style.setProperty('display', 'none', 'important');
     }
   });
 
-  // 2. Mostrar la estructura principal de la App y el menú
-  const selectoresMostrar = ['#app-principal', '#sec-por-cobrar', '#main-content', '#contenedor-app', 'header', 'nav'];
+  // 2. Mostrar la App reseteando el display (para NO romper el flexbox horizontal del menú)
+  const selectoresMostrar = ['#app-principal', '#sec-por-cobrar', '#main-content', '#contenedor-app', 'header', 'nav', '#menu-inferior-mobile'];
   selectoresMostrar.forEach(sel => {
     document.querySelectorAll(sel).forEach(el => {
-      el.style.display = 'block';
       el.classList.remove('hidden');
+      el.style.display = ''; // <-- Elimina el 'block' forzado para que el menú vuelva a ser horizontal
     });
   });
 
-  // 3. Forzar cambio de vista con la función navegadora del sistema
+  // 3. Activar la vista de cobros
   if (typeof mostrarSeccion === 'function') {
     mostrarSeccion('sec-por-cobrar');
   }
 
-  // 4. Ocultar cajas privadas para el rol Cobrador
+  // 4. Adaptar menú e interfaz según rol (oculta pestañas privadas de abajo)
   if (typeof adaptarInterfazSegunRol === 'function') {
     adaptarInterfazSegunRol();
   }
