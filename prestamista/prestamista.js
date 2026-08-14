@@ -198,6 +198,11 @@ async function cargarCamposConfigIntereses() {
   } catch (error) {
     console.error("Error al cargar configuración de intereses:", error);
   }
+
+  // Renderizar las cuentas bancarias configuradas
+  if (typeof renderizarCuentasBancariasConfig === 'function') {
+    renderizarCuentasBancariasConfig();
+  }
 }
 
 async function actualizarCredencialesUsuario() {
@@ -1009,7 +1014,7 @@ function renderizarPlanificadorSemanal() {
   const finSemana = new Date(inicioSemana);
   finSemana.setDate(finSemana.getDate() + 6);
 
-  // --- TÍTULO DINÁMICO CORREGIDO (CON HORAS A CERO) ---
+  // --- TÍTULO DINÁMICO (CON HORAS A CERO) ---
   const lunesSeleccionado = new Date(inicioSemana);
   lunesSeleccionado.setHours(0, 0, 0, 0);
 
@@ -1027,16 +1032,13 @@ function renderizarPlanificadorSemanal() {
   if (elemTituloPlanificador) {
     elemTituloPlanificador.innerText = `Planificador & Cobros de la Semana ${estadoSemanaTxt}`;
   }
-  // ----------------------------------------------------
 
   const txtRango = document.getElementById('rango-semana-actual');
   if (txtRango) {
     txtRango.innerText = `${inicioSemana.getDate()}/${inicioSemana.getMonth() + 1} al ${finSemana.getDate()}/${finSemana.getMonth() + 1}`;
   }
 
-  const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const hoyISO = obtenerFechaLocalISO();
-  const esMPActivo = !!(window.datosUsuarioActual?.configMercadoPago?.activo);
 
   for (let i = 0; i < 7; i++) {
     const diaActual = new Date(inicioSemana);
@@ -1053,11 +1055,11 @@ function renderizarPlanificadorSemanal() {
       const nombreCliente = cli ? cli.nombre : 'Cliente Desconocido';
       const telefonoCliente = cli ? cli.telefono : '';
 
-const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
-  const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
-  return !pag && c.fecha < isoDia && c.fecha < hoyISO; // <-- Solo muestra atrasos de días anteriores a HOY
-});
-     
+      const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
+        const pag = c.pagado === true || (c.montoPendiente !== undefined && c.montoPendiente <= 0.5);
+        return !pag && c.fecha < isoDia && c.fecha < hoyISO;
+      });
+
       let totalMontoAtrasado = 0;
       let diasMaxAtraso = 0;
 
@@ -1107,15 +1109,13 @@ const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
               </div>
 
               ${!estaPagado ? `
-                <div class="grid ${esMPActivo ? 'grid-cols-2' : 'grid-cols-1'} gap-2 pt-1">
+                <div class="grid grid-cols-2 gap-2 pt-1">
                   <button onclick="abrirModalPago('${p.id}', '${c.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
-                    💵 Registrar Pago
+                    💵 Registrar
                   </button>
-                  ${esMPActivo ? `
-                    <button onclick="enviarLinkPagoWhatsApp('${p.id}', '${c.id}', ${c.montoCuota}, '${nombreCliente}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
-                      📱 Link WhatsApp
-                    </button>
-                  ` : ''}
+                  <button onclick="abrirModalSeleccionarCobro('${p.id}', '${c.id}', ${c.montoCuota}, '${nombreCliente.replace(/'/g, "\\'")}', ${c.numero}, '${telefonoCliente}')" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1">
+                    📲 Enviar Cobro
+                  </button>
                 </div>
               ` : ''}
 
@@ -1126,20 +1126,18 @@ const cuotasAtrasadasAnteriores = (p.cuotasDetalle || []).filter(c => {
       });
     });
 
-    if (cobrosAgendadosCount === 0) {
-      htmlCuotasDia = '<p class="text-xs text-slate-500 italic p-2">Sin cobros programados para este día.</p>';
-    }
+    // Renderizar la columna del día
+    const diasNombres = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const esHoy = isoDia === hoyISO;
 
     contenedor.innerHTML += `
-      <div class="p-4 rounded-2xl border ${isoDia === hoyISO ? 'bg-fuchsia-950/10 border-fuchsia-500/50' : 'bg-[#1E293B]/40 border-slate-800'} space-y-3">
+      <div class="p-3 bg-[#1E293B]/60 border ${esHoy ? 'border-fuchsia-500/80 ring-1 ring-fuchsia-500/50' : 'border-slate-800'} rounded-2xl space-y-3">
         <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-          <h5 class="font-bold text-sm text-slate-200 flex items-center gap-2">
-            <span>📅</span> ${diasNombres[i]} <span class="text-xs text-slate-400 font-normal">(${diaActual.getDate()}/${diaActual.getMonth() + 1})</span>
-          </h5>
-          ${isoDia === hoyISO ? '<span class="text-[10px] bg-fuchsia-500/20 text-fuchsia-300 font-extrabold px-2 py-0.5 rounded-full border border-fuchsia-500/40">HOY</span>' : ''}
+          <span class="font-bold text-xs uppercase tracking-wider ${esHoy ? 'text-fuchsia-400' : 'text-slate-300'}">${diasNombres[i]} ${diaActual.getDate()}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-extrabold ${cobrosAgendadosCount > 0 ? 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30' : 'bg-slate-800 text-slate-500'}">${cobrosAgendadosCount}</span>
         </div>
         <div class="space-y-2">
-          ${htmlCuotasDia}
+          ${cobrosAgendadosCount === 0 ? '<p class="text-[11px] text-slate-500 italic p-2 text-center">Sin cobros agendados</p>' : htmlCuotasDia}
         </div>
       </div>
     `;
@@ -2293,4 +2291,216 @@ async function pagarSuscripcionMercadoPago() {
     console.error("Error al obtener datos de suscripción:", error);
     mostrarToast("Error al conectar con la base de datos", "error");
   }
+}// ==========================================
+// GESTIÓN DE MÚLTIPLES CUENTAS BANCARIAS Y ALIAS
+// ==========================================
+
+let datosCuotaSeleccionadaWhatsApp = null;
+
+async function guardarNuevaCuentaBancaria(event) {
+  if (event && event.preventDefault) event.preventDefault();
+  if (!window.usuarioActual) return;
+
+  const banco = document.getElementById('cfg-cuenta-banco')?.value.trim();
+  const titular = document.getElementById('cfg-cuenta-titular')?.value.trim();
+  const alias = document.getElementById('cfg-cuenta-alias')?.value.trim().toUpperCase();
+  const cbu = document.getElementById('cfg-cuenta-cbu')?.value.trim();
+
+  if (!banco || !titular || !alias) {
+    return mostrarToast("Completá los campos obligatorios", "error");
+  }
+
+  const nuevaCuenta = {
+    id: 'cuenta_' + Date.now(),
+    banco,
+    titular,
+    alias,
+    cbu: cbu || ''
+  };
+
+  try {
+    const userRef = db.collection('usuarios').doc(window.usuarioActual.uid);
+    const userDoc = await userRef.get();
+    const cuentasActuales = userDoc.exists ? (userDoc.data().cuentasCobro || []) : [];
+
+    cuentasActuales.push(nuevaCuenta);
+
+    await userRef.set({ cuentasCobro: cuentasActuales }, { merge: true });
+
+    if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+    window.datosUsuarioActual.cuentasCobro = cuentasActuales;
+
+    // Limpiar formulario
+    document.getElementById('cfg-cuenta-banco').value = '';
+    document.getElementById('cfg-cuenta-titular').value = '';
+    document.getElementById('cfg-cuenta-alias').value = '';
+    document.getElementById('cfg-cuenta-cbu').value = '';
+
+    renderizarCuentasBancariasConfig();
+    mostrarToast("🏦 Cuenta de cobro agregada con éxito");
+  } catch (error) {
+    console.error("Error al guardar cuenta:", error);
+    mostrarToast("Error al guardar cuenta bancaria", "error");
+  }
+}
+
+async function eliminarCuentaBancaria(cuentaId) {
+  if (!confirm("¿Querés eliminar esta cuenta de cobro?")) return;
+  if (!window.usuarioActual) return;
+
+  try {
+    const userRef = db.collection('usuarios').doc(window.usuarioActual.uid);
+    const userDoc = await userRef.get();
+    let cuentasActuales = userDoc.exists ? (userDoc.data().cuentasCobro || []) : [];
+
+    cuentasActuales = cuentasActuales.filter(c => c.id !== cuentaId);
+
+    await userRef.set({ cuentasCobro: cuentasActuales }, { merge: true });
+
+    if (!window.datosUsuarioActual) window.datosUsuarioActual = {};
+    window.datosUsuarioActual.cuentasCobro = cuentasActuales;
+
+    renderizarCuentasBancariasConfig();
+    mostrarToast("🗑️ Cuenta eliminada correctamente");
+  } catch (error) {
+    console.error("Error al eliminar cuenta:", error);
+    mostrarToast("Error al eliminar cuenta", "error");
+  }
+}
+
+function renderizarCuentasBancariasConfig() {
+  const container = document.getElementById('lista-cuentas-bancarias');
+  if (!container) return;
+
+  const cuentas = window.datosUsuarioActual?.cuentasCobro || [];
+
+  if (cuentas.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500 italic p-3 bg-slate-900/50 rounded-xl border border-slate-800">No tenés cuentas bancarias o alias registrados. Agregá uno arriba.</p>';
+    return;
+  }
+
+  let html = '';
+  cuentas.forEach(c => {
+    html += `
+      <div class="p-3 bg-[#1E293B] border border-slate-700/80 rounded-xl flex justify-between items-center text-xs">
+        <div>
+          <h5 class="font-bold text-white text-sm">${c.banco}</h5>
+          <p class="text-slate-300">👤 Titular: <strong>${c.titular}</strong></p>
+          <p class="text-fuchsia-400 font-bold font-mono">📌 Alias: ${c.alias}</p>
+          ${c.cbu ? `<p class="text-slate-400 font-mono text-[11px]">🔢 CBU/CVU: ${c.cbu}</p>` : ''}
+        </div>
+        <button onclick="eliminarCuentaBancaria('${c.id}')" class="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg border border-red-500/30 transition">
+          🗑️
+        </button>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+// ==========================================
+// MODAL SELECTOR DE COBRO
+// ==========================================
+
+function abrirModalSeleccionarCobro(prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono) {
+  datosCuotaSeleccionadaWhatsApp = {
+    prestamoId,
+    cuotaId,
+    monto,
+    clienteNombre,
+    numeroCuota,
+    clienteTelefono
+  };
+
+  document.getElementById('sel-cobro-cliente').innerText = clienteNombre;
+  document.getElementById('sel-cobro-cuota').innerText = `#${numeroCuota}`;
+  document.getElementById('sel-cobro-monto').innerText = '$' + Math.round(monto).toLocaleString('es-AR');
+
+  const containerOps = document.getElementById('opciones-metodos-cobro-lista');
+  if (!containerOps) return;
+
+  let htmlOps = '';
+
+  // 1. Opción Mercado Pago (Solo si está configurado y activo)
+  const esMPActivo = !!(window.datosUsuarioActual?.configMercadoPago?.activo);
+  if (esMPActivo) {
+    htmlOps += `
+      <button onclick="enviarLinkMPDesdeModal()" class="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white p-3 rounded-xl shadow font-bold text-xs flex justify-between items-center transition">
+        <span class="flex items-center gap-2">🤖 Mercado Pago (Automático)</span>
+        <span class="text-[10px] bg-sky-950 px-2 py-0.5 rounded-full border border-sky-400/30">Se acredita solo</span>
+      </button>
+    `;
+  }
+
+  // 2. Opción Cuentas Bancarias / Billeteras
+  const cuentas = window.datosUsuarioActual?.cuentasCobro || [];
+  if (cuentas.length > 0) {
+    cuentas.forEach(c => {
+      htmlOps += `
+        <button onclick="enviarDatosBancoWhatsApp('${c.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-xl border border-slate-700 font-bold text-xs flex justify-between items-center transition text-left">
+          <div>
+            <p class="text-fuchsia-300 font-extrabold">🏦 ${c.banco}</p>
+            <p class="text-[11px] text-slate-300 font-mono">Alias: ${c.alias}</p>
+          </div>
+          <span class="text-emerald-400 text-xs">📲 Enviar</span>
+        </button>
+      `;
+    });
+  }
+
+  if (!esMPActivo && cuentas.length === 0) {
+    htmlOps = `
+      <div class="p-4 text-center space-y-2 bg-amber-950/20 border border-amber-500/30 rounded-xl">
+        <p class="text-xs text-amber-300 font-bold">⚠️ No tenés métodos de cobro configurados.</p>
+        <p class="text-[11px] text-slate-400">Andá a ⚙️ Tasas & Intereses para agregar tus cuentas bancarias o Mercado Pago.</p>
+      </div>
+    `;
+  }
+
+  document.getElementById('modal-seleccionar-metodo-cobro').classList.remove('hidden');
+}
+
+function cerrarModalSeleccionarCobro() {
+  document.getElementById('modal-seleccionar-metodo-cobro').classList.add('hidden');
+  datosCuotaSeleccionadaWhatsApp = null;
+}
+
+function enviarLinkMPDesdeModal() {
+  if (!datosCuotaSeleccionadaWhatsApp) return;
+  const { prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono } = datosCuotaSeleccionadaWhatsApp;
+  cerrarModalSeleccionarCobro();
+  enviarLinkPagoWhatsApp(prestamoId, cuotaId, monto, clienteNombre, numeroCuota, clienteTelefono);
+}
+
+function enviarDatosBancoWhatsApp(cuentaId) {
+  if (!datosCuotaSeleccionadaWhatsApp) return;
+
+  const cuentas = window.datosUsuarioActual?.cuentasCobro || [];
+  const cuenta = cuentas.find(c => c.id === cuentaId);
+
+  if (!cuenta) return mostrarToast("Cuenta bancaria no encontrada", "error");
+
+  const { monto, clienteNombre, numeroCuota, clienteTelefono } = datosCuotaSeleccionadaWhatsApp;
+
+  let telLimpio = (clienteTelefono || '').toString().replace(/\D/g, '');
+  if (telLimpio) {
+    if (telLimpio.length === 10) telLimpio = '549' + telLimpio;
+    else if (telLimpio.startsWith('54') && !telLimpio.startsWith('549')) telLimpio = '549' + telLimpio.slice(2);
+  }
+
+  let mensaje = `Hola ${clienteNombre}! 👋 Te paso los datos para realizar la transferencia correspondente a la *Cuota #${numeroCuota}* ($${Math.round(monto).toLocaleString('es-AR')}):\n\n`;
+  mensaje += `🏦 *Banco:* ${cuenta.banco}\n`;
+  mensaje += `👤 *Titular:* ${cuenta.titular}\n`;
+  mensaje += `📌 *Alias:* \`${cuenta.alias}\`\n`;
+  if (cuenta.cbu) mensaje += `🔢 *CBU/CVU:* \`${cuenta.cbu}\`\n`;
+  mensaje += `\nUna vez realizada la transferencia, enviame el comprobante por este medio. ¡Muchas gracias! 🙌`;
+
+  const urlWhatsApp = telLimpio 
+    ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=${encodeURIComponent(mensaje)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+
+  window.open(urlWhatsApp, '_blank');
+  cerrarModalSeleccionarCobro();
+  if (typeof mostrarToast === 'function') mostrarToast("📲 Abriendo WhatsApp con los datos de cobro...");
 }

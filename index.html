@@ -404,6 +404,54 @@
               </button>
             </div>
           </div>
+          <!-- 3.5. MIS CUENTAS BANCARIAS Y ALIAS PARA COBRO -->
+<div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+  <div class="border-b border-slate-800 pb-3">
+    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+      <span>🏦</span> Mis Cuentas Bancarias y Billeteras (CBU / Alias)
+    </h3>
+    <p class="text-xs text-slate-400 mt-1">
+      Registrá las cuentas donde recibís transferencias (Galicia, MP, Brubank, Santander, etc.) para enviárselas directamente a tus clientes por WhatsApp.
+    </p>
+  </div>
+
+  <!-- Formulario Agregar Cuenta -->
+  <form onsubmit="guardarNuevaCuentaBancaria(event)" class="space-y-4 max-w-lg bg-[#1E293B]/50 p-4 rounded-xl border border-slate-700/60">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">Banco o Entidad *</label>
+        <input type="text" id="cfg-cuenta-banco" required placeholder="Ej: Banco Galicia / MP" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-xs text-white">
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">Nombre del Titular *</label>
+        <input type="text" id="cfg-cuenta-titular" required placeholder="Ej: Juan Pérez" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-xs text-white">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">Alias de Cobro *</label>
+        <input type="text" id="cfg-cuenta-alias" required placeholder="Ej: MI.ALIAS.GALICIA" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-xs text-fuchsia-400 font-bold uppercase">
+      </div>
+      <div>
+        <label class="block text-[11px] font-bold uppercase mb-1 text-slate-300">CBU / CVU (Opcional)</label>
+        <input type="text" id="cfg-cuenta-cbu" maxlength="22" placeholder="0000000000000000000000" class="input-ui w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-xs text-white font-mono">
+      </div>
+    </div>
+
+    <button type="submit" class="w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white font-extrabold py-2.5 rounded-xl shadow text-xs transition flex justify-center items-center gap-1.5">
+      <span>➕</span> Agregar Cuenta de Cobro
+    </button>
+  </form>
+
+  <!-- Lista de Cuentas Agregadas -->
+  <div class="space-y-2 pt-2">
+    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Cuentas Registradas:</h4>
+    <div id="lista-cuentas-bancarias" class="space-y-2 max-w-lg">
+      <!-- Se carga dinámicamente -->
+    </div>
+  </div>
+</div>
 
           <!-- 4. CAMBIAR CORREO Y CONTRASEÑA -->
           <div class="tarjeta-ui bg-[#0F172A] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
@@ -859,6 +907,32 @@
 
     </div>
   </div>
+  <!-- MODAL SELECTOR DE MÉTODO DE COBRO PARA WHATSAPP -->
+<div id="modal-seleccionar-metodo-cobro" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+  <div class="tarjeta-ui bg-[#0F172A] border border-fuchsia-500/50 p-6 rounded-2xl shadow-2xl max-w-md w-full space-y-4">
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <h3 class="text-lg font-bold text-white flex items-center gap-2"><span>📲</span> Elegir Forma de Cobro</h3>
+      <button onclick="cerrarModalSeleccionarCobro()" class="text-slate-400 font-bold text-lg">✕</button>
+    </div>
+
+    <div class="bg-[#1E293B]/60 p-3 rounded-xl space-y-1 text-xs border border-slate-700/60">
+      <p><span class="text-slate-400">Cliente:</span> <strong id="sel-cobro-cliente" class="text-white"></strong></p>
+      <p><span class="text-slate-400">Cuota:</span> <strong id="sel-cobro-cuota" class="text-fuchsia-400"></strong></p>
+      <p><span class="text-slate-400">Monto:</span> <strong id="sel-cobro-monto" class="text-emerald-400 text-sm"></strong></p>
+    </div>
+
+    <p class="text-xs text-slate-300 font-bold">Seleccioná la cuenta con la que querés cobrarle hoy:</p>
+
+    <!-- Opciones de Cobro -->
+    <div id="opciones-metodos-cobro-lista" class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+      <!-- Se renderizan los botones dinámicamente -->
+    </div>
+
+    <button type="button" onclick="cerrarModalSeleccionarCobro()" class="w-full bg-slate-800 text-slate-400 font-bold py-2.5 rounded-xl text-xs border border-slate-700">
+      Cancelar
+    </button>
+  </div>
+</div>
 
   <!-- LIBRERÍAS DE FIREBASE -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
