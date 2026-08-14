@@ -77,7 +77,7 @@ function verificarEstadoSuscripcionPrestamista(usuarioData) {
 }
 
 // ==========================================
-// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (ADMIN VS PRESTAMISTA VS COBRADOR)
+// ADAPTACIÓN DE INTERFAZ SEGÚN ROL (VERSIÓN BLINDADA PARA OCULTAR BOTÓN ADMIN)
 // ==========================================
 function adaptarInterfazSegunRol() {
   const emailAdmin = window.usuarioActual?.email ? window.usuarioActual.email.toLowerCase() : '';
@@ -86,21 +86,32 @@ function adaptarInterfazSegunRol() {
   const esAdmin = window.esAdmin || rol === 'admin' || emailAdmin === 'sistemas.cobroapp@gmail.com';
   const esCobrador = rol === 'cobrador';
 
-  // 1. OCULTAR BOTÓN MASTER/ADMIN A PRESTAMISTAS Y COBRADORES
-  const elementosSoloAdmin = ['btn-sec-admin', 'btn-accesos-prestamistas', 'm-btn-admin', 'sec-admin-master'];
-  elementosSoloAdmin.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      if (esAdmin) el.classList.remove('hidden');
-      else el.classList.add('hidden');
-    }
+  // 1. OCULTAR BOTÓN "ACCESOS PRESTAMISTAS" POR ID Y POR TEXTO
+  const selectoresAdmin = ['#btn-sec-admin', '#btn-accesos-prestamistas', '#m-btn-admin', '#sec-admin-master', '.btn-admin-only'];
+  
+  selectoresAdmin.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      if (esAdmin) {
+        el.style.removeProperty('display');
+        el.classList.remove('hidden');
+      } else {
+        el.style.setProperty('display', 'none', 'important');
+        el.classList.add('hidden');
+      }
+    });
   });
 
-  // Ocultar por búsqueda de texto si el botón no tiene ID exacto
-  document.querySelectorAll('button, a').forEach(btn => {
-    if (btn.innerText && btn.innerText.includes('Accesos Prestamistas')) {
-      if (esAdmin) btn.classList.remove('hidden');
-      else btn.classList.add('hidden');
+  // Escaneo directo de texto por si el botón del menú lateral no tiene ID exacto
+  document.querySelectorAll('button, a, div, li, span').forEach(el => {
+    if (el.innerText && el.innerText.trim().includes('Accesos Prestamistas')) {
+      const contenedorBoton = el.closest('button') || el.closest('a') || el.closest('li') || el;
+      if (esAdmin) {
+        contenedorBoton.style.removeProperty('display');
+        contenedorBoton.classList.remove('hidden');
+      } else {
+        contenedorBoton.style.setProperty('display', 'none', 'important');
+        contenedorBoton.classList.add('hidden');
+      }
     }
   });
 
@@ -116,7 +127,7 @@ function adaptarInterfazSegunRol() {
   elementosPrivados.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      if (esCobrador) el.classList.add('hidden');
+      if (esCobrador) el.style.setProperty('display', 'none', 'important');
       else el.classList.remove('hidden');
     }
   });
@@ -173,6 +184,11 @@ function adaptarInterfazSegunRol() {
     verificarEstadoSuscripcionPrestamista(window.datosUsuarioActual);
   }
 }
+
+// ESCUCHADOR GLOBAL: Si el usuario hace clic en cualquier botón del menú lateral, vuelve a forzar el ocultamiento
+document.addEventListener('click', () => {
+  setTimeout(adaptarInterfazSegunRol, 30);
+});
 
 // ==========================================
 // 1. CONFIGURACIÓN DE INTERESES, TASAS Y CREDENCIALES ⚙️
