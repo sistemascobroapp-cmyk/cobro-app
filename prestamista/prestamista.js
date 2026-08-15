@@ -2759,47 +2759,36 @@ document.addEventListener('DOMContentLoaded', () => {
   detectarModoCobradorPorUrl();
 });
 // ==========================================
-// PARCHE DE VISIBILIDAD DE SECCIONES (SISTEMA BLINDADO DOMCONTENTLOADED)
+// PARCHE DE VISIBILIDAD AL FINAL DE PRESTAMISTA.JS
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Esperamos 300ms para asegurar que main.js haya creado la función mostrarSeccion
   setTimeout(() => {
     if (typeof window.mostrarSeccion === 'function' && !window.mostrarSeccionParchada) {
       const funcionOriginal = window.mostrarSeccion;
 
       window.mostrarSeccion = function(idSeccion) {
-        // 1. Ocultar todas las secciones
+        // Ocultar todas las secciones
         document.querySelectorAll('.seccion-app').forEach(sec => {
           sec.classList.add('hidden');
           sec.style.setProperty('display', 'none', 'important');
         });
 
-        // 2. Mostrar la sección seleccionada
-        const seccionObjetivo = document.getElementById(idSeccion);
-        if (seccionObjetivo) {
-          seccionObjetivo.classList.remove('hidden');
-          seccionObjetivo.style.removeProperty('display');
-        }
-
-        // 3. Ejecutar la función original
+        // Ejecutar lógica de main.js
         try {
           funcionOriginal(idSeccion);
         } catch (e) {
           console.warn("Navegación:", e);
         }
 
-        // 4. Asegurar visibilidad final y adaptar roles
-        if (seccionObjetivo) {
-          seccionObjetivo.classList.remove('hidden');
-          seccionObjetivo.style.removeProperty('display');
-        }
-
-        if (typeof adaptarInterfazSegunRol === 'function') {
-          adaptarInterfazSegunRol();
+        // Forzar apertura de la sección objetivo
+        const target = document.getElementById(idSeccion);
+        if (target) {
+          target.classList.remove('hidden');
+          target.style.setProperty('display', 'block', 'important');
         }
       };
 
       window.mostrarSeccionParchada = true;
     }
-  }, 300);
+  }, 200);
 });

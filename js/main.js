@@ -396,9 +396,6 @@ function cerrarSesionApp() {
   if (typeof auth !== 'undefined' && auth) auth.signOut();
 }
 
-// ==========================================
-// RUTEOS Y CAMBIOS DE SECCIÓN CON NAVEGACIÓN LIMPIA
-// ==========================================
 function mostrarSeccion(idSeccion) {
   if (!window.usuarioActual) return;
 
@@ -408,17 +405,17 @@ function mostrarSeccion(idSeccion) {
     idSeccion = 'sec-registrar';
   }
 
-  // 1. Ocultar todas las secciones de manera limpia
+  // 1. Ocultar todas las secciones
   document.querySelectorAll('.seccion-app').forEach(sec => {
     sec.classList.add('hidden');
     sec.style.setProperty('display', 'none', 'important');
   });
 
-  // 2. Mostrar la sección seleccionada
+  // 2. FORZAR VISIBILIDAD DE LA SECCIÓN SELECCIONADA
   const target = document.getElementById(idSeccion);
   if (target) {
     target.classList.remove('hidden');
-    target.style.removeProperty('display');
+    target.style.setProperty('display', 'block', 'important');
   }
 
   // 3. Resaltar botones de menú lateral y móvil
@@ -448,7 +445,7 @@ function mostrarSeccion(idSeccion) {
     }
   });
 
-  // 4. Actualizar título de la pantalla
+  // 4. Actualizar título de la cabecera
   const titulos = {
     'sec-registrar': esAdmin ? '💳 Registro de Pago' : '💳 Registrar Préstamo',
     'sec-por-cobrar': '📅 Préstamos a Cobrar & Calendario',
@@ -465,17 +462,14 @@ function mostrarSeccion(idSeccion) {
     elemTitulo.innerText = titulos[idSeccion] || 'CobroApp';
   }
 
-  // 5. Cargar escuchadores o campos específicos según la sección
-  if (typeof adaptarInterfazAdmin === 'function') {
-    adaptarInterfazAdmin();
-  }
-
-  if (typeof adaptarInterfazSegunRol === 'function') {
-    adaptarInterfazSegunRol();
-  }
-
-  if (idSeccion === 'sec-usuarios' && typeof escucharPrestamistasEnTiempoReal === 'function') {
-    escucharPrestamistasEnTiempoReal();
+  // 5. Re-dibujar tarjetas e información según la sección abierta
+  if (idSeccion === 'sec-clientes' && typeof renderizarDirectorioClientes === 'function') renderizarDirectorioClientes();
+  if (idSeccion === 'sec-usuarios' && typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
+  if (idSeccion === 'sec-resumen' && typeof renderizarResumenYPrestamos === 'function') renderizarResumenYPrestamos();
+  if (idSeccion === 'sec-estado' && typeof renderizarEstadoCuentas === 'function') renderizarEstadoCuentas();
+  if (idSeccion === 'sec-por-cobrar') {
+    if (typeof renderizarPlanificadorSemanal === 'function') renderizarPlanificadorSemanal();
+    if (typeof renderizarGridCalendarioVisual === 'function') renderizarGridCalendarioVisual();
   }
 
   if (idSeccion === 'sec-intereses') {
@@ -484,6 +478,10 @@ function mostrarSeccion(idSeccion) {
     } else if (!esAdmin && typeof cargarCamposConfigIntereses === 'function') {
       cargarCamposConfigIntereses();
     }
+  }
+
+  if (typeof adaptarInterfazSegunRol === 'function') {
+    adaptarInterfazSegunRol();
   }
 
   window.scrollTo(0, 0);
