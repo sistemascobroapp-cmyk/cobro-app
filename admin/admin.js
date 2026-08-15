@@ -198,7 +198,7 @@ async function marcarPagoMesPrestamista(id, nombre) {
   }
 }
 
-// DESMARCAR PAGO (DESHACER / PONDER PENDIENTE)
+// DESMARCAR PAGO (DESHACER / PONER PENDIENTE)
 async function desmarcarPagoMesPrestamista(id, nombre) {
   const mesActualISO = obtenerMesActualISO();
   const nombreMes = obtenerNombreMesActual();
@@ -328,7 +328,7 @@ async function crearUsuarioPrestamista(event) {
   }
 }
 
-// GUARDAR CONFIGURACIÓN DE MERCADO PAGO / SUSCRIPCIÓN (ADMIN)
+// GUARDAR CONFIGURACIÓN DE MERCADO PAGO / SUSCRIPCIÓN (ADMIN) - DOBLE GUARDADO GARANTIZADO
 async function guardarConfigSuscripcionAdmin(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -336,13 +336,24 @@ async function guardarConfigSuscripcionAdmin(event) {
   const monto = parseFloat(document.getElementById('cfg-sub-monto')?.value) || 0;
   const whatsapp = document.getElementById('cfg-sub-wsp')?.value.trim() || '';
 
+  if (!link) {
+    return typeof mostrarToast === 'function' ? mostrarToast("Ingresá un Link o Alias de cobro válido", "error") : alert("Falta el link");
+  }
+
   try {
-    await db.collection('configuracion').doc('suscripcion').set({
+    const dataGuardar = {
       link: link,
+      linkCobro: link,
       monto: monto,
       whatsapp: whatsapp,
       fechaActualizacion: new Date().toISOString()
-    }, { merge: true });
+    };
+
+    // Guardamos en 'suscripcion' y en 'admin_mp' para compatibilidad total
+    await db.collection('configuracion').doc('suscripcion').set(dataGuardar, { merge: true });
+    await db.collection('configuracion').doc('admin_mp').set(dataGuardar, { merge: true });
+
+    window.configSuscripcion = dataGuardar;
 
     if (typeof mostrarToast === 'function') {
       mostrarToast("💳 Configuración de Mercado Pago guardada con éxito");
@@ -354,16 +365,31 @@ async function guardarConfigSuscripcionAdmin(event) {
 }
 
 // CARGAR LOS DATOS DE MERCADO PAGO EN LOS INPUTS DEL ADMIN
-function cargarConfigSuscripcionEnInputs() {
-  if (!window.configSuscripcion) return;
+async function cargarConfigSuscripcionEnInputs() {
+  try {
+    if (!window.configSuscripcion) {
+      const docSub = await db.collection('configuracion').doc('suscripcion').get();
+      if (docSub.exists) window.configSuscripcion = docSub.data();
+    }
 
-  const inputLink = document.getElementById('cfg-sub-link');
-  const inputMonto = document.getElementById('cfg-sub-monto');
-  const inputWsp = document.getElementById('cfg-sub-wsp');
+    if (window.configSuscripcion) {
+      const inputLink = document.getElementById('cfg-sub-link');
+      const inputMonto = document.getElementById('cfg-sub-monto');
+      const inputWsp = document.getElementById('cfg-sub-wsp');
 
-  if (inputLink && window.configSuscripcion.link) inputLink.value = window.configSuscripcion.link;
-  if (inputMonto && window.configSuscripcion.monto) inputMonto.value = window.configSuscripcion.monto;
-  if (inputWsp && window.configSuscripcion.whatsapp) inputWsp.value = window.configSuscripcion.whatsapp;
+      if (inputLink && (window.configSuscripcion.link || window.configSuscripcion.linkCobro)) {
+        inputLink.value = window.configSuscripcion.link || window.configSuscripcion.linkCobro;
+      }
+      if (inputMonto && window.configSuscripcion.monto) {
+        inputMonto.value = window.configSuscripcion.monto;
+      }
+      if (inputWsp && window.configSuscripcion.whatsapp) {
+        inputWsp.value = window.configSuscripcion.whatsapp;
+      }
+    }
+  } catch (e) {
+    console.warn("Aviso al cargar inputs de suscripción:", e);
+  }
 }
 
 async function cambiarMiContrasena(event) {
@@ -389,6 +415,7 @@ async function cambiarMiContrasena(event) {
     mostrarToast("Error al cambiar contraseña: " + error.message, "error");
   }
 }
+
 // ==========================================
 // ACTIVACIÓN REFORZADA DEL PANEL MASTER (ADMIN)
 // ==========================================
@@ -413,10 +440,11 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
         btnAdmin.style.removeProperty('display');
       }
 
-      // 3. Cargamos los datos de las cuentas de prestamistas
+      // 3. Cargamos los datos de las cuentas de prestamistas e inputs
       if (typeof escucharPrestamistasEnTiempoReal === 'function') {
         escucharPrestamistasEnTiempoReal();
       }
+      cargarConfigSuscripcionEnInputs();
     }
   });
 }
