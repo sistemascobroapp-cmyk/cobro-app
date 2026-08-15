@@ -272,47 +272,55 @@ async function actualizarCredencialesUsuario() {
 
   const nuevoEmail = document.getElementById('cfg-mi-email')?.value.trim();
   const nuevaPass = document.getElementById('cfg-mi-pass')?.value.trim();
+  let passActual = document.getElementById('cfg-mi-pass-actual')?.value.trim();
 
   if (!nuevoEmail && !nuevaPass) {
     return mostrarToast("Ingresá un nuevo correo o contraseña para actualizar", "error");
   }
 
+  // Si no completó la contraseña actual en el campo, se la pedimos con un prompt
+  if (!passActual) {
+    passActual = prompt("Por seguridad de Firebase, ingresá tu contraseña actual para confirmar los cambios:");
+    if (!passActual) return mostrarToast("Debes ingresar tu contraseña actual para autorizar el cambio", "error");
+  }
+
   try {
+    // 1. RE-AUTENTICACIÓN INSTANTÁNEA EN FIREBASE AUTH
+    const credencial = firebase.auth.EmailAuthProvider.credential(
+      window.usuarioActual.email,
+      passActual
+    );
+    
+    await window.usuarioActual.reauthenticateWithCredential(credencial);
+
     const updatesFirestore = {};
     const cambiosRealizados = [];
 
-    // 1. CAMBIO DE CORREO DIRECTO (Soporta correos internos/ficticios)
+    // 2. CAMBIO DE CORREO DIRECTO (Acepta mails ficticios sin mandar verificaciones)
     if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
       const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!regexEmail.test(nuevoEmail)) {
         return mostrarToast("Ingresá un formato de correo válido (ej: usuario@cobroapp.com)", "error");
       }
 
-      try {
-        // Forzamos el cambio directo en Firebase Auth sin pedir verificaciones por casilla
-        await window.usuarioActual.updateEmail(nuevoEmail);
-        updatesFirestore.email = nuevoEmail;
-        if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
-        cambiosRealizados.push("Correo");
-      } catch (errEmail) {
-        if (errEmail.code === 'auth/requires-recent-login') {
-          return mostrarToast("🔒 Por seguridad, cerrá sesión y volvé a ingresar con tu clave actual para autorizar el cambio de correo.", "error");
-        }
-        throw errEmail;
-      }
+      await window.usuarioActual.updateEmail(nuevoEmail);
+      updatesFirestore.email = nuevoEmail;
+      if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
+      cambiosRealizados.push("Correo");
     }
 
-    // 2. CAMBIO DE CONTRASEÑA
+    // 3. CAMBIO DE CONTRASEÑA DIRECTO
     if (nuevaPass) {
       if (nuevaPass.length < 6) {
         return mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
       }
+
       await window.usuarioActual.updatePassword(nuevaPass);
       updatesFirestore.passwordVisual = nuevaPass;
       cambiosRealizados.push("Contraseña");
     }
 
-    // Actualizamos los datos en Firestore para que lo veas en el Panel Master
+    // 4. ACTUALIZACIÓN EN FIRESTORE (Para ver los cambios en el Panel Master)
     if (Object.keys(updatesFirestore).length > 0) {
       await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
     }
@@ -321,18 +329,21 @@ async function actualizarCredencialesUsuario() {
       mostrarToast(`🔐 ${cambiosRealizados.join(" y ")} actualizado(s) correctamente`);
     }
 
-    if (document.getElementById('cfg-mi-pass')) {
-      document.getElementById('cfg-mi-pass').value = '';
-    }
+    // Limpiar campos de clave
+    if (document.getElementById('cfg-mi-pass')) document.getElementById('cfg-mi-pass').value = '';
+    if (document.getElementById('cfg-mi-pass-actual')) document.getElementById('cfg-mi-pass-actual').value = '';
 
   } catch (error) {
     console.error("Error al actualizar credenciales:", error);
-    mostrarToast("Error al actualizar: " + error.message, "error");
-  }
-}
 
-async function guardarInteresesConfig(event) {
-  await guardarConfigInteresesPrestamista(event);
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      mostrarToast("❌ La contraseña actual ingresada es incorrecta", "error");
+    } else if (error.code === 'auth/email-already-in-use') {
+      mostrarToast("⚠️ Ese correo electrónico ya está registrado por otra cuenta", "error");
+    } else {
+      mostrarToast("Error al actualizar: " + error.message, "error");
+    }
+  }
 }
 
 function abrirModalConfigIntereses() {
