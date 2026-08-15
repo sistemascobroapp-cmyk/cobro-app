@@ -389,3 +389,29 @@ async function cambiarMiContrasena(event) {
     mostrarToast("Error al cambiar contraseña: " + error.message, "error");
   }
 }
+// ==========================================
+// DISPARADORES AUTOMÁTICOS PARA EL PANEL ADMIN
+// ==========================================
+
+// 1. Ejecutar al iniciar sesión en Firebase
+if (typeof firebase !== 'undefined' && firebase.auth) {
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      setTimeout(() => {
+        if (typeof cargarPanelAdmin === 'function') cargarPanelAdmin();
+      }, 500);
+    }
+  });
+}
+
+// 2. Ejecutar cada vez que hacés clic en la pestaña "Accesos Prestamistas"
+document.addEventListener('DOMContentLoaded', () => {
+  const btnSecUsuarios = document.getElementById('btn-sec-usuarios');
+  if (btnSecUsuarios) {
+    btnSecUsuarios.addEventListener('click', () => {
+      if (typeof escucharPrestamistasEnTiempoReal === 'function') {
+        escucharPrestamistasEnTiempoReal();
+      }
+    });
+  }
+});
