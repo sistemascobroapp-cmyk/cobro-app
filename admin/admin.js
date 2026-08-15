@@ -390,28 +390,33 @@ async function cambiarMiContrasena(event) {
   }
 }
 // ==========================================
-// DISPARADORES AUTOMÁTICOS PARA EL PANEL ADMIN
+// ACTIVACIÓN REFORZADA DEL PANEL MASTER (ADMIN)
 // ==========================================
-
-// 1. Ejecutar al iniciar sesión en Firebase
 if (typeof firebase !== 'undefined' && firebase.auth) {
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      setTimeout(() => {
-        if (typeof cargarPanelAdmin === 'function') cargarPanelAdmin();
-      }, 500);
-    }
-  });
-}
+  firebase.auth().onAuthStateChanged(async user => {
+    if (!user) return;
 
-// 2. Ejecutar cada vez que hacés clic en la pestaña "Accesos Prestamistas"
-document.addEventListener('DOMContentLoaded', () => {
-  const btnSecUsuarios = document.getElementById('btn-sec-usuarios');
-  if (btnSecUsuarios) {
-    btnSecUsuarios.addEventListener('click', () => {
+    window.usuarioActual = user;
+    const emailUser = user.email ? user.email.toLowerCase() : '';
+
+    // Si sos el Administrador Master
+    if (emailUser === 'sistemas.cobroapp@gmail.com') {
+      window.esAdmin = true;
+
+      // 1. Inyectamos la clase en el Body para romper el bloqueo CSS
+      document.body.classList.add('es-admin');
+
+      // 2. Le quitamos la clase 'hidden' de Tailwind al botón del menú
+      const btnAdmin = document.getElementById('btn-sec-usuarios');
+      if (btnAdmin) {
+        btnAdmin.classList.remove('hidden');
+        btnAdmin.style.removeProperty('display');
+      }
+
+      // 3. Cargamos los datos de las cuentas de prestamistas
       if (typeof escucharPrestamistasEnTiempoReal === 'function') {
         escucharPrestamistasEnTiempoReal();
       }
-    });
-  }
-});
+    }
+  });
+}
