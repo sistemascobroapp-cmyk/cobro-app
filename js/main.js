@@ -1,4 +1,6 @@
+/// ==========================================
 /// PUNTO DE ENTRADA PRINCIPAL, AUTENTICACIÓN Y ENRUTAMIENTO
+/// ==========================================
 
 window.usuarioActual = null;
 window.rolUsuarioActual = 'prestamista';
@@ -31,6 +33,8 @@ window.onload = function() {
   if (typeof auth !== 'undefined' && auth) {
     auth.onAuthStateChanged(async user => {
       const btnSubmit = document.getElementById('btn-login-submit');
+      const urlParams = new URLSearchParams(window.location.search);
+      const esModoCobrador = urlParams.has('cobradorRef') || window.modoCobradorIniciado;
 
       if (window.unsubListenerUsuario) {
         window.unsubListenerUsuario();
@@ -60,10 +64,12 @@ window.onload = function() {
         if (user.email && user.email.toLowerCase() === 'sistemas.cobroapp@gmail.com') {
           window.rolUsuarioActual = 'admin';
           window.esAdmin = true;
+          document.body.classList.add('es-admin');
           ocultarPantallaBloqueo();
         } else {
           window.rolUsuarioActual = 'prestamista';
           window.esAdmin = false;
+          document.body.classList.remove('es-admin');
 
           try {
             window.unsubListenerUsuario = db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
@@ -91,15 +97,20 @@ window.onload = function() {
         }
 
         try { if (typeof configurarInterfazPorRol === 'function') configurarInterfazPorRol(); } catch (e) {}
+        try { if (typeof adaptarInterfazSegunRol === 'function') adaptarInterfazSegunRol(); } catch (e) {}
         try { if (typeof iniciarListenersFirestore === 'function') iniciarListenersFirestore(); } catch (e) {}
         try { if (typeof escucharConfigSuscripcion === 'function') escucharConfigSuscripcion(); } catch (e) {}
         try { if (typeof verificarRetornoAutomaticoMercadoPago === 'function') verificarRetornoAutomaticoMercadoPago(); } catch (e) {}
 
       } else {
+        // Si no hay usuario pero viene por link de cobrador, no mostramos pantalla de login
+        if (esModoCobrador) return;
+
         window.usuarioActual = null;
         window.datosUsuarioActual = null;
         window.rolUsuarioActual = 'prestamista';
         window.esAdmin = false;
+        document.body.classList.remove('es-admin');
         ocultarPantallaBloqueo();
 
         const pantallaLogin = document.getElementById('pantalla-login');
@@ -238,7 +249,9 @@ function configurarInterfazPorRol() {
   const panelAdminMp = document.getElementById('panel-cfg-admin-mp');
   const panelPrestamistaTasas = document.getElementById('panel-cfg-prestamista-tasas');
 
-  if (window.rolUsuarioActual === 'admin') {
+  const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || (window.usuarioActual?.email && window.usuarioActual.email.toLowerCase() === 'sistemas.cobroapp@gmail.com');
+
+  if (esAdmin) {
     if (lblRol) lblRol.innerText = "Panel Administrador Master";
     if (btnUsrs) { btnUsrs.classList.remove('hidden'); btnUsrs.classList.add('flex'); }
     if (mBtnUsrs) { mBtnUsrs.classList.remove('hidden'); mBtnUsrs.classList.add('flex'); }
@@ -308,7 +321,7 @@ function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
 
   const fechaHoy = new Date();
   const diaActual = fechaHoy.getDate(); 
-  const isoHoy = obtenerFechaLocalISO(fechaHoy);
+  const isoHoy = typeof obtenerFechaLocalISO === 'function' ? obtenerFechaLocalISO(fechaHoy) : fechaHoy.toISOString().split('T')[0];
 
   if (diaActual >= 5 && diaActual <= 10) {
     const mesAnioKey = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
@@ -337,7 +350,7 @@ function evaluarNotificacionSuscripcionDiaria(dataUsuario) {
 }
 
 function cerrarNotificacionSuscripcionVisual() {
-  const isoHoy = obtenerFechaLocalISO();
+  const isoHoy = typeof obtenerFechaLocalISO === 'function' ? obtenerFechaLocalISO() : new Date().toISOString().split('T')[0];
   localStorage.setItem(`notif_sub_visto_${isoHoy}`, 'true');
   const modal = document.getElementById('modal-notificacion-suscripcion');
   if (modal) modal.classList.add('hidden');
@@ -370,7 +383,8 @@ function iniciarListenersFirestore() {
       if (typeof renderizarDeudasPasadasBajoCalendario === 'function') renderizarDeudasPasadasBajoCalendario();
     }, err => console.error("Error prestamos:", err));
 
-    if (window.rolUsuarioActual === 'admin') {
+    const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || (window.usuarioActual?.email && window.usuarioActual.email.toLowerCase() === 'sistemas.cobroapp@gmail.com');
+    if (esAdmin) {
       if (typeof escucharPrestamistasEnTiempoReal === 'function') escucharPrestamistasEnTiempoReal();
     }
   } catch (error) {
@@ -382,17 +396,32 @@ function cerrarSesionApp() {
   if (typeof auth !== 'undefined' && auth) auth.signOut();
 }
 
+// ==========================================
+// RUTEOS Y CAMBIOS DE SECCIÓN CON NAVEGACIÓN LIMPIA
+// ==========================================
 function mostrarSeccion(idSeccion) {
   if (!window.usuarioActual) return;
 
-  if (idSeccion === 'sec-usuarios' && window.rolUsuarioActual !== 'admin') {
+  const esAdmin = window.esAdmin || window.rolUsuarioActual === 'admin' || (window.usuarioActual?.email && window.usuarioActual.email.toLowerCase() === 'sistemas.cobroapp@gmail.com');
+
+  if (idSeccion === 'sec-usuarios' && !esAdmin) {
     idSeccion = 'sec-registrar';
   }
 
-  document.querySelectorAll('.seccion-app').forEach(sec => sec.classList.add('hidden'));
-  const target = document.getElementById(idSeccion);
-  if (target) target.classList.remove('hidden');
+  // 1. Ocultar todas las secciones de manera limpia
+  document.querySelectorAll('.seccion-app').forEach(sec => {
+    sec.classList.add('hidden');
+    sec.style.setProperty('display', 'none', 'important');
+  });
 
+  // 2. Mostrar la sección seleccionada
+  const target = document.getElementById(idSeccion);
+  if (target) {
+    target.classList.remove('hidden');
+    target.style.removeProperty('display');
+  }
+
+  // 3. Resaltar botones de menú lateral y móvil
   const btns = ['registrar', 'por-cobrar', 'resumen', 'estado', 'intereses', 'clientes', 'usuarios', 'suscripcion'];
 
   btns.forEach(b => {
@@ -407,13 +436,11 @@ function mostrarSeccion(idSeccion) {
 
     const mBtnElem = document.getElementById('m-btn-' + b);
     if (mBtnElem) {
-      if (b === 'usuarios' && window.rolUsuarioActual !== 'admin') {
+      if (b === 'usuarios' && !esAdmin) {
         mBtnElem.className = "hidden";
-      }
-      else if (b === 'suscripcion') {
+      } else if (b === 'suscripcion') {
         mBtnElem.className = "hidden";
-      }
-      else if ('sec-' + b === idSeccion) {
+      } else if ('sec-' + b === idSeccion) {
         mBtnElem.className = "flex flex-col items-center gap-1 text-fuchsia-400 font-bold py-1 px-2";
       } else {
         mBtnElem.className = "flex flex-col items-center gap-1 text-slate-400 py-1 px-2";
@@ -421,8 +448,7 @@ function mostrarSeccion(idSeccion) {
     }
   });
 
-  const esAdmin = window.rolUsuarioActual === 'admin';
-
+  // 4. Actualizar título de la pantalla
   const titulos = {
     'sec-registrar': esAdmin ? '💳 Registro de Pago' : '💳 Registrar Préstamo',
     'sec-por-cobrar': '📅 Préstamos a Cobrar & Calendario',
@@ -434,12 +460,18 @@ function mostrarSeccion(idSeccion) {
     'sec-suscripcion': '💳 Mi Suscripción & Clave'
   };
 
-  if (document.getElementById('titulo-pantalla')) {
-    document.getElementById('titulo-pantalla').innerText = titulos[idSeccion] || 'CobroApp';
+  const elemTitulo = document.getElementById('titulo-pantalla');
+  if (elemTitulo) {
+    elemTitulo.innerText = titulos[idSeccion] || 'CobroApp';
   }
 
+  // 5. Cargar escuchadores o campos específicos según la sección
   if (typeof adaptarInterfazAdmin === 'function') {
     adaptarInterfazAdmin();
+  }
+
+  if (typeof adaptarInterfazSegunRol === 'function') {
+    adaptarInterfazSegunRol();
   }
 
   if (idSeccion === 'sec-usuarios' && typeof escucharPrestamistasEnTiempoReal === 'function') {

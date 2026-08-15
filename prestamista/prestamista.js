@@ -180,17 +180,6 @@ if (typeof window !== 'undefined' && !window.observadorMenuActivo) {
     observador.observe(document.body, { childList: true, subtree: true, attributes: true });
   });
 }
-
-// 5. PARCHE DE NAVEGACIÓN EN PC: Vuelve a ocultar el botón Admin en cada cambio de pestaña
-if (typeof window.mostrarSeccion === 'function' && !window.mostrarSeccionParchada) {
-  const funcionMostrarOriginal = window.mostrarSeccion;
-  window.mostrarSeccion = function(idSeccion) {
-    funcionMostrarOriginal(idSeccion);
-    adaptarInterfazSegunRol(); 
-  };
-  window.mostrarSeccionParchada = true;
-}
-
 // ==========================================
 // 1. CONFIGURACIÓN DE INTERESES, TASAS Y CREDENCIALES ⚙️
 // ==========================================
@@ -2768,4 +2757,49 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
 
 document.addEventListener('DOMContentLoaded', () => {
   detectarModoCobradorPorUrl();
+});
+// ==========================================
+// PARCHE DE VISIBILIDAD DE SECCIONES (SISTEMA BLINDADO DOMCONTENTLOADED)
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Esperamos 300ms para asegurar que main.js haya creado la función mostrarSeccion
+  setTimeout(() => {
+    if (typeof window.mostrarSeccion === 'function' && !window.mostrarSeccionParchada) {
+      const funcionOriginal = window.mostrarSeccion;
+
+      window.mostrarSeccion = function(idSeccion) {
+        // 1. Ocultar todas las secciones
+        document.querySelectorAll('.seccion-app').forEach(sec => {
+          sec.classList.add('hidden');
+          sec.style.setProperty('display', 'none', 'important');
+        });
+
+        // 2. Mostrar la sección seleccionada
+        const seccionObjetivo = document.getElementById(idSeccion);
+        if (seccionObjetivo) {
+          seccionObjetivo.classList.remove('hidden');
+          seccionObjetivo.style.removeProperty('display');
+        }
+
+        // 3. Ejecutar la función original
+        try {
+          funcionOriginal(idSeccion);
+        } catch (e) {
+          console.warn("Navegación:", e);
+        }
+
+        // 4. Asegurar visibilidad final y adaptar roles
+        if (seccionObjetivo) {
+          seccionObjetivo.classList.remove('hidden');
+          seccionObjetivo.style.removeProperty('display');
+        }
+
+        if (typeof adaptarInterfazSegunRol === 'function') {
+          adaptarInterfazSegunRol();
+        }
+      };
+
+      window.mostrarSeccionParchada = true;
+    }
+  }, 300);
 });
