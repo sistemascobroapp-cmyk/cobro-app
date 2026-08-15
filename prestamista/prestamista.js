@@ -268,62 +268,47 @@ async function actualizarCredencialesUsuario() {
   }
 
   if (!passActual) {
-    passActual = prompt("Por seguridad, ingresá tu contraseña actual para confirmar los cambios:");
-    if (!passActual) return mostrarToast("Debes ingresar tu contraseña actual para autorizar el cambio", "error");
+    passActual = prompt("Por seguridad, ingresá tu contraseña actual para autorizar los cambios:");
+    if (!passActual) return mostrarToast("Debes ingresar tu contraseña actual para autorizar", "error");
   }
 
   try {
-    // 1. RE-AUTENTICACIÓN CON CLAVE ACTUAL
+    mostrarToast("⏳ Guardando cambios...");
+
+    // 1. Re-autenticamos para confirmar que conoce su contraseña actual
     const credencial = firebase.auth.EmailAuthProvider.credential(
       window.usuarioActual.email,
       passActual
     );
     await window.usuarioActual.reauthenticateWithCredential(credencial);
 
-    const updatesFirestore = {};
-    const cambiosRealizados = [];
+    // 2. Enviamos el cambio a tu servidor de Render (que no pide verificación por mail)
+    const response = await fetch(`${RENDER_BACKEND_URL}/actualizar-credenciales-prestamista`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uid: window.usuarioActual.uid,
+        nuevoEmail: (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) ? nuevoEmail : null,
+        nuevaPass: nuevaPass || null
+      })
+    });
 
-    // 2. ACTUALIZACIÓN DE CONTRASEÑA (SI INGRESÓ UNA NUEVA)
-    if (nuevaPass) {
-      if (nuevaPass.length < 6) {
-        return mostrarToast("La contraseña debe tener al menos 6 caracteres", "error");
+    const data = await response.json();
+
+    if (data.success) {
+      mostrarToast("🔐 Credenciales actualizadas con éxito");
+
+      // Limpiar inputs de contraseña
+      if (document.getElementById('cfg-mi-pass')) document.getElementById('cfg-mi-pass').value = '';
+      if (document.getElementById('cfg-mi-pass-actual')) document.getElementById('cfg-mi-pass-actual').value = '';
+
+      // Si cambió el correo, re-iniciamos variables locales
+      if (nuevoEmail) {
+        if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
       }
-      await window.usuarioActual.updatePassword(nuevaPass);
-      updatesFirestore.passwordVisual = nuevaPass;
-      cambiosRealizados.push("Contraseña");
+    } else {
+      mostrarToast(data.error || "No se pudieron actualizar las credenciales", "error");
     }
-
-    // 3. ACTUALIZACIÓN DE CORREO FICTICIO
-    if (nuevoEmail && nuevoEmail.toLowerCase() !== window.usuarioActual.email.toLowerCase()) {
-      const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!regexEmail.test(nuevoEmail)) {
-        return mostrarToast("Ingresá un formato de correo válido (ej: prestamista@cobroapp.com)", "error");
-      }
-
-      // Intentamos actualizarlo en Firebase Auth
-      try {
-        await window.usuarioActual.updateEmail(nuevoEmail);
-        cambiosRealizados.push("Correo en Auth");
-      } catch (errAuth) {
-        console.warn("Firebase Auth bloqueó el cambio de mail por ser ficticio:", errAuth.message);
-      }
-
-      // SIEMPRE lo guardamos en Firestore para que Vos (Admin Master) veas el correo nuevo
-      updatesFirestore.email = nuevoEmail;
-      if (window.datosUsuarioActual) window.datosUsuarioActual.email = nuevoEmail;
-      cambiosRealizados.push("Correo en Sistema");
-    }
-
-    // 4. GUARDAR EN LA BASE DE DATOS FIRESTORE
-    if (Object.keys(updatesFirestore).length > 0) {
-      await db.collection('usuarios').doc(window.usuarioActual.uid).update(updatesFirestore);
-    }
-
-    mostrarToast("🔐 Credenciales actualizadas correctamente en la base de datos");
-
-    // Limpiar campos de contraseña
-    if (document.getElementById('cfg-mi-pass')) document.getElementById('cfg-mi-pass').value = '';
-    if (document.getElementById('cfg-mi-pass-actual')) document.getElementById('cfg-mi-pass-actual').value = '';
 
   } catch (error) {
     console.error("Error al actualizar credenciales:", error);
@@ -331,7 +316,7 @@ async function actualizarCredencialesUsuario() {
     if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
       mostrarToast("❌ La contraseña actual ingresada es incorrecta", "error");
     } else {
-      mostrarToast("Error: " + error.message, "error");
+      mostrarToast("Error al actualizar: " + error.message, "error");
     }
   }
 }

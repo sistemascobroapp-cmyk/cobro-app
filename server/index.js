@@ -178,5 +178,54 @@ app.all('/webhook-mp', async (req, res) => {
   }
 });
 
+// ==========================================
+// 3. RUTA: CAMBIO AUTÓNOMO DE CREDENCIALES (SIN VERIFICACIÓN DE MAIL)
+// ==========================================
+app.post('/actualizar-credenciales-prestamista', async (req, res) => {
+  const firestore = conectarFirebase();
+  if (!firestore) {
+    return res.status(500).json({ error: "Error de credenciales Firebase en el servidor." });
+  }
+
+  const { uid, nuevoEmail, nuevaPass } = req.body;
+
+  if (!uid) {
+    return res.status(400).json({ error: 'Falta el ID de usuario' });
+  }
+
+  try {
+    const updateAuth = {};
+    const updatesFirestore = {};
+
+    if (nuevoEmail) {
+      updateAuth.email = nuevoEmail;
+      updatesFirestore.email = nuevoEmail;
+    }
+
+    if (nuevaPass) {
+      updateAuth.password = nuevaPass;
+      updatesFirestore.passwordVisual = nuevaPass;
+    }
+
+    // 1. Actualizamos en Firebase Auth mediante Admin SDK (Sin mail de verificación)
+    if (Object.keys(updateAuth).length > 0) {
+      await admin.auth().updateUser(uid, updateAuth);
+    }
+
+    // 2. Actualizamos en Firestore para sincronizar con el Panel Master
+    if (Object.keys(updatesFirestore).length > 0) {
+      await firestore.collection('usuarios').doc(uid).update(updatesFirestore);
+    }
+
+    res.json({ success: true, message: 'Credenciales actualizadas con éxito' });
+  } catch (error) {
+    console.error("Error actualizando usuario:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// PUERTO Y ENCENDIDO DEL SERVIDOR
+// ==========================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor activo en puerto ${PORT}`));
